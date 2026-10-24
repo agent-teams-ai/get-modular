@@ -33,6 +33,25 @@ and the factory. The entry stores a function that calls the adapted factory. An
 adapter that is not a function, throws, or returns no function fails with
 `assembly.bind.invalid-factory`.
 
+For a descriptor-based feature that consumes other features, publish a complete
+contract union and map each imported union separately:
+
+```ts
+export type FeatureContracts = PreviousContracts | OtherContracts | typeof Own;
+export interface FeatureCapabilities extends
+  CapabilitiesOf<PreviousContracts>,
+  CapabilitiesOf<OtherContracts>,
+  CapabilitiesOf<typeof Own> {}
+```
+
+Both lists contain the same sources, including all unused transitive and private
+child contracts. Separate bases retain early TS2320 conflicts on duplicate IDs;
+`CapabilitiesOf<PreviousContracts | OtherContracts>` can merge those conflicts.
+The [Consumer Module Standard](https://github.com/agent-teams-ai/get-modular/blob/main/docs/architecture/common-assembly.md#module-packages-and-contracts)
+owns this recipe and its parity checks. It uses existing public types, adds no
+runtime behavior and does not require migration of arbitrary hand-written maps
+with additional properties or map-level polymorphic `this`.
+
 An entry is a frozen null-prototype `{ declaration, factory }` pair and is
 invariant only in the capabilities its declaration uses. Teams create entries
 under their own maps, and a Host prepares them together when every capability an

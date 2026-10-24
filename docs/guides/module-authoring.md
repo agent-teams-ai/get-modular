@@ -8,6 +8,7 @@ related:
   - ARCH-COMMON-ASSEMBLY
   - ADR-0034
   - ADR-0036
+  - ADR-0041
   - ADR-0037
 ---
 
@@ -446,11 +447,23 @@ Variants from one spec may share a file when they differ only by values.
 ## 5. Cross-feature slots
 
 Only through contracts. The declaration imports the other feature's
-`<feature>.contracts.ts`; the feature map extends that descriptor's map; the use
+`<feature>.contracts.ts`; its complete descriptor union is imported through
+`import type` and mapped in a separate `CapabilitiesOf` base; the use
 case types `deps` with its own port in `application/ports/`, which the other
 feature's port satisfies structurally, so application code never imports another
 feature. Never import another feature's modules, groups, use cases or adapters.
-The root lists both groups. Maps that disagree on a contract fail with TS2320. No
+The root lists both groups. Maps that disagree on a contract fail with TS2320,
+including conflicts on keys unused by this feature's entries. Export a complete
+`FeatureContracts` union alongside the feature interface: both list the same
+imported sources and own descriptors, including unused and private-child
+contracts. Keep each imported union in its own `CapabilitiesOf` base; mapping
+one combined union can merge a collision instead of rejecting it. All source
+interfaces retain their own checks. Generated code derives both lists from one
+source list, and compiled parity tests check keys, values and revision tokens.
+This is [ADR-0041](../decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md)'s
+representation change, not permission to shrink a feature or team aggregate.
+Custom maps with additional properties or map-level polymorphic `this` keep their
+existing complete interface until separately proved compatible. No
 feature cycles (the Feature Module Standard), and Core rejects cyclic modules.
 A declaration imports only composition contracts; domain and application code never
 do. Where a consumer's checker forbids importing another feature's `composition/`
@@ -473,7 +486,8 @@ import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
 import type { ClockPort } from "../contracts/clock.js";
 
 export const Clock = defineContract<ClockPort>()({ id: "acme/infra/clock", revision: 1 });
-export interface InfraCapabilities extends CapabilitiesOf<typeof Clock> {}
+export type InfraContracts = typeof Clock;
+export interface InfraCapabilities extends CapabilitiesOf<InfraContracts> {}
 ```
 
 Visible features and the paths of their descriptors from `orders` `discounts`:
@@ -484,18 +498,21 @@ its own sub-feature (downward). A sibling of the feature itself is reached as
 `../../<sibling>/composition/<sibling>.contracts.js`.
 
 `orders` and `discounts` use each other, downward and upward. The parent's file
-holds the descriptors, republishes `Discounts`, and its map extends the sub-feature's
-map with `import type`. The sub-feature references the parent's `OrderLines` with a
+holds the descriptors, republishes `Discounts`, and includes the sub-feature's
+complete contract union with `import type` in both its union and separate map
+base. The sub-feature references only the parent's `OrderLines` descriptor with a
 type-only import in its contracts file, so no load-time import cycle crosses the
-features; its declaration imports the value.
+features; its declaration imports the value. It does not import the parent's
+complete contract union, which already includes the child and would create a
+type alias cycle.
 
 <!-- module-authoring-example: project -->
 
 ```ts
 // src/features/orders/composition/orders.contracts.ts
 import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
-import type { InfraCapabilities } from "../../infra/composition/infra.contracts.js";
-import type { DiscountsCapabilities } from "../features/discounts/composition/discounts.contracts.js";
+import type { InfraContracts } from "../../infra/composition/infra.contracts.js";
+import type { DiscountsContracts } from "../features/discounts/composition/discounts.contracts.js";
 import type { OrderLinesPort } from "../contracts/order-lines.js";
 import type { OrdersPort } from "../contracts/orders.js";
 
@@ -503,9 +520,10 @@ import type { OrdersPort } from "../contracts/orders.js";
 export { Discounts } from "../features/discounts/composition/discounts.contracts.js";
 export const OrderLines = defineContract<OrderLinesPort>()({ id: "acme/orders/order-lines", revision: 1 });
 export const Orders = defineContract<OrdersPort>()({ id: "acme/orders/orders", revision: 1 });
+export type OrdersContracts = DiscountsContracts | InfraContracts | typeof OrderLines | typeof Orders;
 export interface OrdersCapabilities extends
-  DiscountsCapabilities,
-  InfraCapabilities,
+  CapabilitiesOf<DiscountsContracts>,
+  CapabilitiesOf<InfraContracts>,
   CapabilitiesOf<typeof OrderLines | typeof Orders> {}
 ```
 
@@ -517,7 +535,8 @@ import type { OrderLines } from "../../../composition/orders.contracts.js";
 import type { DiscountsPort } from "../contracts/discounts.js";
 
 export const Discounts = defineContract<DiscountsPort>()({ id: "acme/orders/discounts/discounts", revision: 1 });
-export interface DiscountsCapabilities extends CapabilitiesOf<typeof Discounts | typeof OrderLines> {}
+export type DiscountsContracts = typeof Discounts | typeof OrderLines;
+export interface DiscountsCapabilities extends CapabilitiesOf<DiscountsContracts> {}
 ```
 
 ```ts
@@ -582,11 +601,14 @@ export type InvoicesPort = { readonly issue: (orderId: string, cents: number) =>
 // src/features/billing/composition/billing.contracts.ts
 import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
 // Billing sees Discounts only through the republication of its parent feature.
-import type { Discounts } from "../../orders/composition/orders.contracts.js";
+import type { OrdersContracts } from "../../orders/composition/orders.contracts.js";
 import type { InvoicesPort } from "../contracts/invoices.js";
 
 export const Invoices = defineContract<InvoicesPort>()({ id: "acme/billing/invoices", revision: 1 });
-export interface BillingCapabilities extends CapabilitiesOf<typeof Invoices | typeof Discounts> {}
+export type BillingContracts = OrdersContracts | typeof Invoices;
+export interface BillingCapabilities extends
+  CapabilitiesOf<OrdersContracts>,
+  CapabilitiesOf<typeof Invoices> {}
 ```
 
 ```ts
@@ -801,7 +823,8 @@ Recipe A, extract a sub-feature:
    and the tests to the mirrored test path.
 5. Create `<part>.group.ts` and replace the moved lines in `<feature>.group.ts` with
    one `<part>` line; the root is unchanged.
-6. The parent's map extends the part's map through `import type`.
+6. Import the part's complete contract union with `import type`; include it in the
+   parent's contract union and in its own separate `CapabilitiesOf` base.
 7. Move the oracle pins to `<part>.wiring.ts` and add the part to the root test.
 8. Code outside the feature that used a moved contract imports the feature's
    republication, which the feature adds to `<feature>.contracts.ts`.
@@ -887,7 +910,8 @@ import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
 import type { EventsPort } from "../contracts/events.js";
 
 export const Events = defineContract<EventsPort>()({ id: "acme/infra/events", revision: 1 });
-export interface InfraCapabilities extends CapabilitiesOf<typeof Events> {}
+export type InfraContracts = typeof Events;
+export interface InfraCapabilities extends CapabilitiesOf<InfraContracts> {}
 ```
 
 ```ts
@@ -898,12 +922,13 @@ export type OrderStorePort = { readonly find: (orderId: string) => Promise<strin
 ```ts
 // src/features/orders/composition/orders.contracts.ts
 import { defineContract, type CapabilitiesOf } from "@get-modular/assembly";
-import type { InfraCapabilities } from "../../infra/composition/infra.contracts.js";
+import type { InfraContracts } from "../../infra/composition/infra.contracts.js";
 import type { OrderStorePort } from "../contracts/order-store.js";
 
 export const OrderStore = defineContract<OrderStorePort>()({ id: "acme/orders/order-store", revision: 1 });
+export type OrdersContracts = InfraContracts | typeof OrderStore;
 export interface OrdersCapabilities extends
-  InfraCapabilities,
+  CapabilitiesOf<InfraContracts>,
   CapabilitiesOf<typeof OrderStore> {}
 ```
 
@@ -1066,8 +1091,8 @@ export const Reports = defineContract<ReportsPort>()({ id: "acme/reports/reports
 export const Store = defineContract<StorePort>()({ id: "acme/reports/store", revision: 1 });
 export const Audit = defineContract<AuditPort>()({ id: "acme/reports/audit", revision: 1 });
 export const Filter = defineContract<FilterPort>()({ id: "acme/reports/filter", revision: 1 });
-export interface ReportsCapabilities extends
-  CapabilitiesOf<typeof Audit | typeof Filter | typeof Reports | typeof Store> {}
+export type ReportsContracts = typeof Audit | typeof Filter | typeof Reports | typeof Store;
+export interface ReportsCapabilities extends CapabilitiesOf<ReportsContracts> {}
 ```
 
 ```ts
@@ -1369,8 +1394,8 @@ import type { ChatPort, SessionInfo, TransportPort } from "../contracts/sessions
 export const SessionId = defineContract<SessionInfo>()({ id: "acme/sessions/session-id", revision: 1 });
 export const Transport = defineContract<TransportPort>()({ id: "acme/sessions/transport", revision: 1 });
 export const Chat = defineContract<ChatPort>()({ id: "acme/sessions/chat", revision: 1 });
-export interface SessionsCapabilities extends
-  CapabilitiesOf<typeof Chat | typeof SessionId | typeof Transport> {}
+export type SessionsContracts = typeof Chat | typeof SessionId | typeof Transport;
+export interface SessionsCapabilities extends CapabilitiesOf<SessionsContracts> {}
 ```
 
 ```ts

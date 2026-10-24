@@ -1,16 +1,56 @@
 # Growth consumer fixture
 
-This test-owned profile implements the inherited feature maps, file inventory,
+This test-owned profile implements the complete feature maps, file inventory,
 arithmetic and independent provider pins in the
 [G scenarios](../../../../docs/qualification/module-fixture-scenarios.md#g--a-real-file-tree-with-bounded-useful-computation).
 The [P5 plan](../../../../docs/qualification/module-fixture-plan.md) and
 [measurement handoff](../../../../docs/qualification/module-fixture-handoff.md#source-freshness-and-measurement-evidence)
-remain the authority. The separate selected-flat source series **passes** for
-N=8, 100, 500 and 1000 with the published Foundation 2.1.1 and FMS 0.2.3
-packages; see the [current source receipt](source-evidence/2026-10-21/observations.json).
-The compiler/runtime measurement driver retains its historical
-`scanner: not-collected` result and does not report process RSS. The supported
-TS7.0.2 compiler blocker remains open.
+remain the authority. [ADR-0041](../../../../docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md)
+selects the current complete descriptor-union recipe: each predecessor union
+gets its own `CapabilitiesOf` base. The union and bases retain the same full
+contract surface, including unused keys; they are generated from one predecessor
+list and checked for parity and early conflicts. No compiler patch is selected.
+The [2026-10-21 source receipt](source-evidence/2026-10-21/observations.json)
+qualifies the earlier inherited-map source bytes only. Historical compiler
+blockers and `scanner: not-collected` fields below retain their original scope;
+they are not results for the new recipe. The current recipe passes supported
+TypeScript 7.0.2 through N1000 with fresh matching source qualification; see
+[Complete descriptor-aggregate qualification](#complete-descriptor-aggregate-qualification).
+Process RSS remains separately collected or explicitly `not-collected`.
+
+## Complete descriptor-aggregate qualification
+
+The [2026-10-23 current receipt](descriptor-aggregate-evidence/2026-10-23/observations.json)
+binds these generated TEST consumers to code commit
+`8ad16885da6ffac88f65118071255842c4624732`, supported TypeScript 7.0.2 and
+Node 26.11.1 on Linux. No private compiler patch or unsupported compiler was
+selected. N8 passed the ordinary correctness and source controls; N100, 500 and
+1000 each passed all eight unchanged compiler/runtime stages, including both
+seed oracles, independent provider pins, full ordinary smoke, incremental/leaf
+edits, restoration and the six-file shared-contract/revision edit.
+
+| Features | Cold emit | Complete compiler/runtime case | Positive source chain |
+| --- | --- | --- | --- |
+| 100 | 0.667 s | 2.447 s | 1.827 s |
+| 500 | 3.123 s | 10.543 s | 7.934 s |
+| 1000 | 8.152 s | 25.919 s | 22.679 s |
+
+The N8 positive source chain took 0.588 s; its eight controls and restoration
+are additional work inside the 5.097-second supervised N8 stage. The complete
+source series took 39.087 seconds and observed the worker's natural exit and
+close before its PASS receipt. Every large source result
+matches its fresh compiler cold subject's SHA-256, census and bytes. N1000 has
+7,003 source files and executes 2,001 smoke attempts, 1,002,000 factory calls and
+1,998,003 dependency reads. Original 180-second compiler, 120-second runtime and
+600-second case budgets remain; the separate source series retains its
+60-second stage, 30-second policy subprocess and 600-second aggregate bounds.
+
+The actual changed workflow selected the fast gate and passed; the complete
+`pnpm check` also passed on this code. Repository CI still owns exact delivery
+head verification. These are single synthetic samples proving the current
+complete-map recipe finishes within its declared caps, not a production SLO or
+a same-environment speedup estimate. They do not repair the compiler or qualify the old
+inherited-map subjects; all dated reports below remain unchanged.
 
 ## Correctness and optional measurement
 
@@ -66,7 +106,9 @@ The aggregate includes generation, copies, hashes, edits and child work. Scanner
 time is not selected. Growth is sequential: review N=100's
 report before selecting N=500, and N=500 before N=1000. The first ceiling,
 watchdog or budget failure stops progression with nonzero status and retained
-evidence. Do not raise caps, repeat a timeout, reduce smoke or flatten maps.
+evidence. Do not raise caps, repeat a timeout, reduce smoke or narrow the complete
+map surface. The ADR-0041 representation change requires its own source identities
+and qualification; it does not transfer historical timings.
 
 The retained N=100 pass and N=500 cold timeout recorded before this supervision
 correction belong to their original driver identities: `run.mjs` SHA-256
@@ -304,7 +346,8 @@ This growth run selected no source scanner, so its source conformance remains
 ## Separate growth source qualification
 
 The [2026-10-21 installed-package receipt](source-evidence/2026-10-21/observations.json)
-records the current selected-flat source **PASS**. Normal registry installation
+records the then-current selected-flat source **PASS** for its inherited-map
+bytes. Normal registry installation
 uses exact Foundation 2.1.1 and FMS 0.2.3 archives; npm signature verification,
 archive SHA-512 and provenance subjects bind both to release commit
 `0e0de78d4c2089be8effc37da4cfd70eab22358c`. The CMS review against current
@@ -337,7 +380,7 @@ The installed Foundation source-dependency CLI separately enforces the role,
 package and builtin policy over all of `src`. Five aggregate role boundaries
 do not replace FMS's per-feature privacy, use-edge and cycle checks.
 
-The new TEST profile separately records the reviewed current CMS at Get Modular
+The earlier TEST source qualification separately recorded the reviewed CMS at Get Modular
 commit `7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333`,
 `docs/architecture/common-assembly.md#consumer-module-standard`, Git blob
 `dad8b6280cf999d9079d3106094e5626b63d83f4`, full-document SHA-256
@@ -380,16 +423,20 @@ The declared scanner budgets are 60 seconds per positive source chain,
 30 seconds per Foundation policy subprocess and 600 seconds for an external
 aggregate supervisor enclosing copy, restoration, hashing and scanner work.
 One retained baseline per selected size is inspected in order, without repeating
-the compiler or runtime experiments. The new source observations qualify only
-their exact copied source identities; they do not relabel historical
-`scanner: not-collected` fields or resolve the supported TS7.0.2 compiler blocker.
+the compiler or runtime experiments. Those historical source observations qualify
+only their exact copied source identities; they do not relabel historical
+`scanner: not-collected` fields or resolve the old inherited-map TS7.0.2 blocker.
+The current descriptor-aggregate result is recorded separately above.
 
-The prior growth pin was `077434e34d75506a610bc9271f8b5b9d5718c876` /
+The historical 2026-10-21 growth pin migration started at
+`077434e34d75506a610bc9271f8b5b9d5718c876` /
 `ae6792543bd19acc948e177e8d55632c9d51134e` /
 `c2fe582a14ff6e79620b232ca7ffc914afb0474ec21fd43f208251dd7252f4a3`.
-The reviewed current delta adds ADR-0039's Observation load cleanup guidance;
-the selected flat source predicates are unchanged. This TEST pin migration
-changes no accepted ADR or production adoption profile.
+That reviewed delta added ADR-0039's Observation load cleanup guidance;
+the selected flat source predicates were unchanged. That TEST pin migration
+changed no accepted ADR or production adoption profile. The current
+ADR-0041 descriptor-aggregate recipe has its own reviewed CMS pin in `source.ts`
+and requires fresh source identities; the older pin is retained here as history.
 
 Completed positive observations reject after the 60-second source budget,
 including baseline, the permitted public-surface control and restoration.
@@ -414,10 +461,14 @@ package builds:
 node tests/qualification/consumer-fixtures/growth/measure-source.ts --directory /absolute/new-result-directory
 ```
 
-The typed runner reconstructs only source bytes because the original physical
-subjects are unavailable. Each generated source tree must match its retained
-cold SHA-256, census and byte count before checking. It invokes neither the
-compiler nor the runtime experiment. Its external parent supervises the owned
+The typed runner generates the current recipe with the current `generate.ts`
+and records the generator, adapter, package and lockfile byte identities. It does
+not require these new descriptor-aggregate trees to match historical inherited-map
+cold hashes. For integrated qualification, independently compare each N=100,
+500 and 1000 source result's SHA-256, census and byte count with that size's fresh
+cold compiler subject. Both observations must identify the same current bytes;
+a source-only PASS cannot fill a missing compiler/runtime result. The runner
+invokes neither the compiler nor the runtime experiment. Its external parent supervises the owned
 process group, kills it on a 60-second source stage or 600-second aggregate
 deadline and reaps the worker before writing the result. N8 includes all eight
 controls and restoration within its source stage; the aggregate covers all four

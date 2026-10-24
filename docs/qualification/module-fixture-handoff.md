@@ -255,6 +255,31 @@ not a prerequisite for the flat experiment.
 
 ## Source freshness and measurement evidence
 
+The current G recipe follows
+[ADR-0041](../decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md):
+complete descriptor unions and separate mapped predecessor bases replace deep
+feature-map inheritance while retaining unused and private-child metadata.
+Capture the new generator identity and cold source hashes. Do not transfer old
+inherited-map timings, source passes or compiler-patch evidence to these bytes.
+Keep the same graph, useful computation, independent pins, fixed edits and caps;
+qualify exact keys, value/token parity and early unused conflicts before scale.
+The compiler/runtime and source reports remain separate observations of the
+same named recipe. For N=100, 500 and 1000, independently compare the source
+series' SHA-256, file census and byte count with each fresh compiler cold subject.
+The current generator's results do not inherit historical cold hashes or PASS
+labels. The source-only runner records current input byte identities and does
+not perform compiler/runtime work. This authoring successor adds no public API
+or runtime owner.
+
+The [2026-10-23 current receipt](../../tests/qualification/consumer-fixtures/growth/descriptor-aggregate-evidence/2026-10-23/observations.json)
+records this comparison for code `8ad16885`: all eight supported-compiler/runtime
+stages passed at N100, 500 and 1000, and all three source-series identities match
+their fresh cold subjects. N8 correctness, source controls and restoration also
+passed. The current G recipe has supported N1000 evidence; historical compiler
+blockers remain evidence about their original direct-inheritance recipe. Keep
+that distinction when handing off the old reports. The current receipt's
+repository checks do not replace final delivery-head CI.
+
 Capture source head plus relevant dirty-file hashes, lockfile, package/output
 hashes, compiler versions, generator/profile/config identities and environment.
 A Git SHA alone does not identify modified outputs. A prepared object's reuse
