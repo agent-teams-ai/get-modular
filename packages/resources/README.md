@@ -16,7 +16,7 @@ that runtime as one `setup`/`cleanup` entry in a Host scope.
 ## Install
 
 ```sh
-npm install @get-modular/resources
+npm install --save-exact @get-modular/resources@latest
 ```
 
 Supported Node.js: `>=24.18.0 <25 || >=26.10.0 <27`. The package has no

@@ -49,6 +49,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Plugin system and hot-reload research](https://github.com/agent-teams-ai/extension-foundation/blob/main/docs/research/plugin-system-research-reference.md) - maintained industry patterns, OpenClaw source audit, critic dispositions and qualification scenarios; evidence only, with product Host choices still separately owned.
 - [Current TypeScript tooling qualification](qualification/native-typescript-tooling.md) - current native compiler scope, historical input custody and the separate release handoff.
 - [Historical implementation-readiness audit](../research/implementation-readiness/report.md) - dispositions belong to the recorded historical subjects; use the current contract and roadmap for today's start conditions.
 - [Module resource scopes and foundation review](../research/module-resources-2026-10/README.md) - research and planning archive for the resources package, Assembly 0.3.0 and the foundation decisions; not an accepted decision.

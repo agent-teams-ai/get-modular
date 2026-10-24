@@ -19,6 +19,18 @@ For consumer composition work, read the [Consumer module standard](docs/architec
 For module authoring, read docs/guides/module-authoring.md.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
+For plugin architecture, hot replacement, compatibility or scale research, use
+the maintained [cross-repository research reference](https://github.com/agent-teams-ai/extension-foundation/blob/main/docs/research/plugin-system-research-reference.md).
+Follow its source and counterexample records before proposing a new mechanism.
+Research does not supersede accepted decisions or qualify a product Host.
+Keep shared industry evidence there; keep Get Modular semantics and executable
+qualification in their existing local owners.
+
+Current installation recipes select `@latest` and save the resolved version
+exactly. Commit the lockfile and use frozen installs in CI. This navigation rule
+does not change approved consumer pins, historical evidence or toolchain policy;
+their migrations require an explicit reviewed delta and retained qualification.
+
 Use `pnpm check:changed` while editing, `pnpm check:fast` before handoff, and
 `pnpm check` as the complete gate, including the installed
 `architecture.source-dependencies` schema v3 gate (`rootPackage: true` and

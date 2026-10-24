@@ -17,15 +17,50 @@ Use Core to validate composition data and create a deterministic plan. Add
 Assembly when the Host also needs to construct already selected and authorized
 factories.
 
+## Install the current release
+
 ```sh
-npm install @get-modular/core@0.5.0 @get-modular/assembly@0.5.0
+npm install --save-exact @get-modular/core@latest @get-modular/assembly@latest
 ```
 
-These versions are published with 0.5.0.
+The npm `latest` channel selects the current published releases at installation
+time. `--save-exact` saves the resolved versions; commit the lockfile and use
+`npm ci` for reproducible subsequent installs. Existing consumers review each
+package changelog, migration instructions and peer requirements before updating
+their exact pins. A current guide is not permission to silently change an
+accepted consumer adoption profile.
 
-Add `@get-modular/resources@0.1.0` when modules own resources that need cleanup,
-and `@get-modular/conformance@0.3.0` as a development dependency for module and
-composition tests. To add a feature or a module to a consumer, read the
+Add resources when modules own resources that need cleanup:
+
+```sh
+npm install --save-exact @get-modular/resources@latest
+```
+
+Add Observation only when a consumer follows replaceable latest state, and
+Conformance as a development dependency for module and composition tests:
+
+```sh
+npm install --save-exact @get-modular/observation@latest
+npm install --save-dev --save-exact @get-modular/conformance@latest
+```
+
+Packages have independent versions. Check their declared peers and keep one
+physical copy of each identity-bearing runtime package in the composition:
+
+```sh
+npm view @get-modular/conformance@latest peerDependencies
+npm view @get-modular/observation@latest peerDependencies
+npm ls @get-modular/core @get-modular/assembly @get-modular/resources @get-modular/observation @get-modular/conformance
+```
+
+Resolve peer conflicts before running consumer qualification; do not force an
+incompatible install. `npm ls` helps inspect the installed tree; it is not a
+complete duplicate-identity rejection gate. Reusable module packages declare
+the Get Modular packages they import as peers within one compatible `0.x` minor,
+and use exact development versions for their own checks. The Host supplies the
+runtime copies; see [module package rules](../architecture/common-assembly.md#module-packages-and-contracts).
+The private lifecycle-kernel candidate is not an npm
+installation option. To add a feature or a module to a consumer, read the
 [module authoring guide](module-authoring.md).
 
 The complete [basic Host example](../../packages/assembly/examples/basic-host.mjs)
