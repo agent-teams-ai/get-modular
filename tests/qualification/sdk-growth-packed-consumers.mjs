@@ -7,13 +7,14 @@ import { promisify } from "node:util";
 
 import { parse } from "yaml";
 
-import { resolveNpmCli, resolvePnpmCli } from "./support/npm-cli.mjs";
+import { resolveNpmCli } from "./support/npm-cli.mjs";
+import { pinnedPnpmCli } from "./support/pinned-pnpm.ts";
 
 const execute = promisify(execFile);
 const root = resolve(import.meta.dirname, "../..");
 const profile = parse(await readFile(join(root, "architecture/sdk-growth/profile.yaml"), "utf8"));
 const npmCli = await resolveNpmCli();
-const pnpmCli = await resolvePnpmCli();
+const pnpmCli = await pinnedPnpmCli(root);
 const expectedCoordinates = Object.freeze([
   Object.freeze({ packageName: "@get-modular/assembly", exportPath: "." }),
   Object.freeze({ packageName: "@get-modular/core", exportPath: "." }),
