@@ -1,0 +1,285 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { observeSourceGraph, type SourceGraph } from "@agent-teams/engineering-foundation/source-graph";
+import { checkFeatureModule, STANDARD, type FeatureModuleReport } from "@agent-teams/feature-module-standard";
+import { checkModuleLayout, type ModuleLayoutReport } from "@get-modular/conformance";
+import { checkFlatSource } from "../source/records.mjs";
+import { sourceProfile } from "../source/profile.mjs";
+import { checkInstalledSourcePolicy } from "../source/policy.ts";
+import { copyReadyPackages, treeIdentity } from "../support/materialize.mjs";
+import { generateGrowthSource } from "./generate.ts";
+
+const require = createRequire(import.meta.url);
+const compare = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+const nameOf = (index: number) => `f${String(index).padStart(3, "0")}`;
+const digest = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+
+export const growthSourceAuthority = Object.freeze({
+  ...sourceProfile.authority,
+  reviewedCms: Object.freeze({
+    repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
+    anchor: "consumer-module-standard", commit: "b2fec1fa15fe3998f51449d7df249f302645973f",
+    gitBlob: "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+    sha256: "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86",
+    scope: "selected flat growth source predicates; production adoption unchanged",
+  }),
+});
+
+/** Expectations only. The graph, export facts and inventory are independently observed on disk. */
+function profileFor(size: number) {
+  assert.ok([8, 100, 500, 1000].includes(size), "fixture.growth.source.unsupported-size");
+  const names = Array.from({ length: size }, (_, index) => nameOf(index));
+  const roots = names.map(name => `src/features/${name}`);
+  const requiredFiles = roots.flatMap((root, index) => [
+    `${root}/contracts/value.ts`, `${root}/application/ports/value.ts`,
+    `${root}/application/use-cases/read-value.ts`, `${root}/composition/${names[index]!}.contracts.ts`,
+    `${root}/composition/value.declaration.ts`, `${root}/composition/value.module.ts`,
+    `${root}/composition/${names[index]!}.group.ts`,
+  ]);
+  requiredFiles.push("src/features/f000/composition/input.declaration.ts",
+    "src/features/f000/composition/f000.inputs.ts", "src/composition/growth.root.ts");
+  const useEdges = names.flatMap((from, index) => {
+    if (index === 0) return [];
+    // The independent recipe's two relations; duplicate predecessors are one edge.
+    const targets = index < 3 ? [index - 1] : [Math.floor(index / 2), index - 1];
+    return targets.map(target => ({ from, to: nameOf(target) }));
+  });
+  const compositionSurface = roots.map((root, index) => `${root}/composition/${names[index]!}.group.ts`);
+  compositionSurface.push("src/features/f000/composition/f000.inputs.ts",
+    `${roots.at(-1)!}/composition/value.module.ts`);
+  return {
+    authority: growthSourceAuthority, roots: ["src"], externalSpecifiers: ["@get-modular/assembly", "@get-modular/core"],
+    referenceKinds: ["static", "static-type"], requiredFiles: requiredFiles.sort(compare),
+    features: {
+      featuresRoots: ["src/features"], featureRoots: roots,
+      roleRoots: roots.flatMap(root => [
+        { root: `${root}/application`, role: "application" },
+        { root: `${root}/contracts`, role: "contracts" },
+        { root: `${root}/composition`, role: "composition" },
+      ]),
+      surfaces: {
+        public: roots.map(root => `${root}/contracts/value.ts`),
+        compositionContract: roots.map((root, index) => `${root}/composition/${names[index]!}.contracts.ts`),
+        compositionSurface,
+      },
+      moduleComposition: ["src/composition/growth.root.ts"], useEdges,
+    },
+  };
+}
+
+type Profile = ReturnType<typeof profileFor>;
+interface SourceObservation {
+  readonly outcome: string;
+  readonly factCoverage: string;
+  readonly inventory: { readonly files: readonly string[]; readonly emptyDirectories: readonly string[] };
+  readonly graph: SourceGraph;
+  readonly problems: readonly { readonly code: string }[];
+  readonly fms?: FeatureModuleReport;
+  readonly cms?: { readonly outcome: string; readonly report: ModuleLayoutReport };
+}
+
+function policyFor(profile: Profile) {
+  const files = profile.requiredFiles;
+  const boundary = (id: string, roots: string[], entrypoints: string[], boundaries: string[], packages: string[] = []) => ({
+    id, roots, entrypoints, allow: { boundaries, packages, builtins: [], runtimeReferences: [] },
+  });
+  const application = files.filter(path => path.includes("/application/"));
+  const contracts = profile.features.surfaces.public;
+  const descriptors = profile.features.surfaces.compositionContract;
+  const composition = files.filter(path => path.includes("/composition/") && path !== "src/composition/growth.root.ts"
+    && !descriptors.includes(path));
+  return {
+    schemaVersion: 3, workspace: { kind: "pnpm", manifest: "pnpm-workspace.yaml" }, rootPackage: true,
+    packageRoots: [], governedRoots: ["src"], boundaries: [
+      boundary("application", application, application, []),
+      boundary("public-contracts", contracts, contracts, []),
+      boundary("composition-contracts", descriptors, descriptors, ["public-contracts"], ["@get-modular/assembly"]),
+      boundary("composition", composition, profile.features.surfaces.compositionSurface,
+        ["application", "public-contracts", "composition-contracts"], ["@get-modular/assembly", "@get-modular/core"]),
+      boundary("module-composition", profile.features.moduleComposition, profile.features.moduleComposition,
+        ["composition", "composition-contracts"], ["@get-modular/assembly"]),
+    ],
+  };
+}
+
+async function preparePolicy(directory: string, profile: Profile) {
+  const configuration = JSON.stringify(policyFor(profile), null, 2) + "\n";
+  await mkdir(join(directory, "architecture/foundation"), { recursive: true });
+  await writeFile(join(directory, "architecture/foundation/source-dependencies.yaml"), configuration);
+  await writeFile(join(directory, "foundation.config.yaml"), ["schemaVersion: 1", "project:", "  id: growth-source-fixture",
+    "capabilities:", "  architecture.source-dependencies:",
+    "    configPath: architecture/foundation/source-dependencies.yaml", ""].join("\n"));
+  await writeFile(join(directory, "pnpm-workspace.yaml"), "packages: []\n");
+  const dependencies: Record<string, string> = {};
+  for (const name of ["assembly", "core"]) {
+    const manifest = JSON.parse(await readFile(join(directory, `node_modules/@get-modular/${name}/package.json`), "utf8")) as {
+      readonly name: string; readonly version: string;
+    };
+    assert.equal(manifest.name, `@get-modular/${name}`);
+    dependencies[manifest.name] = manifest.version;
+  }
+  await writeFile(join(directory, "package.json"), JSON.stringify({
+    name: "fixture-growth-source", private: true, type: "module", dependencies,
+  }, null, 2) + "\n");
+  return { sha256: digest(configuration), configuration: policyFor(profile) };
+}
+
+/** Cross-feature predecessor imports are checked separately for type maps and runtime declaration wiring. */
+function observedTopology(graph: SourceGraph, profile: Profile) {
+  const expected = profile.features.useEdges.map(({ from, to }) => `${from}->${to}`).sort(compare);
+  const pairs = (kind: "contracts" | "declaration") => graph.edges.flatMap(edge => {
+    const match = /^src\/features\/(f\d+)\/composition\/(.+)\.ts$/u.exec(edge.from);
+    const target = /^src\/features\/(f\d+)\/composition\/\1\.contracts\.ts$/u.exec(edge.to);
+    if (!match || !target || match[1] === target[1]) return [];
+    const selected = kind === "contracts" ? match[2] === `${match[1]}.contracts` : match[2] === "value.declaration";
+    if (!selected) return [];
+    assert.equal(edge.mode, kind === "contracts" ? "type-only" : "runtime", "growth predecessor import mode");
+    return [`${match[1]}->${target[1]}`];
+  }).sort(compare);
+  const typeMaps = pairs("contracts");
+  const declarations = pairs("declaration");
+  return { outcome: JSON.stringify(typeMaps) === JSON.stringify(expected) && JSON.stringify(declarations) === JSON.stringify(expected)
+    ? "passed" : "rejected", expected, typeMaps, declarations };
+}
+
+async function observe(directory: string, profile: Profile) {
+  const started = performance.now();
+  const source: SourceObservation = await checkFlatSource(directory, {
+    observeSourceGraph, checkFeatureModule, standard: STANDARD, checkModuleLayout,
+  }, profile);
+  const policy = await checkInstalledSourcePolicy(directory);
+  const topology = observedTopology(source.graph, profile);
+  const completeInventory = JSON.stringify(source.inventory.files) === JSON.stringify(profile.requiredFiles)
+    && JSON.stringify(source.graph.files) === JSON.stringify(profile.requiredFiles);
+  const outcome = source.outcome === "passed" && policy.exit === 0 && completeInventory && topology.outcome === "passed"
+    ? "passed" : "rejected";
+  const wallMs = performance.now() - started;
+  // A completed positive cannot qualify after the source budget. Large measurements additionally
+  // require their external supervisor: an in-process timer cannot interrupt synchronous owner work.
+  if (outcome === "passed") assert.ok(wallMs <= 60000, "fixture.growth.source.positive-deadline");
+  return { outcome, completeInventory, source, policy, topology, wallMs };
+}
+
+async function publicTools() {
+  const rootManifest = JSON.parse(await readFile(new URL("../../../../package.json", import.meta.url), "utf8")) as {
+    readonly devDependencies: Readonly<Record<string, string>>;
+  };
+  const result: Record<string, unknown> = {};
+  for (const name of ["@agent-teams/engineering-foundation", "@agent-teams/feature-module-standard", "@get-modular/conformance"]) {
+    const entry = name === "@agent-teams/engineering-foundation" ? `${name}/source-graph` : name;
+    const manifestPath = name.startsWith("@get-modular/")
+      ? join(dirname(dirname(fileURLToPath(import.meta.resolve(entry)))), "package.json")
+      : require.resolve(`${name}/package.json`);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as { readonly name: string; readonly version: string };
+    assert.equal(manifest.name, name);
+    if (!name.startsWith("@get-modular/")) assert.equal(manifest.version, rootManifest.devDependencies[name]);
+    result[name] = { version: manifest.version, entry, resolution: import.meta.resolve(entry),
+      package: name.startsWith("@get-modular/")
+        ? { manifestSha256: digest(await readFile(manifestPath)), dist: await treeIdentity(join(dirname(manifestPath), "dist")) }
+        : await treeIdentity(dirname(manifestPath)) };
+  }
+  return result;
+}
+
+export async function checkGrowthSource(directory: string, size: number) {
+  const profile = profileFor(size);
+  const before = await treeIdentity(join(directory, "src"));
+  const policyProfile = await preparePolicy(directory, profile);
+  const result = await observe(directory, profile);
+  assert.equal(result.outcome, "passed", JSON.stringify(result));
+  assert.equal(before.files, 7 * size + 3);
+  assert.equal(result.source.graph.edges.length, 14 * size - 3, "independent resolved import census");
+  assert.equal(result.source.graph.external.length, 6 * size + 3, "independent package import census");
+  assert.equal(result.source.graph.edges.filter(edge => edge.mode === "runtime").length, 7 * size);
+  assert.deepEqual(await treeIdentity(join(directory, "src")), before, "scanner leaves source unchanged");
+  return { kind: "installed-selected-flat-growth-source", source: "passed", size, authority: growthSourceAuthority,
+    adoption: "unchanged", nested: "not-selected", sourceTree: before, profile, policyProfile,
+    publicTools: await publicTools(), observation: result };
+}
+
+type Observation = Awaited<ReturnType<typeof observe>>;
+function hasFms(result: Observation, code: string) {
+  assert.equal(result.outcome, "rejected");
+  assert.equal(result.source.outcome, "rejected");
+  assert.equal(result.source.fms?.ok, false);
+  assert.ok(result.source.fms.diagnostics.some(item => item.code === code), code);
+}
+function hasPolicy(result: Observation, suffix: string) {
+  assert.equal(result.outcome, "rejected");
+  assert.equal(result.policy.exit, 1);
+  assert.equal(result.policy.report.outcome, "violations");
+  assert.ok(result.policy.report.capabilities.at(0)!.diagnostics
+    .some(item => item.ruleId === `architecture.source-dependencies.${suffix}`), suffix);
+}
+function hasCms(result: Observation, code: string) {
+  assert.equal(result.outcome, "rejected");
+  assert.equal(result.source.outcome, "rejected");
+  assert.equal(result.source.cms?.outcome, "rejected");
+  assert.ok(result.source.cms.report.violations.some(item => item.code === code), code);
+}
+
+/** Only growth-specific surface/ownership controls; unchanged parser predicates retain their P4 witnesses. */
+export async function runGrowthSourceScenarios(directory: string) {
+  const baseline = await checkGrowthSource(directory, 8);
+  const profile = profileFor(8);
+  const rows: { readonly name: string; readonly observed: Observation }[] = [];
+  async function mutation(name: string, path: string, change: (source: string) => string, verify: (result: Observation) => void) {
+    const target = join(directory, path);
+    const original = await readFile(target, "utf8");
+    try {
+      await writeFile(target, change(original));
+      const observed = await observe(directory, profile);
+      verify(observed);
+      rows.push({ name, observed });
+    } finally { await writeFile(target, original); }
+  }
+  await mutation("A-02 growth public predecessor surface", "src/features/f001/composition/f001.contracts.ts", source =>
+    source + '\nimport type { Value as PublicValue } from "../../f000/contracts/value.js";\nexport interface PublicUse { readonly value: PublicValue }\n',
+  result => assert.equal(result.outcome, "passed", JSON.stringify(result)));
+  await mutation("A-02 growth private sibling application", "src/features/f001/composition/value.module.ts", source =>
+    source + '\nimport "../../f000/application/use-cases/read-value.js";\n', result => {
+    hasFms(result, "deep-import");
+    assert.equal(result.policy.exit, 0, "aggregate role policy delegates feature privacy to FMS");
+  });
+  await mutation("A-06 growth application-to-descriptor", "src/features/f000/application/use-cases/read-value.ts", source =>
+    source + '\nimport type { FeatureCapabilities } from "../../composition/f000.contracts.js";\n', result => {
+    hasFms(result, "composition-contract-layer"); hasPolicy(result, "forbidden-boundary-dependency");
+  });
+  await mutation("A-07 growth input importer removed", "src/features/f000/composition/f000.inputs.ts", source => {
+    const original = 'import { declaration } from "./input.declaration.js";';
+    assert.ok(source.includes(original)); return source.replace(original, "");
+  }, result => hasCms(result, "orphan-declaration"));
+  const noRoot = await observe(directory, { ...profile, features: { ...profile.features, moduleComposition: [] } });
+  hasFms(noRoot, "composition-contract-layer");
+  rows.push({ name: "A-06 growth root composition permission removed", observed: noRoot });
+  await mutation("A-06 growth actual type-use back-edge", "src/features/f000/composition/f000.contracts.ts", source =>
+    source + '\nimport type { FeatureCapabilities as BackEdge } from "../../f001/composition/f001.contracts.js";\n', result => {
+    hasFms(result, "use-undeclared"); hasFms(result, "feature-cycle");
+    assert.ok(!result.source.fms!.diagnostics.some(item => item.code === "load-cycle"));
+    assert.equal(result.topology.outcome, "rejected");
+  });
+  await mutation("A-08 growth extra use-case export", "src/features/f000/application/use-cases/read-value.ts", source =>
+    source + "\nexport const extra = 1;\n", result => hasCms(result, "use-case-export"));
+  await mutation("A-06 growth application cannot import Assembly", "src/features/f000/application/use-cases/read-value.ts", source =>
+    source + '\nimport { group } from "@get-modular/assembly";\n', result => hasPolicy(result, "forbidden-package-dependency"));
+  assert.equal(rows.length, 8);
+  const restored = await observe(directory, profile);
+  assert.equal(restored.outcome, "passed", JSON.stringify(restored));
+  assert.deepEqual(await treeIdentity(join(directory, "src")), baseline.sourceTree);
+  return { ...baseline, rows, restored };
+}
+
+/** Ordinary source-only N8 regression, without another compiler or runtime invocation. */
+export async function runGrowthSourceCorrectness() {
+  const directory = await mkdtemp(join(tmpdir(), "gm-growth-source-"));
+  try {
+    await copyReadyPackages(directory);
+    await generateGrowthSource(directory, 8);
+    return await runGrowthSourceScenarios(directory);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+}

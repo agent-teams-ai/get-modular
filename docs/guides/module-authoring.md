@@ -1811,9 +1811,10 @@ are separate modules. A live notification can use the subscription recipe in
 filter, map, combine or otherwise transform a sequence; composition does not
 by itself require a queue or durable acknowledgement.
 
-The consumer chooses a source through its ordinary slot. The implementation and
-optional stream operators stay at the consuming composition or adapter boundary;
-domain code receives the narrow contract it needs. Keep publication authority
+The consuming module declares a source slot; the Host selects and binds its
+provider. Optional source adaptation and stream operators stay at the consuming
+composition or adapter boundary; domain code receives the narrow contract it
+needs. Keep publication authority
 with the source owner. A global string-topic bus hides these dependency edges.
 
 | Choice | Useful when | Qualification needed at the consumer |
