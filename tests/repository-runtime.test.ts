@@ -170,6 +170,35 @@ test("Node rollback derives only manager metadata in an external checkout and re
   });
 });
 
+test("Node rollback captures main for unset or empty GitHub bases and preserves explicit PR baselines", async () => {
+  await fixture(async (root, temporary) => {
+    const baseline = run(root, "git", ["rev-parse", "HEAD"]).stdout.trim();
+    for (const base of ["main", "release/next"]) {
+      assert.equal(run(root, "git", ["update-ref", `refs/remotes/origin/${base}`, baseline]).status, 0);
+    }
+    await put(root, "after-baseline.txt", "source HEAD differs from the retained baseline\n");
+    assert.equal(run(root, "git", ["add", "after-baseline.txt"]).status, 0);
+    assert.equal(run(root, "git", ["commit", "-m", "test: advance disposable source beyond baseline"]).status, 0);
+    const head = run(root, "git", ["rev-parse", "HEAD"]).stdout.trim();
+    assert.notEqual(head, baseline);
+    const cases = [[undefined, "main"], ["", "main"], ["release/next", "release/next"]] as const;
+    for (const [index, [base, expectedBase]] of cases.entries()) {
+      const target = join(temporary, `node-profile-${index}`);
+      const prepared = run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", target],
+        { GITHUB_BASE_REF: base });
+      assert.equal(prepared.status, 0, prepared.stdout + prepared.stderr);
+      assert.equal(run(target, "git", ["rev-parse", "HEAD"]).stdout.trim(), head);
+      assert.equal(run(target, "git", ["rev-parse", `refs/remotes/origin/${expectedBase}`]).stdout.trim(), baseline);
+    }
+    const invalidTarget = join(temporary, "invalid-baseline");
+    const rejected = run(root, "node", ["architecture/tooling/runtime/dev.ts", "prepare-node", invalidTarget],
+      { GITHUB_BASE_REF: "bad ref" });
+    assert.notEqual(rejected.status, 0);
+    assert.match(rejected.stderr, /check-ref-format refs\/remotes\/origin\/bad ref/u);
+    await assert.rejects(realpath(invalidTarget), { code: "ENOENT" });
+  });
+});
+
 test("bootstrap pnpm uses the real provisioned JS entry without executing shell wrappers", async () => {
   const installed = createRequire(join(repository, "package.json")).resolve("pnpm");
   const manifest = JSON.parse(await readFile(installed, "utf8"));
