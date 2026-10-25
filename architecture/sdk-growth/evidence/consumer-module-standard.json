@@ -10,44 +10,44 @@
     "sha256": "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553"
   },
   "acceptedCurrent": {
-    "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
-    "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
-    "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
+    "commit": "3c00edc5bd767b586344f729e06da9d314e9680c",
+    "gitBlob": "c158d772f7751f72c704beb6dc644fb3c1596d3d",
+    "sha256": "66daf434d4408d9b6229345932b415b1225ce96f3f4c1a21efd05b3f95e70e48"
   },
   "delta": {
-    "classification": "complete-descriptor-union-authoring-successor",
+    "classification": "external-subscription-acquisition-guidance",
     "fromAcceptedCurrent": {
-      "commit": "0c2ea846f11532b216520e0e84e19ea1abf58342",
-      "gitBlob": "4bd50920f9b81d9f41456ceb3df9500b497e0453",
-      "sha256": "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec"
+      "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
+      "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+      "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
     },
-    "changedHunks": 5,
-    "removedLines": 9,
-    "addedLines": 42,
+    "changedHunks": 2,
+    "removedLines": 3,
+    "addedLines": 7,
     "semanticChanges": [
-      "ADR-0041 succeeds direct inherited feature maps with complete descriptor unions and separate CapabilitiesOf bases for each imported union plus own descriptors; both lists use the same sources.",
-      "Complete transitive, unused and private-child contracts retain exact keys, values and compatibility tokens; each source interface remains checked. Separate bases reject unused value or revision conflicts with TS2320 before Host selection; identical overlaps remain valid.",
-      "Upward references use the ancestor descriptor rather than its aggregate; Hosts still use complete public parent interfaces. Declarations, entry brands, graph, inputs, groups, exact revisions, ownership and construction do not change.",
-      "Custom handwritten properties, index/call/construct signatures and map-level polymorphic this retain the existing complete interface until a separate compatibility proof; descriptor-owned value types are unchanged.",
-      "Existing TypeScript unions and Assembly CapabilitiesOf own the shared mechanism. CMS owns the authoring recipe; no new runtime, API alias, local type framework or selected-only map is introduced.",
-      "The merged current document retains five Bun repository verification commands relative to the descriptor-union upstream guide. SDK classification, HOLD, four authority blockers and historical evidence remain unchanged; changed growth source identities require fresh qualification."
+      "Clarify existing ADR-0030 acquisition custody: resources.use transfers an already-held disposer, and refusal leaves its cleanup with the caller.",
+      "Acquire a subscription through resources.setup when subscribe can call user code before returning; check its signal before acquisition and each synchronous listener effect, with unsubscribe owned by cleanup.",
+      "The provider must roll back acquisition that throws before returning a disposer. The linked authoring recipe demonstrates these existing rules without adding transport or task execution.",
+      "Update the example qualification link from consumer-standard-examples.test.mjs to its maintained TypeScript filename consumer-standard-examples.test.ts.",
+      "Core and Assembly composition, Resources runtime and public APIs, the ADR-0041 complete descriptor-union authoring contract, and Host lifecycle authority are unchanged.",
+      "SDK growth remains fixed development tooling on HOLD with the same four authority blockers. The selected flat growth fixture adds no subscription, Resources or Observation use; changed source pin bytes require fresh current-source qualification, not promotion of historical results."
     ],
-    "changesGetModularCompositionContract": true,
+    "changesGetModularCompositionContract": false,
     "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
   },
   "retainedEvidence": {
-    "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
-    "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
+    "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/common-assembly.txt",
+    "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
     "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
-    "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.diff",
-    "deltaSha256": "2806f5a2fee13a6ff06bbebd33867a7fea6989d57f3b113a30d9b04456d9bde2",
-    "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/previous-review.json",
-    "previousReviewSha256": "60ac927f3271ad8af6c1c0ed6095a0a9f51fbc72289b6dd62497f987ce8befec",
-    "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-common-assembly.txt",
-    "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-common-assembly.diff",
-    "growthDeltaSha256": "6e2482d1c056aec002c3e203ad5b40415c05b4fd86e24ce960a00db41ff2568f",
-    "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
-    "growthPreviousReviewSha256": "6dfd3cdbdaabf03439a62bca765f150c447e879ff88dc756f4b10945a1382c27"
+    "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/common-assembly.diff",
+    "deltaSha256": "222bcc37a3cd0639b4a01ceba96f05d0d60603cad61510540e4767ba0c919cab",
+    "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/previous-review.json",
+    "previousReviewSha256": "29a20c0b9f4408bc554903fadd6c43a8c823a89ef8c96ad4de890b9a83505ff8",
+    "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
+    "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/common-assembly.diff",
+    "growthDeltaSha256": "222bcc37a3cd0639b4a01ceba96f05d0d60603cad61510540e4767ba0c919cab",
+    "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/growth-previous-source.ts.txt",
+    "growthPreviousReviewSha256": "debec46a5590ff46106201bcd671ef1f7a25196d2cb124a16775a4d99634970f"
   },
   "scopeReview": {
     "scope": "sdk-growth-development-tooling",
@@ -65,11 +65,11 @@
   },
   "growthScopeReview": {
     "previousCurrent": {
-      "commit": "b70ba39304ac71964175c42a77309406a7c30ca2",
-      "gitBlob": "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
-      "sha256": "11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824"
+      "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
+      "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+      "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
     },
-    "classification": "repository-verification-command-guidance",
+    "classification": "external-subscription-acquisition-guidance",
     "changesSelectedFlatCompositionContract": false,
     "authoringRepresentation": "complete-descriptor-union-separate-bases",
     "observation": "not-selected",

@@ -478,9 +478,9 @@ an existing output directory is refused. Raw reports stay with their compact
 hash-bound index and supervisor receipt. This optional measurement is included
 in the existing strict fixture typecheck, not added to every repository check.
 
-### Current source guidance review after the Bun source union
+### Historical source guidance review after the Bun source union
 
-Current `source.ts` pins the reviewed guide at source checkpoint
+The earlier source review pinned the guide at source checkpoint
 `0c2ea846f11532b216520e0e84e19ea1abf58342`, blob
 `4bd50920f9b81d9f41456ceb3df9500b497e0453`, SHA-256
 `d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec`.
@@ -494,3 +494,29 @@ adoption. Current-source qualification is pending; SDK activation remains HOLD.
 The full snapshot, both raw deltas and exact prior SDK/source reviews are retained
 as non-authoritative evidence in
 `architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/`.
+
+### Current source guidance review for external subscriptions
+
+Current `source.ts` pins the full guide at source checkpoint
+`3c00edc5bd767b586344f729e06da9d314e9680c`, blob
+`c158d772f7751f72c704beb6dc644fb3c1596d3d`, SHA-256
+`66daf434d4408d9b6229345932b415b1225ce96f3f4c1a21efd05b3f95e70e48`.
+The previous reviewed pin was `b2fec1fa15fe3998f51449d7df249f302645973f`,
+blob `df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, SHA-256
+`3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86`.
+The retained complete delta has two hunks: it clarifies existing ADR-0030
+subscription acquisition custody and updates the compiled example test's
+TypeScript filename. It changes no Core/Assembly contract or ADR-0041
+descriptor-union recipe. This flat source fixture selects no subscription,
+Resources or Observation lifecycle, and its production adoption remains unchanged.
+The pin changes the current source identity; historical timings and source
+reports do not qualify these new bytes. Current-source qualification is pending,
+and SDK activation remains HOLD with the same four external blockers.
+
+The full current guide, raw delta, previous SDK review and exact previous
+`source.ts` bytes are retained in
+`architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/`.
+Both current reviews share the same previous guide and raw delta because they
+advance from the same `b2fec1fa` source. Earlier descriptor-union, drain, Bun and
+P0 inputs and qualification records remain unchanged and checked. This is a
+reviewed source checkpoint, not a merged or released qualification claim.

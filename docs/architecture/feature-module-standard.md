@@ -273,7 +273,7 @@ primitive is supplied by the runtime. Host install projections and version
 policy remain local. Copying Foundation's complete Host runtime would duplicate
 policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
 
-The current Consumer Module Standard review pins exact merged source
+The previous Consumer Module Standard review pinned exact merged source
 `b2fec1fa15fe3998f51449d7df249f302645973f`, blob
 `df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, with full-document SHA-256
 `3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86`.
@@ -297,6 +297,22 @@ HOLD and the same four external authority/custody blockers. The full review and
 retained deltas are bound by
 `architecture/sdk-growth/evidence/consumer-module-standard.json` and its
 rejecting tests; no production adoption or SDK authority is inferred.
+
+The current review advances only the guidance pin to exact source checkpoint
+`3c00edc5bd767b586344f729e06da9d314e9680c`, blob
+`c158d772f7751f72c704beb6dc644fb3c1596d3d`, SHA-256
+`66daf434d4408d9b6229345932b415b1225ce96f3f4c1a21efd05b3f95e70e48`.
+Its full delta from `b2fec1fa` clarifies existing ADR-0030 subscription acquisition
+custody and updates the compiled example's TypeScript filename. An already-held
+disposer remains the caller's responsibility if `use` refuses it; acquisition
+that can call user code belongs inside `setup`, with signal checks and provider
+rollback before a handle is returned. No runtime, public API, composition
+contract or ADR-0041 authoring rule changes. The SDK and selected flat growth
+fixture retain their scopes, pending qualification and HOLD. The current
+snapshot, raw delta and exact prior SDK/source reviews are retained under
+`architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261025/`;
+all earlier descriptor-union, drain, Bun and P0 evidence remains authenticated.
+This source checkpoint is not a claimed merge or release.
 
 The current tool cohort is published and reconciled. Foundation 3.0.0, FMS
 0.3.0, Stack Toolchain 0.1.1 and Docs Protocol 0.6.6 were published by successful

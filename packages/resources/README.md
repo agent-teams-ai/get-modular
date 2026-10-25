@@ -70,6 +70,9 @@ paths that Hosts alert on.
   takes its release slot when the setup fulfils. `signal` stops acquisition: it
   aborts when the scope or an ancestor starts closing, or when the run that
   constructs the module is cancelled.
+  Use it for synchronous acquisition that can call user code too, such as
+  subscribing to an external event source. Check `signal` before acquiring;
+  cancellation can abort it while registration is still open.
 - `use(value, name)` registers a value already in hand that implements
   `Symbol.asyncDispose` or `Symbol.dispose`. Its `then` method is never read,
   and the result of a synchronous `Symbol.dispose` is not awaited.
@@ -82,6 +85,14 @@ paths that Hosts alert on.
   `child` throws. Acquire asynchronously only inside `setup`.
 - Close waits for started setups, then releases. A failed cleanup is recorded
   as a debt with its original cause and release continues.
+
+The [external subscription recipe](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/module-authoring.md#9-resources)
+acquires through `setup` before `subscribe` can close the scope during acquisition.
+Do not acquire inline inside `use`: if registration is refused after acquisition,
+the caller still has to release that value. A setup that throws before returning
+a handle must undo its own partial acquisition. A guarded synchronous listener
+can suppress new effects after abort, while unsubscribe remains registered
+cleanup. Neither abort nor unsubscribe proves completion of earlier async work.
 
 ## Closing
 

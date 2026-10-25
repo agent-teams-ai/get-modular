@@ -197,14 +197,19 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("previous current pin is stale", () => rejectCms(model => {
     model.cmsReview.acceptedCurrent = { ...model.cmsReview.delta.fromAcceptedCurrent };
   }, /current CMS pin/u));
-  await t.test("descriptor-union successor cannot be mislabeled command-only", () => rejectCms(model => {
-    model.cmsReview.delta.changesGetModularCompositionContract = false;
+  await t.test("subscription custody guidance cannot claim a new composition contract", () => rejectCms(model => {
+    model.cmsReview.delta.changesGetModularCompositionContract = true;
   }, /CMS delta review/u));
+  await t.test("subscription review cannot skip its accepted descriptor-union predecessor", () => rejectCms(model => {
+    model.cmsReview.delta.fromAcceptedCurrent.commit = "0c2ea846f11532b216520e0e84e19ea1abf58342";
+  }, /previous CMS pin/u));
   for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsP0Bytes", "cmsSourceBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes",
     "cmsHistoricalDeltaBytes", "cmsP0ReviewBytes", "cms300eBytes", "cmsBunDeltaBytes", "cmsBunReviewBytes",
     "cmsGrowthPreviousBytes", "cmsGrowthDeltaBytes", "cmsGrowthReviewBytes",
     "cmsDrainPreviousBytes", "cmsDrainDeltaBytes", "cmsDrainReviewBytes", "cmsDrainGrowthPreviousBytes",
-    "cmsDrainGrowthDeltaBytes", "cmsDrainGrowthReviewBytes", "cmsAuthoringDecisionBytes"]) {
+    "cmsDrainGrowthDeltaBytes", "cmsDrainGrowthReviewBytes", "cmsAuthoringDecisionBytes",
+    "cmsDescriptorPreviousBytes", "cmsDescriptorDeltaBytes", "cmsDescriptorReviewBytes",
+    "cmsDescriptorGrowthPreviousBytes", "cmsDescriptorGrowthDeltaBytes", "cmsDescriptorGrowthReviewBytes"]) {
     await t.test(field, () => rejectCms(model => {
       model[field] = Buffer.from("substituted input");
     }, /CMS .*bytes/u));
@@ -276,6 +281,12 @@ test("CMS evidence loading rejects absent current and historical inputs", async 
     "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.diff",
     "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/previous-review.json",
     "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/previous-review.json",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-common-assembly.txt",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
     "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md"]) {
     await t.test(path, async () => {
       const target = join(root, path);
