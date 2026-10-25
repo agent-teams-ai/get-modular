@@ -1049,6 +1049,21 @@ test("requires exactly one historical M2 replay in the contracts gate", () => {
   const wrapper = "tests/m2-lock-witness.test.mjs";
   const command = packageJson.scripts["contracts:test"];
   assert.equal(command.split(wrapper).length - 1, 1);
+  const retained = "tests/qualification/m2-candidate/raw-invocation-oracle.test.mjs";
+  const reporter = `node --test --test-reporter=spec --test-reporter-destination=stderr ${retained}`;
+  assert.equal(command.split(retained).length - 1, 1);
+  assert.equal(command.split(" && ").at(-1), reporter);
+  for (const replacement of [
+    command.replace("--test-reporter-destination=stderr", "--test-reporter-destination=stdout"),
+    command.replace(` && ${reporter}`, ""),
+    command.replace(` && ${reporter}`, ` || ${reporter}`),
+    `${command} || node -e 'process.exit(0)'`,
+  ]) {
+    const changed = clone(packageJson);
+    changed.scripts["contracts:test"] = replacement;
+    assert.throws(() => validate({ packageJson: changed }),
+      /contracts:test must use its closed command definition/u);
+  }
   for (const replacement of [
     "tests/qualification/m2-candidate/retained-acceptance.test.mjs tests/m2-start.test.mjs",
     "",
