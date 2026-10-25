@@ -195,8 +195,12 @@ Module authors:
    created. Never pass `Resources` of an ancestor or any `ScopeControl` down.
 5. Subscribe in your own scope, through an API that takes your `resources` and binds to `resources.signal`, such
    as `watch` and `load` of `@get-modular/observation`. Work shorter than the module subscribes in a `child()`
-   scope that it closes when the work ends. A provider API that still returns a disposer is wrapped as
-   `{ [Symbol.dispose]: unsubscribe }` and registered with `resources.use`.
+   scope that it closes when the work ends. An already-held provider disposer can be wrapped as
+   `{ [Symbol.dispose]: unsubscribe }` and transferred with `resources.use`; refusal leaves it with the caller.
+   Acquire a subscription inside `resources.setup` when `subscribe` can call user code before returning.
+   Check its signal before acquisition and before each synchronous listener effect; cleanup owns unsubscribe.
+   The provider must roll back acquisition that throws before returning its disposer. The
+   [external subscription recipe](../guides/module-authoring.md#9-resources) applies these existing custody rules.
 6. Running work is not a resource. Register dependencies, then the drain set, then the subscription, so release
    runs unsubscribe, drain, close; or make each operation a `child()`. A subscription bound to the scope's signal
    detaches before any cleanup, whatever its registration order; the order applies to subscriptions released by a
@@ -1092,7 +1096,7 @@ check invalid wiring before effects; [typed fixtures](../../tests/assembly/types
 and the [packed consumer](../../tests/assembly/packed-consumer.mjs)
 cover the public carrier. The [resource scope tests](../../tests/resources/assembly-scope.test.mjs),
 [input tests](../../tests/assembly/inputs.test.mjs), [builder tests](../../tests/assembly/builder.test.mjs),
-the [example compile test](../../tests/assembly/consumer-standard-examples.test.mjs)
+the [example compile test](../../tests/assembly/consumer-standard-examples.test.ts)
 for the examples of this document and of the [module authoring guide](../guides/module-authoring.md) and the [packed conformance consumer](../../packages/conformance/tests/packed-root.test.mjs)
 extend them, with the [profile completion tests](../../tests/assembly/profile-completion.test.mjs). These belong to the existing `bun run assembly:test`, `bun run resources:check`
 and `bun run conformance:check` commands, invoked by both fast and full gates, after
