@@ -9,7 +9,7 @@ import { verifyRuntimeWorkspace } from "./projection-custody.ts";
 import { assertProjection, git, markerPath, project, projectionPaths, repository, selectedProfile } from "./policy.ts";
 
 function capturedBaseline(): { ref: string; oid: string } {
-  const base = process.env.GITHUB_BASE_REF ?? "main";
+  const base = process.env.GITHUB_BASE_REF || "main";
   const ref = `refs/remotes/origin/${base}`;
   git(repository, "check-ref-format", ref);
   const record = git(repository, "for-each-ref", "--format=%(objectname) %(refname)", ref);
