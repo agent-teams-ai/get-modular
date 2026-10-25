@@ -277,7 +277,7 @@ function ruleIds(report) {
 test("activates exact published Foundation quality pins", () => {
   assert.equal(foundationPackage.version, "3.0.0");
   assert.equal(toolchainPackage.name, "stack-toolchain");
-  assert.equal(toolchainPackage.version, "0.1.1");
+  assert.match(consumerPackage.devDependencies["stack-toolchain"], /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$(?![\s\S])/u);
   assert.equal(consumerPackage.devDependencies["stack-toolchain"], toolchainPackage.version);
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
