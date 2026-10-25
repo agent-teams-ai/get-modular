@@ -124,6 +124,9 @@
     "subpaths",
     "unreviewed",
     "jobid",
-    "runneradmin"
+    "runneradmin",
+    "bunfig",
+    "lockfiles",
+    "postpublication"
   ]
 }

@@ -19,16 +19,16 @@ const compare = (left: string, right: string) => left < right ? -1 : left > righ
 const nameOf = (index: number) => `f${String(index).padStart(3, "0")}`;
 const digest = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
-export const growthSourceAuthority = {
+export const growthSourceAuthority = Object.freeze({
   ...sourceProfile.authority,
-  reviewedCms: {
+  reviewedCms: Object.freeze({
     repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
-    anchor: "consumer-module-standard", commit: "81d9ee9c07535f8b5880bb447fa6d94954c24aea",
-    gitBlob: "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
-    sha256: "11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824",
+    anchor: "consumer-module-standard", commit: "b2fec1fa15fe3998f51449d7df249f302645973f",
+    gitBlob: "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+    sha256: "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86",
     scope: "selected flat growth source predicates; production adoption unchanged",
-  },
-};
+  }),
+});
 
 /** Expectations only. The graph, export facts and inventory are independently observed on disk. */
 function profileFor(size: number) {

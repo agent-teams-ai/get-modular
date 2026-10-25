@@ -1,4 +1,5 @@
-schemaVersion: 1
+schemaVersion: 2
+packageManager: bun
 instructions:
   canonical: AGENTS.md
   claude: CLAUDE.md
@@ -19,18 +20,17 @@ changedChecks:
     passPaths: false
 fullScanPaths:
   - .gitignore
+  - .bun-version
+  - bun.lock
+  - bunfig.toml
+  - .node-compat-version
   - .node-version
   - .npmrc
   - .oxlintrc.json
   - .cspell.json
   - .markdownlint-cli2.jsonc
   - tsconfig.base.json
-  - packages/core/package.json
-  - packages/core/tsconfig.json
-  - packages/core/tsconfig.seed.json
-  - packages/core/tsconfig.stage0.json
-  - packages/core/tsconfig.test.json
-  - packages/core/tsconfig.typecheck.json
+  - packages/core
   - packages/assembly/tsconfig.json
   - packages/assembly/package.json
   - packages/assembly/tsconfig.types.json
@@ -53,6 +53,7 @@ fullScanPaths:
   - packages/observation/tsconfig.types.json
   - packages/observation/tsconfig.types.bundler.json
   - packages/observation/tsconfig.test-tooling.json
+  - tests/tsconfig.repository-runtime.json
   - tests/tsconfig.tooling-node-policy.json
   - tests/tsconfig.native-tooling.json
   - tests/tsconfig.consumer-fixtures.json
@@ -63,7 +64,7 @@ fullScanPaths:
   - tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json
   - tests/qualification/consumer-fixtures/source/source-dependencies.yaml
   - tests/qualification/implementation-readiness/api-authoring
-  - architecture/checks/sdk-growth.mjs
+  - toolchain.config.json
   - architecture/sdk-growth
   - tests/sdk-growth.test.mjs
   - tests/qualification/sdk-growth-admission.mjs
@@ -82,3 +83,16 @@ fullScanPaths:
   - package.json
   - pnpm-lock.yaml
   - pnpm-workspace.yaml
+scopes:
+  - id: repository
+    roots: ['*']
+    requiredFacets: [lint, typecheck, tests, standards, architecture]
+    checks: [repository]
+checks:
+  - id: repository
+    script: check
+    prerequisites: []
+    supplies: [lint, typecheck, tests, standards, architecture]
+    observation: test-dispatch/v1
+exclusions: []
+escalationCheck: repository

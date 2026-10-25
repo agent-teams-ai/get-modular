@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": false,
+    "allowJs": true,
+    "checkJs": false,
+    "types": [
+      "node"
+    ]
+  },
+  "files": [
+    "../architecture/tooling/runtime/admission.ts",
+    "../architecture/tooling/runtime/projection-custody.ts",
+    "runtime-projection-custody.test.ts",
+    "../architecture/tooling/runtime/policy.ts",
+    "../architecture/tooling/runtime/command.ts",
+    "../architecture/tooling/runtime/dev.ts",
+    "../architecture/tooling/runtime/projection-check.ts",
+    "../architecture/tooling/runtime/ci.ts",
+    "repository-runtime.test.ts",
+    "m3-runtime-collection.test.ts",
+    "qualification/support/m3-node-policy.ts",
+    "../packages/observation/tests/support/pnpm-probe.ts",
+    "../packages/lifecycle-kernel/tests/support/pnpm-probe.ts",
+    "../packages/resources/tests/support/pnpm-probe.ts",
+    "../packages/conformance/tests/support/pnpm-probe.ts"
+  ],
+  "include": []
+}

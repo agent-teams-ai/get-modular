@@ -70,8 +70,8 @@ async function commitPackages(root, message) {
 async function runGrowth(root) {
   let result;
   try {
-    result = await execute(process.execPath, [foundationCli, "check", "package.public-api-compatibility",
-      "--consumer", root, "--format", "json"], { cwd: root, timeout: 120_000, maxBuffer: 8_000_000 });
+    result = { ...await execute(process.execPath, [foundationCli, "check", "package.public-api-compatibility",
+      "--consumer", root, "--format", "json"], { cwd: root, timeout: 120_000, maxBuffer: 8_000_000 }), code: 0 };
   } catch (error) {
     result = error;
   }

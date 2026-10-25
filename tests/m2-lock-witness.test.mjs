@@ -10,7 +10,8 @@ import { validateAssemblyAdmission, createHistoricalM2EvidenceReader } from '../
 import { M2_EVIDENCE_LEDGER, validateM2StartAuthority } from '../architecture/checks/m2-evidence.mjs';
 import { M2_LOCK_DECISION, M2_LOCK_WITNESS, M2_ORIGINAL_DECISION,
   M2_LEDGER_DIGEST, m2Digest, readCurrentM2Authority } from '../architecture/checks/m2-lock-witness.mjs';
-import { captureGitIndexSnapshot, readIndexSnapshotFile, assertGitIndexSnapshotCurrent } from '../architecture/checks/tracked-file-custody.mjs';
+import { captureGitIndexSnapshot, assertGitIndexSnapshotCurrent } from '../architecture/checks/tracked-file-custody.mjs';
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from '../architecture/tooling/runtime/projection-custody.ts';
 import { prepareM2EvidenceFixture, validateM2FixtureEvents } from './qualification/support/m2-evidence-fixture.mjs';
 
 const exec = promisify(execFile);
@@ -111,7 +112,7 @@ test('both frozen suites execute verbatim and fixture or terminal-result substit
     const receipt = await fixture.run();
     assert.equal(receipt.tests, 7);
     assert.equal(receipt.currentInstallationQualified, false);
-    assert.equal(receipt.currentDependencies.length, 5);
+    assert.equal(receipt.currentDependencies.length, 7);
     assert.deepEqual(receipt.currentDependencies.find(row => row.path === 'architecture/checks/assembly-admission.mjs'), {
       path: 'architecture/checks/assembly-admission.mjs',
       digest: m2Digest(await read('architecture/checks/assembly-admission.mjs')),
@@ -130,6 +131,7 @@ test('both frozen suites execute verbatim and fixture or terminal-result substit
     assert.throws(() => validateM2FixtureEvents(receipt.events, join(fixture.directory, 'substituted')));
     for (const path of ['pnpm-lock.yaml', 'architecture/checks/private-core-start.mjs',
       'architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.mjs',
+      'architecture/tooling/runtime/projection-custody.ts', 'architecture/tooling/runtime/policy.ts',
       'tests/m2-start.test.mjs', 'm2-reporter.mjs', 'node_modules/canonicalize/lib/canonicalize.js']) {
       const target = join(fixture.directory, path), bytes = await readFile(target);
       await writeFile(target, Buffer.concat([bytes, Buffer.from('\n// substitution')]));

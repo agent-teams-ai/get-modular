@@ -1,6 +1,6 @@
-schemaVersion: 1
+schemaVersion: 2
 packageManager:
-  kind: pnpm
+  kind: bun
   workspaceManifest: pnpm-workspace.yaml
 policies:
   externalDependencies: catalog
@@ -18,6 +18,7 @@ policies:
     - markdownlint-cli2
     - oxlint
     - oxlint-tsgolint
+    - pnpm
     - tar
     - ts-morph
     - typescript
@@ -26,3 +27,4 @@ policies:
     - "@agent-teams/docs-protocol"
     - "@agent-teams/engineering-foundation"
     - "@agent-teams/feature-module-standard"
+    - "stack-toolchain"

@@ -192,8 +192,8 @@ async function validateLeafRoot(leaf, artifacts, input) {
   for (const command of ["check", "check:fast"]) {
     const steps = packageJson.scripts?.[command]?.split(" && ") ?? [];
     assert(steps.length > 0
-      && steps.every(step => /^pnpm [a-z][a-z0-9:-]*$/u.test(step))
-      && steps.includes(`pnpm ${leaf.gate}`),
+      && steps.every(step => /^node architecture\/tooling\/runtime\/command\.ts run [a-z][a-z0-9:-]*$/u.test(step))
+      && steps.includes(`node architecture/tooling/runtime/command.ts run ${leaf.gate}`),
     `${command} must execute ${leaf.gate} as a top-level command`);
   }
 }

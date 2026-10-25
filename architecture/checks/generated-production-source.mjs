@@ -1,9 +1,9 @@
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from "../tooling/runtime/projection-custody.ts";
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import {
   assertGitIndexSnapshotCurrent,
-  readIndexSnapshotFile,
 } from "./tracked-file-custody.mjs";
 
 export const GENERATED_PRODUCTION_PATH =
