@@ -199,6 +199,15 @@ Literal Node commands keep `node:test`, native TypeScript controls,
 Core generation/build qualification, packed consumers and release tooling on
 Node. No production package depends on these development tools.
 
+`contracts:test` keeps its 16 Node test files and runs the closed raw-invocation
+corpus separately with the standard `spec` reporter directed to stderr. This
+diagnostic channel retains all 92 observation records verbatim; the other 15
+files keep normal stdout reporting. The two invocations are joined by `&&`, so
+failure stops the gate. The existing 4 MiB capture limit applies independently
+to stdout and stderr and still fails closed. Changes to the corpus or reporting
+must pass the same limits. This finite reporting choice adds no qualification,
+custody or release authority.
+
 The root `workspaces` packages/catalog are a checked projection of
 `pnpm-workspace.yaml`. The latter and `pnpm-lock.yaml` remain the Node rollback
 authority. Before installing, the pinned Bun parses YAML natively and rejects a
