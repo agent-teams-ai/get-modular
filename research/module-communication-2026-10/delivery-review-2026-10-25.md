@@ -163,6 +163,18 @@ public packages, with strict TypeScript checking and normal verification routes.
 The PR description records the exact delivered head, executed checks, review
 fixes and any outstanding gate limitations.
 
+The [example harness](../../tests/assembly/consumer-standard-examples.test.ts)
+keeps all eight existing example projects and adds five runtime scenarios to the
+extracted resources project. The exact old guide fails three of those scenarios;
+the corrected guide passes all five. The [rejecting control](raw/delivery-review-2026-10-25/regression-before.json)
+and [corrected run](raw/delivery-review-2026-10-25/regression-after.json) retain the
+observations. An initial nested Node test invocation inherited the parent's test
+context and skipped its child file with exit zero. The harness now removes that
+context and requires every named scenario and a complete result with no skipped
+tests. The initial exit-only observation is not passing behavioral evidence.
+This qualifies the documented synchronous source boundary, not an RxJS/Wonka
+adapter, the payments deployment or a cross-platform performance envelope.
+
 A reusable optional event or adapter package should be reconsidered when a real
 consumer needs distinct live events for independent subscribers and the same
 delivery/lifetime contract recurs. That delivery should include the consumer,
