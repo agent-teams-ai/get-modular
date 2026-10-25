@@ -19,6 +19,7 @@
     "../../tests/assembly/types-positive.ts",
     "../../tests/assembly/mixed-graph.ts",
     "../../tests/assembly/builder-types.ts",
+    "../../tests/assembly/descriptor-aggregate-types.ts",
     "../../tests/assembly/types-s0-shared.ts",
     "../../tests/assembly/types-s0-negative.ts"
   ],

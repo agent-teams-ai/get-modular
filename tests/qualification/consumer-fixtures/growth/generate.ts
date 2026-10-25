@@ -2,17 +2,17 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const featureName = index => `f${String(index).padStart(3, "0")}`;
-const predecessors = index => index === 0 ? [] : [...new Set([index - 1, Math.floor(index / 2)])].toSorted((a, b) => a - b);
+const featureName = (index: number) => `f${String(index).padStart(3, "0")}`;
+const predecessors = (index: number) => index === 0 ? [] : [...new Set([index - 1, Math.floor(index / 2)])].toSorted((a, b) => a - b);
 
-async function write(directory, name, source) {
+async function write(directory: string, name: string, source: string) {
   const path = join(directory, name);
   await mkdir(join(path, ".."), { recursive: true });
   await writeFile(path, `${source}\n`);
 }
 
-/** Materialize the prescribed inherited-map subject; expectations live elsewhere. */
-export async function generateGrowthSource(directory, size) {
+/** Aggregate descriptors across feature boundaries; expectations live elsewhere. */
+export async function generateGrowthSource(directory: string, size: number) {
   assert.ok([8, 100, 500, 1000].includes(size), "fixture.growth.unsupported-size");
   for (let index = 0; index < size; index += 1) {
     const name = featureName(index);
@@ -33,12 +33,15 @@ export function readValue(deps: { ${fields.join("; ")} }, _input: void): number 
       'import { defineContract } from "@get-modular/assembly";',
       'import type { CapabilitiesOf } from "@get-modular/assembly";',
       `import type { Value${index === 0 ? ", Seed" : ""} } from "../contracts/value.js";`,
-      ...previous.map(prior => `import type { FeatureCapabilities as F${prior} } from "../../${featureName(prior)}/composition/${featureName(prior)}.contracts.js";`),
+      ...previous.map(prior => `import type { FeatureContracts as C${prior} } from "../../${featureName(prior)}/composition/${featureName(prior)}.contracts.js";`),
       `export const ValueContract = defineContract<Value>()({ id: "fixture/growth/${name}/value", revision: 1 });`,
     ];
     if (index === 0) { contract.push('export const SeedContract = defineContract<Seed>()({ id: "fixture/growth/seed", revision: 1 });'); }
-    contract.push("export interface FeatureCapabilities extends",
-      ...previous.map(prior => `  F${prior},`),
+    // Both representations use the same predecessors. Separate map bases retain
+    // collision checks even for transitive contracts no factory currently uses.
+    contract.push(`export type FeatureContracts = typeof ValueContract${index === 0 ? " | typeof SeedContract" : previous.map(prior => ` | C${prior}`).join("")};`,
+      "export interface FeatureCapabilities extends",
+      ...previous.map(prior => `  CapabilitiesOf<C${prior}>,`),
       `  CapabilitiesOf<typeof ValueContract${index === 0 ? " | typeof SeedContract" : ""}> {}`);
     await write(directory, `${base}/composition/${name}.contracts.ts`, contract.join("\n"));
     const declaration = [

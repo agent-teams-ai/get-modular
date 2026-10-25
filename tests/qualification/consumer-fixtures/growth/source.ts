@@ -12,7 +12,7 @@ import { checkFlatSource } from "../source/records.mjs";
 import { sourceProfile } from "../source/profile.mjs";
 import { checkInstalledSourcePolicy } from "../source/policy.ts";
 import { copyReadyPackages, treeIdentity } from "../support/materialize.mjs";
-import { generateGrowthSource } from "./generate.mjs";
+import { generateGrowthSource } from "./generate.ts";
 
 const require = createRequire(import.meta.url);
 const compare = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
@@ -23,9 +23,9 @@ export const growthSourceAuthority = Object.freeze({
   ...sourceProfile.authority,
   reviewedCms: Object.freeze({
     repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
-    anchor: "consumer-module-standard", commit: "0c2ea846f11532b216520e0e84e19ea1abf58342",
-    gitBlob: "4bd50920f9b81d9f41456ceb3df9500b497e0453",
-    sha256: "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec",
+    anchor: "consumer-module-standard", commit: "81d9ee9c07535f8b5880bb447fa6d94954c24aea",
+    gitBlob: "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
+    sha256: "11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824",
     scope: "selected flat growth source predicates; production adoption unchanged",
   }),
 });

@@ -1,0 +1,1173 @@
+{
+  "kind": "complete-descriptor-aggregate-qualification",
+  "status": "passed",
+  "head": "8ad16885da6ffac88f65118071255842c4624732",
+  "node": "v26.11.1",
+  "platform": "linux",
+  "arch": "x64",
+  "claim": "single supported-compiler samples; generated TEST consumers, not production ROI",
+  "processRss": "not-collected",
+  "compilerCapsMs": {
+    "stage": 180000,
+    "runtime": 120000,
+    "aggregate": 600000
+  },
+  "sourceCapsMs": {
+    "stage": 60000,
+    "aggregate": 600000,
+    "policyCli": 30000
+  },
+  "sourceIdentityCrosscheck": "all 100/500/1000 source-series bytes equal cold compiler consumer bytes",
+  "sourceSeries": {
+    "sha256": "6f73e833fabc87cebc3222a70d988722ffc069bab586f6e944df2a011386414a",
+    "bytes": 10543,
+    "inputs": {
+      "./source.ts": {
+        "sha256": "bf5fc4329123b5237b1d6ff9e0bb08abb2d91165148e301df65151bec5e85549",
+        "bytes": 17192
+      },
+      "./generate.ts": {
+        "sha256": "1cd844845c4342982bb536fc403c4019090e106f35b0be9ea4202509493960a3",
+        "bytes": 7141
+      },
+      "./measure-source.ts": {
+        "sha256": "1c441c535f69dc51b4e0d2817dd310d73e5646ee02de1f2038fc7691ddbaff55",
+        "bytes": 8204
+      },
+      "../source/records.mjs": {
+        "sha256": "fd2872981f170fc34b4fb6cd7059595ff7dc382ab081697bfdd67015d2686593",
+        "bytes": 4912
+      },
+      "../source/profile.mjs": {
+        "sha256": "94b0bfcef73277c55575044c31f52ea79586bb3ad25d5bc665b52453f3002d4c",
+        "bytes": 3363
+      },
+      "../source/policy.ts": {
+        "sha256": "bedfbbc76cd44420f5c37b4dd07497b3e6de277972cac19a83a28dd6d68f5b13",
+        "bytes": 8719
+      },
+      "../support/materialize.mjs": {
+        "sha256": "499e1ea709e47f1b3b71f8b49bc1a30e393a2c8cd41be12f2d3a3659a9e57f66",
+        "bytes": 5519
+      },
+      "../../../../package.json": {
+        "sha256": "f3f998d5552906cd723e99eea9ca343a14c7ce1ad2338e5a3ea0b6072ddc2d6d",
+        "bytes": 13776
+      },
+      "../../../../pnpm-lock.yaml": {
+        "sha256": "6004919e09075c99a485afce54018f2133734d28c68416631166ae9a21cd08ba",
+        "bytes": 105552
+      }
+    },
+    "rows": [
+      {
+        "size": 8,
+        "source": {
+          "sha256": "f6ecd7aea922fd3d18915bc925f5c3ff62454480fa811d66403fe3d966c3103f",
+          "files": 59,
+          "bytes": 20848
+        },
+        "outcome": "passed",
+        "sourceWallMs": 588.492344,
+        "controls": 8,
+        "report": {
+          "sha256": "b0c9f242ae609947e28e507d72ee69bf6ced69de110dbbfb64375f8a88da7302",
+          "bytes": 776226,
+          "label": "source-series/n8.report.json"
+        }
+      },
+      {
+        "size": 100,
+        "source": {
+          "sha256": "b6dc1400fec8eb697e65573a83a96596fe20215340ba248d1e07fedd256dd1de",
+          "files": 703,
+          "bytes": 260520
+        },
+        "outcome": "passed",
+        "sourceWallMs": 1826.9026729999996,
+        "controls": 0,
+        "report": {
+          "sha256": "ba2cb00f2669f9d3f3e2adb053a139be85ab54ba8f2a1a919ac4692b822243e2",
+          "bytes": 994193,
+          "label": "source-series/n100.report.json"
+        }
+      },
+      {
+        "size": 500,
+        "source": {
+          "sha256": "e32188ee2f152dcea69da278ff36850d9f66d9de7381546ec3e01c7a82c4d2a5",
+          "files": 3503,
+          "bytes": 1313412
+        },
+        "outcome": "passed",
+        "sourceWallMs": 7933.948136999999,
+        "controls": 0,
+        "report": {
+          "sha256": "44bda14b7e4a77420d1145fba7677768e9a9305389425259fad6e66602c8f4f8",
+          "bytes": 4930202,
+          "label": "source-series/n500.report.json"
+        }
+      },
+      {
+        "size": 1000,
+        "source": {
+          "sha256": "f3534c8cbfbd32ef71cce81dbed647f987acdbe20d760b6970079d943e423194",
+          "files": 7003,
+          "bytes": 2630913
+        },
+        "outcome": "passed",
+        "sourceWallMs": 22678.82246,
+        "controls": 0,
+        "report": {
+          "sha256": "396b732e4a0c64b0895ebec3044379748d974b47a819bdfc030769288e9db0f8",
+          "bytes": 9851199,
+          "label": "source-series/n1000.report.json"
+        }
+      }
+    ],
+    "supervision": {
+      "outcome": "passed",
+      "sourceMs": 60000,
+      "aggregateMs": 600000,
+      "foundationCliMs": 30000,
+      "wallMs": 39086.735681000006,
+      "stages": [
+        {
+          "size": 8,
+          "wallMs": 5097.15622
+        },
+        {
+          "size": 100,
+          "wallMs": 1900.6233750000001
+        },
+        {
+          "size": 500,
+          "wallMs": 8124.175450999999
+        },
+        {
+          "size": 1000,
+          "wallMs": 23100.146253000006
+        }
+      ],
+      "code": 0,
+      "signal": null,
+      "workerCloseObserved": true
+    },
+    "positiveTimesExcludeN8Controls": true
+  },
+  "rows": [
+    {
+      "size": 100,
+      "source": {
+        "sha256": "b6dc1400fec8eb697e65573a83a96596fe20215340ba248d1e07fedd256dd1de",
+        "files": 703,
+        "bytes": 260520
+      },
+      "compiler": {
+        "name": "typescript",
+        "version": "7.0.2",
+        "cliSha256": "2219f428a7e55aaf1f7ad85b9b0f0cf5078aeb76ccc9a7c6036c92d48f492ffd",
+        "package": {
+          "sha256": "7c7701bd1a705f7228f68d1334a808cd925a1ca5d50435b5db9dfea2252612de",
+          "files": 416,
+          "bytes": 2497498
+        }
+      },
+      "inventory": {
+        "count": 703,
+        "bytes": 260520,
+        "importOccurrences": 2000
+      },
+      "runtime": {
+        "graph": {
+          "declarations": 101,
+          "entriesAndGroups": 200,
+          "bindings": 197,
+          "providerOccurrences": 197,
+          "distinctEdges": 197,
+          "pathNodes": 101,
+          "reachableDeclarations": 101
+        },
+        "seeds": [
+          {
+            "seed": 17,
+            "root": 452417
+          },
+          {
+            "seed": 23,
+            "root": 948032
+          }
+        ],
+        "smoke": {
+          "attempts": 201,
+          "factoryCalls": 10200,
+          "dependencyPortReads": 19803,
+          "inputReads": 201
+        }
+      },
+      "stages": [
+        {
+          "stage": "cold",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 666.8260250000001,
+          "diagnostics": {
+            "Files": "788",
+            "Lines": "63038",
+            "Identifiers": "62248",
+            "Symbols": "157485",
+            "Types": "55201",
+            "Instantiations": "176056",
+            "Memory used": "116834K",
+            "Memory allocs": "1702111",
+            "Config time": "0.004s",
+            "BuildInfo read time": "0.000s",
+            "Parse time": "0.050s",
+            "Bind time": "0.000s",
+            "Check time": "0.292s",
+            "Emit time": "0.229s",
+            "Changes compute time": "0.016s",
+            "Total time": "0.592s"
+          }
+        },
+        {
+          "stage": "runtime",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 221.96504099999993,
+          "diagnostics": {}
+        },
+        {
+          "stage": "unchanged-incremental",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 114.16294200000016,
+          "diagnostics": {
+            "Files": "788",
+            "Lines": "63038",
+            "Identifiers": "62248",
+            "Symbols": "41720",
+            "Types": "85",
+            "Instantiations": "0",
+            "Memory used": "36671K",
+            "Memory allocs": "245521",
+            "Config time": "0.004s",
+            "BuildInfo read time": "0.003s",
+            "Parse time": "0.049s",
+            "Bind time": "0.000s",
+            "Check time": "0.000s",
+            "Emit time": "0.001s",
+            "Changes compute time": "0.015s",
+            "Total time": "0.073s"
+          }
+        },
+        {
+          "stage": "leaf-edit",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 121.56931500000019,
+          "diagnostics": {
+            "Files": "788",
+            "Lines": "63038",
+            "Identifiers": "62248",
+            "Symbols": "41720",
+            "Types": "101",
+            "Instantiations": "0",
+            "Memory used": "36684K",
+            "Memory allocs": "284513",
+            "Config time": "0.004s",
+            "BuildInfo read time": "0.003s",
+            "Parse time": "0.051s",
+            "Bind time": "0.000s",
+            "Check time": "0.000s",
+            "Emit time": "0.006s",
+            "Changes compute time": "0.015s",
+            "Total time": "0.079s"
+          }
+        },
+        {
+          "stage": "verify-leaf",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 148.87528499999985,
+          "diagnostics": {}
+        },
+        {
+          "stage": "baseline-rewarm",
+          "setup": true,
+          "status": "passed",
+          "wallMs": 137.09806600000002,
+          "diagnostics": {
+            "Files": "788",
+            "Lines": "63038",
+            "Identifiers": "62248",
+            "Symbols": "41720",
+            "Types": "99",
+            "Instantiations": "0",
+            "Memory used": "36653K",
+            "Memory allocs": "284466",
+            "Config time": "0.004s",
+            "BuildInfo read time": "0.005s",
+            "Parse time": "0.068s",
+            "Bind time": "0.000s",
+            "Check time": "0.000s",
+            "Emit time": "0.006s",
+            "Changes compute time": "0.015s",
+            "Total time": "0.098s"
+          }
+        },
+        {
+          "stage": "shared-contract-edit",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 432.39731400000005,
+          "diagnostics": {
+            "Files": "788",
+            "Lines": "63038",
+            "Identifiers": "62248",
+            "Symbols": "136315",
+            "Types": "26412",
+            "Instantiations": "148602",
+            "Memory used": "79966K",
+            "Memory allocs": "1197954",
+            "Config time": "0.004s",
+            "BuildInfo read time": "0.003s",
+            "Parse time": "0.050s",
+            "Bind time": "0.000s",
+            "Check time": "0.145s",
+            "Emit time": "0.154s",
+            "Changes compute time": "0.015s",
+            "Total time": "0.371s"
+          }
+        },
+        {
+          "stage": "verify-shared-contract",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 150.16259100000025,
+          "diagnostics": {}
+        }
+      ],
+      "supervision": {
+        "aggregateMs": 600000,
+        "stageCapsMs": {
+          "compiler": 180000,
+          "runtime": 120000
+        },
+        "wallMs": 2447.3247610000003,
+        "expired": false,
+        "termination": {
+          "method": "observed-worker-exit",
+          "treeKillAfterExit": false
+        },
+        "observedStages": [
+          {
+            "stage": "cold",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 667.9209759999999,
+            "status": "ended"
+          },
+          {
+            "stage": "runtime",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 222.18374700000004,
+            "status": "ended"
+          },
+          {
+            "stage": "unchanged-incremental",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 114.42755599999987,
+            "status": "ended"
+          },
+          {
+            "stage": "leaf-edit",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 121.82434399999988,
+            "status": "ended"
+          },
+          {
+            "stage": "verify-leaf",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 149.11562000000004,
+            "status": "ended"
+          },
+          {
+            "stage": "baseline-rewarm",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 137.39461600000004,
+            "status": "ended"
+          },
+          {
+            "stage": "shared-contract-edit",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 432.63939600000003,
+            "status": "ended"
+          },
+          {
+            "stage": "verify-shared-contract",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 150.39382299999988,
+            "status": "ended"
+          }
+        ],
+        "code": 0,
+        "signal": null,
+        "workerCloseObserved": true
+      },
+      "report": {
+        "sha256": "966ec2586035f8c3eea499fc4c315a1a7f1d4c93cae4db14e515ffcb64bfd0da",
+        "bytes": 116399,
+        "label": "consumer-100/report.json"
+      },
+      "coldOutput": {
+        "sha256": "ac43b915044af9a1ad465b2ab5b47a0a8e4c713d5d9bfa34210afd72f3db0db7",
+        "files": 1406,
+        "bytes": 533978
+      }
+    },
+    {
+      "size": 500,
+      "source": {
+        "sha256": "e32188ee2f152dcea69da278ff36850d9f66d9de7381546ec3e01c7a82c4d2a5",
+        "files": 3503,
+        "bytes": 1313412
+      },
+      "compiler": {
+        "name": "typescript",
+        "version": "7.0.2",
+        "cliSha256": "2219f428a7e55aaf1f7ad85b9b0f0cf5078aeb76ccc9a7c6036c92d48f492ffd",
+        "package": {
+          "sha256": "7c7701bd1a705f7228f68d1334a808cd925a1ca5d50435b5db9dfea2252612de",
+          "files": 416,
+          "bytes": 2497498
+        }
+      },
+      "inventory": {
+        "count": 3503,
+        "bytes": 1313412,
+        "importOccurrences": 10000
+      },
+      "runtime": {
+        "graph": {
+          "declarations": 501,
+          "entriesAndGroups": 1000,
+          "bindings": 997,
+          "providerOccurrences": 997,
+          "distinctEdges": 997,
+          "pathNodes": 501,
+          "reachableDeclarations": 501
+        },
+        "seeds": [
+          {
+            "seed": 17,
+            "root": 750269
+          },
+          {
+            "seed": 23,
+            "root": 886955
+          }
+        ],
+        "smoke": {
+          "attempts": 1001,
+          "factoryCalls": 251000,
+          "dependencyPortReads": 499003,
+          "inputReads": 1001
+        }
+      },
+      "stages": [
+        {
+          "stage": "cold",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 3123.308311,
+          "diagnostics": {
+            "Files": "3588",
+            "Lines": "83438",
+            "Identifiers": "110648",
+            "Symbols": "658885",
+            "Types": "154389",
+            "Instantiations": "1261456",
+            "Memory used": "388780K",
+            "Memory allocs": "7978049",
+            "Config time": "0.018s",
+            "BuildInfo read time": "0.000s",
+            "Parse time": "0.160s",
+            "Bind time": "0.000s",
+            "Check time": "1.282s",
+            "Emit time": "1.413s",
+            "Changes compute time": "0.038s",
+            "Total time": "2.912s"
+          }
+        },
+        {
+          "stage": "runtime",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 1443.195706,
+          "diagnostics": {}
+        },
+        {
+          "stage": "unchanged-incremental",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 334.5386210000006,
+          "diagnostics": {
+            "Files": "3588",
+            "Lines": "83438",
+            "Identifiers": "110648",
+            "Symbols": "78120",
+            "Types": "85",
+            "Instantiations": "0",
+            "Memory used": "83490K",
+            "Memory allocs": "1048971",
+            "Config time": "0.018s",
+            "BuildInfo read time": "0.015s",
+            "Parse time": "0.179s",
+            "Bind time": "0.000s",
+            "Check time": "0.001s",
+            "Emit time": "0.008s",
+            "Changes compute time": "0.042s",
+            "Total time": "0.265s"
+          }
+        },
+        {
+          "stage": "leaf-edit",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 335.87387900000067,
+          "diagnostics": {
+            "Files": "3588",
+            "Lines": "83438",
+            "Identifiers": "110648",
+            "Symbols": "78120",
+            "Types": "101",
+            "Instantiations": "0",
+            "Memory used": "83653K",
+            "Memory allocs": "1228111",
+            "Config time": "0.019s",
+            "BuildInfo read time": "0.013s",
+            "Parse time": "0.168s",
+            "Bind time": "0.000s",
+            "Check time": "0.001s",
+            "Emit time": "0.029s",
+            "Changes compute time": "0.033s",
+            "Total time": "0.266s"
+          }
+        },
+        {
+          "stage": "verify-leaf",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 422.30418400000053,
+          "diagnostics": {}
+        },
+        {
+          "stage": "baseline-rewarm",
+          "setup": true,
+          "status": "passed",
+          "wallMs": 332.70652900000005,
+          "diagnostics": {
+            "Files": "3588",
+            "Lines": "83438",
+            "Identifiers": "110648",
+            "Symbols": "78120",
+            "Types": "99",
+            "Instantiations": "0",
+            "Memory used": "83624K",
+            "Memory allocs": "1228131",
+            "Config time": "0.023s",
+            "BuildInfo read time": "0.012s",
+            "Parse time": "0.162s",
+            "Bind time": "0.000s",
+            "Check time": "0.001s",
+            "Emit time": "0.034s",
+            "Changes compute time": "0.035s",
+            "Total time": "0.268s"
+          }
+        },
+        {
+          "stage": "shared-contract-edit",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 2593.771431,
+          "diagnostics": {
+            "Files": "3588",
+            "Lines": "83438",
+            "Identifiers": "110648",
+            "Symbols": "640915",
+            "Types": "124812",
+            "Instantiations": "1234002",
+            "Memory used": "351468K",
+            "Memory allocs": "6258073",
+            "Config time": "0.032s",
+            "BuildInfo read time": "0.021s",
+            "Parse time": "0.163s",
+            "Bind time": "0.000s",
+            "Check time": "1.147s",
+            "Emit time": "0.992s",
+            "Changes compute time": "0.038s",
+            "Total time": "2.394s"
+          }
+        },
+        {
+          "stage": "verify-shared-contract",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 431.48454800000036,
+          "diagnostics": {}
+        }
+      ],
+      "supervision": {
+        "aggregateMs": 600000,
+        "stageCapsMs": {
+          "compiler": 180000,
+          "runtime": 120000
+        },
+        "wallMs": 10542.606963,
+        "expired": false,
+        "termination": {
+          "method": "observed-worker-exit",
+          "treeKillAfterExit": false
+        },
+        "observedStages": [
+          {
+            "stage": "cold",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 3124.6497130000002,
+            "status": "ended"
+          },
+          {
+            "stage": "runtime",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 1443.4808969999995,
+            "status": "ended"
+          },
+          {
+            "stage": "unchanged-incremental",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 334.75176199999987,
+            "status": "ended"
+          },
+          {
+            "stage": "leaf-edit",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 336.1144869999989,
+            "status": "ended"
+          },
+          {
+            "stage": "verify-leaf",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 422.5064879999991,
+            "status": "ended"
+          },
+          {
+            "stage": "baseline-rewarm",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 332.92846800000007,
+            "status": "ended"
+          },
+          {
+            "stage": "shared-contract-edit",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 2594.002619000001,
+            "status": "ended"
+          },
+          {
+            "stage": "verify-shared-contract",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 431.7113439999994,
+            "status": "ended"
+          }
+        ],
+        "code": 0,
+        "signal": null,
+        "workerCloseObserved": true
+      },
+      "report": {
+        "sha256": "e1269413dba6ee75d638332135bf0d0badce989de58d5870632c57111731c0b1",
+        "bytes": 470955,
+        "label": "consumer-500/report.json"
+      },
+      "coldOutput": {
+        "sha256": "87bae87870a98154e46d3dd945ff49f865e624b475b00799abe2130cf3bd8f35",
+        "files": 7006,
+        "bytes": 2671373
+      }
+    },
+    {
+      "size": 1000,
+      "source": {
+        "sha256": "f3534c8cbfbd32ef71cce81dbed647f987acdbe20d760b6970079d943e423194",
+        "files": 7003,
+        "bytes": 2630913
+      },
+      "compiler": {
+        "name": "typescript",
+        "version": "7.0.2",
+        "cliSha256": "2219f428a7e55aaf1f7ad85b9b0f0cf5078aeb76ccc9a7c6036c92d48f492ffd",
+        "package": {
+          "sha256": "7c7701bd1a705f7228f68d1334a808cd925a1ca5d50435b5db9dfea2252612de",
+          "files": 416,
+          "bytes": 2497498
+        }
+      },
+      "inventory": {
+        "count": 7003,
+        "bytes": 2630913,
+        "importOccurrences": 20000
+      },
+      "runtime": {
+        "graph": {
+          "declarations": 1001,
+          "entriesAndGroups": 2000,
+          "bindings": 1997,
+          "providerOccurrences": 1997,
+          "distinctEdges": 1997,
+          "pathNodes": 1001,
+          "reachableDeclarations": 1001
+        },
+        "seeds": [
+          {
+            "seed": 17,
+            "root": 869439
+          },
+          {
+            "seed": 23,
+            "root": 632838
+          }
+        ],
+        "smoke": {
+          "attempts": 2001,
+          "factoryCalls": 1002000,
+          "dependencyPortReads": 1998003,
+          "inputReads": 2001
+        }
+      },
+      "stages": [
+        {
+          "stage": "cold",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 8151.947291,
+          "diagnostics": {
+            "Files": "7088",
+            "Lines": "108938",
+            "Identifiers": "171148",
+            "Symbols": "1510635",
+            "Types": "278353",
+            "Instantiations": "3743206",
+            "Memory used": "840568K",
+            "Memory allocs": "16971546",
+            "Config time": "0.034s",
+            "BuildInfo read time": "0.000s",
+            "Parse time": "0.309s",
+            "Bind time": "0.001s",
+            "Check time": "3.677s",
+            "Emit time": "3.620s",
+            "Changes compute time": "0.054s",
+            "Total time": "7.695s"
+          }
+        },
+        {
+          "stage": "runtime",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 4533.522316999999,
+          "diagnostics": {}
+        },
+        {
+          "stage": "unchanged-incremental",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 551.6666400000013,
+          "diagnostics": {
+            "Files": "7088",
+            "Lines": "108938",
+            "Identifiers": "171148",
+            "Symbols": "123620",
+            "Types": "85",
+            "Instantiations": "0",
+            "Memory used": "142086K",
+            "Memory allocs": "2055566",
+            "Config time": "0.053s",
+            "BuildInfo read time": "0.026s",
+            "Parse time": "0.295s",
+            "Bind time": "0.001s",
+            "Check time": "0.002s",
+            "Emit time": "0.015s",
+            "Changes compute time": "0.070s",
+            "Total time": "0.463s"
+          }
+        },
+        {
+          "stage": "leaf-edit",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 605.6505440000001,
+          "diagnostics": {
+            "Files": "7088",
+            "Lines": "108938",
+            "Identifiers": "171148",
+            "Symbols": "123620",
+            "Types": "101",
+            "Instantiations": "0",
+            "Memory used": "142141K",
+            "Memory allocs": "2409778",
+            "Config time": "0.042s",
+            "BuildInfo read time": "0.039s",
+            "Parse time": "0.297s",
+            "Bind time": "0.001s",
+            "Check time": "0.003s",
+            "Emit time": "0.067s",
+            "Changes compute time": "0.065s",
+            "Total time": "0.515s"
+          }
+        },
+        {
+          "stage": "verify-leaf",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 828.7720610000015,
+          "diagnostics": {}
+        },
+        {
+          "stage": "baseline-rewarm",
+          "setup": true,
+          "status": "passed",
+          "wallMs": 599.6267480000024,
+          "diagnostics": {
+            "Files": "7088",
+            "Lines": "108938",
+            "Identifiers": "171148",
+            "Symbols": "123620",
+            "Types": "99",
+            "Instantiations": "0",
+            "Memory used": "142051K",
+            "Memory allocs": "2409779",
+            "Config time": "0.046s",
+            "BuildInfo read time": "0.038s",
+            "Parse time": "0.294s",
+            "Bind time": "0.001s",
+            "Check time": "0.004s",
+            "Emit time": "0.048s",
+            "Changes compute time": "0.074s",
+            "Total time": "0.510s"
+          }
+        },
+        {
+          "stage": "shared-contract-edit",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 7117.230357999997,
+          "diagnostics": {
+            "Files": "7088",
+            "Lines": "108938",
+            "Identifiers": "171148",
+            "Symbols": "1496665",
+            "Types": "247812",
+            "Instantiations": "3715752",
+            "Memory used": "801410K",
+            "Memory allocs": "13732255",
+            "Config time": "0.042s",
+            "BuildInfo read time": "0.023s",
+            "Parse time": "0.308s",
+            "Bind time": "0.001s",
+            "Check time": "3.522s",
+            "Emit time": "2.563s",
+            "Changes compute time": "0.065s",
+            "Total time": "6.526s"
+          }
+        },
+        {
+          "stage": "verify-shared-contract",
+          "setup": false,
+          "status": "passed",
+          "wallMs": 769.2977589999973,
+          "diagnostics": {}
+        }
+      ],
+      "supervision": {
+        "aggregateMs": 600000,
+        "stageCapsMs": {
+          "compiler": 180000,
+          "runtime": 120000
+        },
+        "wallMs": 25918.734394,
+        "expired": false,
+        "termination": {
+          "method": "observed-worker-exit",
+          "treeKillAfterExit": false
+        },
+        "observedStages": [
+          {
+            "stage": "cold",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 8152.813604999999,
+            "status": "ended"
+          },
+          {
+            "stage": "runtime",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 4533.802325000001,
+            "status": "ended"
+          },
+          {
+            "stage": "unchanged-incremental",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 551.9063970000025,
+            "status": "ended"
+          },
+          {
+            "stage": "leaf-edit",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 605.8603900000016,
+            "status": "ended"
+          },
+          {
+            "stage": "verify-leaf",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 829.0116629999975,
+            "status": "ended"
+          },
+          {
+            "stage": "baseline-rewarm",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 599.86175,
+            "status": "ended"
+          },
+          {
+            "stage": "shared-contract-edit",
+            "kind": "compiler",
+            "capMs": 180000,
+            "wallMs": 7117.558384,
+            "status": "ended"
+          },
+          {
+            "stage": "verify-shared-contract",
+            "kind": "runtime",
+            "capMs": 120000,
+            "wallMs": 769.5790970000016,
+            "status": "ended"
+          }
+        ],
+        "code": 0,
+        "signal": null,
+        "workerCloseObserved": true
+      },
+      "report": {
+        "sha256": "f56beb095ba95d2e2eefdb95df4a5e643607808cc5fc1da52dd62d8a3f577276",
+        "bytes": 914685,
+        "label": "consumer-1000/report.json"
+      },
+      "coldOutput": {
+        "sha256": "8de65fc8fa6e00c07e6ad6104794d679dbd835a2517b5842df75b12611d14e6c",
+        "files": 14006,
+        "bytes": 5344874
+      }
+    }
+  ],
+  "tools": {
+    "node": {
+      "version": "v26.11.1",
+      "sha256": "5a7b8a3cf5ccb57d297519754fd73238f64cf560afd0ef19a2f9bf7384cbb657",
+      "bytes": 150047368
+    },
+    "pnpm": {
+      "version": "11.20.0",
+      "compatibilityEntryShim": {
+        "sha256": "67b035e322203961795e8e34ca63a08c37a4386eda94107fb3d28f3246d882ad",
+        "bytes": 105
+      },
+      "packageTree": {
+        "sha256": "e9146ff2c29e5260d41bf1c253b73c5e489937fc47707099cc0f98742a333454",
+        "files": 891,
+        "bytes": 36725615,
+        "method": "lexical relative path, NUL, file bytes, NUL"
+      }
+    },
+    "typescript": {
+      "current": "7.0.2",
+      "minimum": "7.0.2",
+      "distinctVersions": [
+        "7.0.2"
+      ],
+      "nativePackage": {
+        "name": "@typescript/typescript-linux-x64",
+        "version": "7.0.2",
+        "tree": {
+          "sha256": "9e238e4281777ab1f61c28cd963616818f5ae961824dd444f913b06e95f30d49",
+          "files": 114,
+          "bytes": 27945990,
+          "method": "lexical relative path, NUL, file bytes, NUL"
+        },
+        "executables": [
+          {
+            "file": "lib/tsc",
+            "sha256": "4f2de678286401759b3fb4475bafe35b8f32b4b3a07d92642bbf37eadc9b34a4",
+            "bytes": 24101026
+          }
+        ]
+      }
+    }
+  },
+  "inputs": {
+    "generator": "1cd844845c4342982bb536fc403c4019090e106f35b0be9ea4202509493960a3",
+    "oracle": "37e50eb47658c5e756e2f7a7b331bb5bd73905793f50fc65f3943a2102a896c0",
+    "patches": "77723921840b1024efb7361c3c7cf66c238e7d5a583260179f739f158df038a7",
+    "config": "a93ad249c47bf6906790394e88d0ebf86540fe1d189e72a9021c224b02a1a498",
+    "lockfile": "6004919e09075c99a485afce54018f2133734d28c68416631166ae9a21cd08ba",
+    "testSource": {
+      "sha256": "59db1b61d17cd1623e83492421a7d4eff5bbc4694f0b4d4d922ecdf02df64c54",
+      "files": 3,
+      "bytes": 13243
+    },
+    "fixtureSource": {
+      "sha256": "e17cfa4478ac00eda7838665125cf18b6f64555dcae6d9a29543e27787c59085",
+      "files": 280,
+      "bytes": 11853214
+    },
+    "packageOutputs": {
+      "core": {
+        "version": "0.7.0",
+        "sha256": "02ff3f8bebca2261f7f49b16f0abf45e0009dee47a24f01584fbdf28f68e2a21",
+        "files": 105,
+        "bytes": 224461
+      },
+      "assembly": {
+        "version": "0.7.0",
+        "sha256": "0e8878a766a34bd256b857332bd23ab6ebcc9e9be18cbd71a0a556c9f882528d",
+        "files": 29,
+        "bytes": 93512
+      },
+      "resources": {
+        "version": "0.2.1",
+        "sha256": "dce2a9293541a91d612787f7207e499910ecc0b92e36819934647291b0fdd25b",
+        "files": 13,
+        "bytes": 28264
+      },
+      "conformance": {
+        "version": "0.5.0",
+        "sha256": "f181a4f40a543fd8ec8fd327e07f14d3b939c132ffe15a8cb764b9913f56457a",
+        "files": 37,
+        "bytes": 83007
+      }
+    }
+  },
+  "gates": [
+    {
+      "phase": "install",
+      "exit": 0,
+      "wallSeconds": 1,
+      "log": {
+        "label": "logs/install.log",
+        "sha256": "08c175387087d1f54b746c795ffd6b14ae6bf7cbc9e111bc78c9059786b732d0",
+        "bytes": 1476
+      }
+    },
+    {
+      "phase": "qualifier-typecheck",
+      "exit": 0,
+      "wallSeconds": 1,
+      "log": {
+        "label": "logs/qualifier-typecheck.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "phase": "check-changed",
+      "exit": 0,
+      "wallSeconds": 506,
+      "log": {
+        "label": "logs/check-changed.log",
+        "sha256": "81a8c1261c635afde542150e4843a88350e5c60db57f483494323a369fe15421",
+        "bytes": 134015
+      }
+    },
+    {
+      "phase": "check-full",
+      "exit": 0,
+      "wallSeconds": 629,
+      "log": {
+        "label": "logs/check-full.log",
+        "sha256": "2ed20fcb2d8256e3a83504a01bbee74020b80331084277d4d862d63a2c848441",
+        "bytes": 5796652
+      }
+    },
+    {
+      "phase": "growth-and-source",
+      "exit": 0,
+      "wallSeconds": 79,
+      "log": {
+        "label": "logs/growth-and-source.log",
+        "sha256": "31a892174cca31097ba45ec9e75bbde5831770904f2c4f2e71a06d693ae95e63",
+        "bytes": 93
+      }
+    }
+  ],
+  "fastGate": {
+    "command": [
+      "pnpm",
+      "run",
+      "check:fast"
+    ],
+    "executedBy": "check:changed",
+    "status": "passed",
+    "argvEvidence": {
+      "label": "changed-child-argv.txt",
+      "sha256": "9cb291640dce5d13db03433383f0e6f8ce084456a69e6a71626dc386ebe794a0",
+      "bytes": 1007
+    },
+    "duplicateDirectInvocation": "omitted"
+  },
+  "sourceCheckout": {
+    "cleanBefore": true,
+    "cleanAfter": true
+  },
+  "cms": {
+    "repository": "agent-teams-ai/get-modular",
+    "path": "docs/architecture/common-assembly.md",
+    "anchor": "consumer-module-standard",
+    "commit": "81d9ee9c07535f8b5880bb447fa6d94954c24aea",
+    "gitBlob": "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
+    "sha256": "11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824",
+    "scope": "selected flat growth source predicates; production adoption unchanged"
+  },
+  "retention": {
+    "rawArchive": {
+      "label": "raw-evidence.tar.gz",
+      "sha256": "835906b23fb9ca2efd20b185d5ca35ea8cd7fb1947553ebad9d6d3053617d42d",
+      "bytes": 1096417
+    },
+    "availability": "Raw archive retained privately; it is not a file shipped in this repository.",
+    "managedJob": "4da86b69b1f65722822ba475f2ac6ff8",
+    "terminalExit": 0,
+    "startupAttempt": {
+      "managedJob": "b594f2929c91cfed85d00e1150a5ae78",
+      "exit": 126,
+      "scope": "Tool launcher failed before clone, install or owner commands; corrected owned launcher only."
+    }
+  }
+}

@@ -342,10 +342,18 @@ feature cards, test oracle files and generated output. No file is counted twice.
 The provided port type lives in `contracts/value.ts`; each application owns its
 narrow read port and never imports another feature's application or its own
 public contracts. The `(deps, input)` use case reads those local ports; the
-module maps provider values into them. Each feature map extends its consumed
-feature maps through `import type` plus its own `CapabilitiesOf`, one member per
-line. Do not replace this inherited-map subject with a shallow descriptor union
-and transfer the resulting compiler timings. Keep counters in test-owned wrappers
+module maps provider values into them. Under
+[ADR-0041](../decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md),
+each feature exports a complete `FeatureContracts` union of its own descriptors
+and its predecessors' complete contract unions, imported through `import type`.
+Its interface extends a separate `CapabilitiesOf` base for each predecessor
+union plus its own descriptors, one member per line. Derive both lists from one
+predecessor list and verify full key/value/token parity, including unused keys.
+Do not combine predecessor unions in one mapped base: separate bases retain
+TS2320 for conflicting unused contracts. Historical direct map-inheritance
+subjects keep their identities and results. A shallow direct-used-descriptor
+map does not qualify either complete-map recipe, and old compiler timings do
+not transfer to the new recipe. Keep counters in test-owned wrappers
 using public `implement`, with module source limited to typed wiring. Groups and
 feature/root oracle ownership follow the semantic recipe's accepted rules.
 

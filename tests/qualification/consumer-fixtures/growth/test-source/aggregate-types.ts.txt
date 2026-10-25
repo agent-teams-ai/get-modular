@@ -1,0 +1,28 @@
+import type { CapabilitiesOf, CapabilityContract } from "@get-modular/assembly";
+import type { FeatureCapabilities as First, FeatureContracts as FirstContracts } from "../src/features/f000/composition/f000.contracts.js";
+import type { FeatureCapabilities as Last, FeatureContracts as LastContracts } from "../src/features/f007/composition/f007.contracts.js";
+import type { HostCapabilities } from "../src/composition/growth.root.js";
+
+type Assert<T extends true> = T;
+type Equal<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
+type At<T, K extends PropertyKey> = K extends keyof T ? T[K] : never;
+// An independent eight-feature census includes the transitive unused seed.
+type Keys = "fixture/growth/seed" | `fixture/growth/f00${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}/value`;
+type FirstParity = Assert<Equal<First, CapabilitiesOf<FirstContracts>>>;
+type LastParity = Assert<Equal<Last, CapabilitiesOf<LastContracts>>>;
+type CompleteMap = Assert<Equal<keyof Last, Keys>>;
+type CompleteUnion = Assert<Equal<keyof CapabilitiesOf<LastContracts>, Keys>>;
+type HostParity = Assert<Equal<HostCapabilities, Last>>;
+type SeedEntry = At<Last, "fixture/growth/seed">;
+type SeedMetadata = Assert<Equal<SeedEntry, CapabilityContract<{ readonly read: () => number }, "fixture/growth/seed/r1">>>;
+
+declare const map: Last;
+declare const seed: SeedEntry;
+// @ts-expect-error A transitive capability remains readonly.
+map["fixture/growth/seed"] = seed;
+// @ts-expect-error Contract metadata remains readonly.
+seed.compatibility.token = "fixture/growth/seed/r1";
+// @ts-expect-error A used value still has its owner's return type.
+const wrong: ReturnType<Last["fixture/growth/f007/value"]["value"]["read"]> = "value";
+void wrong;
+export type Assertions = FirstParity | LastParity | CompleteMap | CompleteUnion | HostParity | SeedMetadata;
