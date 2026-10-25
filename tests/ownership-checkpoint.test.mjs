@@ -190,7 +190,7 @@ test("observations bind historical lock bytes, production importers and reviewed
   // ADR-0041 updates complete-map authoring; historical C0 bytes above stay frozen.
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824",
+    "sha256:3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

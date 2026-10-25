@@ -5,8 +5,8 @@ import { isSupportedToolingNodeVersion } from "../../architecture/checks/node-ve
 const capabilityId = "package.public-api-compatibility";
 const limit = 32 * 1024;
 const producer = {
-  package: "@agent-teams/engineering-foundation", version: "2.1.1",
-  integrity: "sha512-NvjLwYgUILVpOHrvJwJLjG/5/vQcIPQwtDxNnUjna+Fdys5qJeZnw2IBgLlFi0sEYZ0DoZgondIBUAxiCkd9pQ==",
+  package: "@agent-teams/engineering-foundation", version: "3.0.0",
+  integrity: "sha512-FQYZjlU15ZasKWw0HpNJwh+GUuGgV9PfynP+I9kIPbSx0ydmtAWOzjOnJV57jcQ5PMVspah4zu7XhqgpFJiZXA==",
 };
 interface Destination {
   readonly artifact: string | undefined;

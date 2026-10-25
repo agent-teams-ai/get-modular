@@ -50,7 +50,7 @@ function isReport(value: unknown): value is ChangedReport {
 const require = createRequire(import.meta.url);
 const foundationPath = require.resolve("@agent-teams/engineering-foundation/package.json");
 const foundation: unknown = JSON.parse(await readFile(foundationPath, "utf8"));
-assert.ok(isRecord(foundation) && foundation.version === "2.1.1" && isRecord(foundation.bin));
+assert.ok(isRecord(foundation) && foundation.version === "3.0.0" && isRecord(foundation.bin));
 const cliBin = foundation.bin["agent-teams-foundation"];
 assert.ok(typeof cliBin === "string");
 const cli = join(dirname(foundationPath), cliBin);
@@ -258,7 +258,7 @@ test("changed workflow escalates compiler and check configuration", async () => 
     "packages/core/README.md",
     "packages/assembly/tsconfig.json", "packages/lifecycle-kernel/tsconfig.json",
     "packages/resources/tsconfig.json", "packages/conformance/tsconfig.json",
-    "tests/tsconfig.tooling-node-policy.json", ".oxlintrc.json", ".npmrc",
+    "tests/tsconfig.tooling-node-policy.json", ".oxlintrc.json", ".npmrc", "toolchain.config.json",
     "tests/qualification/consumer-fixtures/semantic/tsconfig.types.json",
     "tests/qualification/consumer-fixtures/semantic/tsconfig.runtime.json",
     "tests/qualification/consumer-fixtures/semantic/tsconfig.negative.json",

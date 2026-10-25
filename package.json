@@ -97,9 +97,9 @@
     "runtime:projection:check": "node architecture/tooling/runtime/projection-check.ts"
   },
   "devDependencies": {
-    "@agent-teams/docs-protocol": "0.6.3",
-    "@agent-teams/engineering-foundation": "2.1.1",
-    "@agent-teams/feature-module-standard": "0.2.3",
+    "@agent-teams/docs-protocol": "0.6.6",
+    "@agent-teams/engineering-foundation": "3.0.0",
+    "@agent-teams/feature-module-standard": "0.3.0",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
     "@get-modular/conformance": "workspace:*",
@@ -120,7 +120,8 @@
     "typescript": "catalog:",
     "typescript-minimum": "catalog:",
     "yaml": "catalog:",
-    "pnpm": "catalog:"
+    "pnpm": "catalog:",
+    "stack-toolchain": "0.1.1"
   },
   "trustedDependencies": [],
   "workspaces": {

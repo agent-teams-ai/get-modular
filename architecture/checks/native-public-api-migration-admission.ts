@@ -4,6 +4,7 @@ import { isDeepStrictEqual } from "node:util";
 export const inputDirectory = "architecture/tooling/native-public-api-migration";
 export const inputPinsDigest = "sha256:e0847814cda59d8ebe3389fcec93e418b4c2975dd29e295b0abc736cf2b593fa";
 export const packageNames = ["@get-modular/assembly", "@get-modular/core"];
+// Public report versions remain independent of the v4 quality input policy.
 export const capabilityInventory = [
   ["architecture.source-dependencies", 3], ["documentation.local-references", 1],
   ["governance.architecture-decisions", 1], ["package.public-api-compatibility", 1],

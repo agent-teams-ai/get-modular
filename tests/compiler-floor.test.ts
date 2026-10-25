@@ -75,7 +75,7 @@ async function change(root: string, path: string, delta: MetadataDelta) {
 
 async function nativeFixture(root: string, paths: FixturePaths) {
   const compiler = dirname(paths.foundation);
-  await change(root, paths.foundationPackage, { dependencies: {
+  await change(root, paths.foundationPackage, { version: "3.0.0", dependencies: {
     typescript: "7.0.2", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0",
   } });
   await change(root, paths.foundation, { optionalDependencies: {
@@ -312,7 +312,7 @@ test("pinned Bun and the actual CI runner enforce compiler hooks before the publ
         }
         if (entry === "missing-hook-control") delete fixtureScripts["prequality:coverage:scope"];
         await put(root, "package.json", { name: "gm-compiler-hook-test", private: true, type: "module",
-          packageManager: "bun@1.4.3", devDependencies: { "@agent-teams/engineering-foundation": "1.7.4" }, scripts: fixtureScripts });
+          packageManager: "bun@1.4.3", devDependencies: { "@agent-teams/engineering-foundation": "3.0.0" }, scripts: fixtureScripts });
         await put(root, ".npmrc", npmrc);
         await put(root, "README.md", "deliberate CLI sentinel: no heading\n");
         const driver = "tests/fixtures/repository-agent-workflow/docs-check.ts";

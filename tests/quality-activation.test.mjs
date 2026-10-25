@@ -15,6 +15,10 @@ const manifestPath = rootRequire.resolve("@agent-teams/engineering-foundation/pa
 const foundationPackage = JSON.parse(await readFile(manifestPath, "utf8"));
 assert.equal(typeof foundationPackage.bin?.["agent-teams-foundation"], "string");
 const cli = join(dirname(manifestPath), foundationPackage.bin["agent-teams-foundation"]);
+const toolchainManifestPath = rootRequire.resolve("stack-toolchain/package.json");
+const toolchainPackage = JSON.parse(await readFile(toolchainManifestPath, "utf8"));
+const toolchainRequire = createRequire(toolchainManifestPath);
+const consumerPackage = JSON.parse(await readFile("package.json", "utf8"));
 const workspace = parse(await readFile("pnpm-workspace.yaml", "utf8"));
 const oxlintPackage = JSON.parse(await readFile("node_modules/oxlint/package.json", "utf8"));
 const typedPackage = JSON.parse(await readFile("node_modules/oxlint-tsgolint/package.json", "utf8"));
@@ -36,7 +40,7 @@ async function copyInstalledPackage(root, name, requireFrom = rootRequire) {
 
 async function copyQualityToolchain(root) {
   for (const name of ["oxlint", "typescript", "oxlint-tsgolint"]) {
-    const manifestPath = await copyInstalledPackage(root, name);
+    const manifestPath = await copyInstalledPackage(root, name, toolchainRequire);
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     const requireFrom = createRequire(manifestPath);
     // Copy installed native optional dependencies, not a hard-coded Linux carrier.
@@ -69,10 +73,8 @@ async function createFixture(mutator = () => {}) {
         "lint:typed": "agent-teams-foundation quality check --consumer .",
       },
       devDependencies: {
-        "@agent-teams/engineering-foundation": "2.1.1",
-        oxlint: "1.83.0",
-        "oxlint-tsgolint": "7.0.2001",
-        typescript: "7.0.2",
+        "@agent-teams/engineering-foundation": foundationPackage.version,
+        "stack-toolchain": toolchainPackage.version,
       },
     }, null, 2)],
     ["pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n'],
@@ -90,12 +92,12 @@ async function createFixture(mutator = () => {}) {
       },
     })],
     ["architecture/foundation/quality-source-coverage.yaml", stringify({
-      schemaVersion: 1,
+      schemaVersion: 4,
       sourcePolicyPath: "architecture/foundation/source-dependencies.yaml",
       suppressionPolicyPath: "architecture/foundation/suppression-governance.yaml",
       featureProfilePath: "architecture/feature-module-standard-profile.json",
       lintConfigPath: ".oxlintrc.json",
-      compilerProjects: ["packages/core/tsconfig.json", "packages/assembly/tsconfig.json"],
+      toolchainConfigPath: "toolchain.config.json",
       scripts: {
         fast: "check:fast",
         full: "check",
@@ -152,10 +154,17 @@ async function createFixture(mutator = () => {}) {
         },
       },
     }, null, 2)],
+    ["toolchain.config.json", JSON.stringify({
+      schemaVersion: 1,
+      profile: "typescript-node",
+      typecheck: { projects: ["packages/core/tsconfig.json", "packages/assembly/tsconfig.json"] },
+      lint: { config: ".oxlintrc.json", paths: ["packages/core/src", "packages/assembly/src"] },
+      format: { paths: ["packages/core/src", "packages/assembly/src"] },
+    }, null, 2)],
     [".oxlintrc.json", JSON.stringify({
       extends: [
-        "./node_modules/@agent-teams/engineering-foundation/presets/oxlint/type-aware.json",
-        "./node_modules/@agent-teams/engineering-foundation/presets/oxlint/maintainability.json",
+        "./node_modules/stack-toolchain/presets/oxlint/type-aware.json",
+        "./node_modules/stack-toolchain/presets/oxlint/maintainability.json",
       ],
       options: {
         respectEslintDisableDirectives: false,
@@ -187,23 +196,26 @@ async function createFixture(mutator = () => {}) {
     ["packages/assembly/src/index.ts", "export const assembly = 1;\n"],
     [
       "node_modules/@agent-teams/engineering-foundation/package.json",
-      JSON.stringify({ name: "@agent-teams/engineering-foundation", version: "2.1.1" }),
+      JSON.stringify(foundationPackage),
+    ],
+    ["node_modules/stack-toolchain/package.json", JSON.stringify(toolchainPackage)],
+    ["node_modules/stack-toolchain/toolchain-manifest.json",
+      await readFile(join(dirname(toolchainManifestPath), "toolchain-manifest.json"), "utf8")],
+    [
+      "node_modules/stack-toolchain/presets/oxlint/base.json",
+      await readFile("node_modules/stack-toolchain/presets/oxlint/base.json", "utf8"),
     ],
     [
-      "node_modules/@agent-teams/engineering-foundation/presets/oxlint/base.json",
-      await readFile("node_modules/@agent-teams/engineering-foundation/presets/oxlint/base.json", "utf8"),
+      "node_modules/stack-toolchain/presets/oxlint/type-aware.json",
+      await readFile("node_modules/stack-toolchain/presets/oxlint/type-aware.json", "utf8"),
     ],
     [
-      "node_modules/@agent-teams/engineering-foundation/presets/oxlint/type-aware.json",
-      await readFile("node_modules/@agent-teams/engineering-foundation/presets/oxlint/type-aware.json", "utf8"),
+      "node_modules/stack-toolchain/presets/oxlint/node.json",
+      await readFile("node_modules/stack-toolchain/presets/oxlint/node.json", "utf8"),
     ],
     [
-      "node_modules/@agent-teams/engineering-foundation/presets/oxlint/node.json",
-      await readFile("node_modules/@agent-teams/engineering-foundation/presets/oxlint/node.json", "utf8"),
-    ],
-    [
-      "node_modules/@agent-teams/engineering-foundation/presets/oxlint/maintainability.json",
-      await readFile("node_modules/@agent-teams/engineering-foundation/presets/oxlint/maintainability.json", "utf8"),
+      "node_modules/stack-toolchain/presets/oxlint/maintainability.json",
+      await readFile("node_modules/stack-toolchain/presets/oxlint/maintainability.json", "utf8"),
     ],
   ]);
   await mutator(files);
@@ -263,7 +275,10 @@ function ruleIds(report) {
 }
 
 test("activates exact published Foundation quality pins", () => {
-  assert.equal(foundationPackage.version, "2.1.1");
+  assert.equal(foundationPackage.version, "3.0.0");
+  assert.equal(toolchainPackage.name, "stack-toolchain");
+  assert.equal(toolchainPackage.version, "0.1.1");
+  assert.equal(consumerPackage.devDependencies["stack-toolchain"], toolchainPackage.version);
   assert.equal(oxlintPackage.version, "1.83.0");
   assert.equal(typedPackage.version, "7.0.2001");
   assert.equal(typescriptPackage.version, "7.0.2");
@@ -428,4 +443,76 @@ test("Foundation rejects declared quality inputs that are missing or not regular
     await rm(missing, { recursive: true, force: true });
     await rm(nonregular, { recursive: true, force: true });
   }
+});
+
+// These probes bind admission to the installed Stack graph. They must reject
+// before any lint finding can stand in for an invalid toolchain declaration.
+test("Foundation rejects invalid Stack declarations graph pins and installed identities", async context => {
+  for (const mutation of ["missing", "ranged", "nondev", "duplicate", "wrong-name", "wrong-version", "pin-disagreement", "graph-range"]) {
+    await context.test(mutation, async () => {
+      const root = await createFixture(files => {
+        const manifest = JSON.parse(files.get("package.json"));
+        if (mutation === "missing") delete manifest.devDependencies["stack-toolchain"];
+        if (mutation === "ranged") manifest.devDependencies["stack-toolchain"] = `^${toolchainPackage.version}`;
+        if (mutation === "nondev" || mutation === "duplicate") {
+          manifest.dependencies = { "stack-toolchain": toolchainPackage.version };
+          if (mutation === "nondev") delete manifest.devDependencies["stack-toolchain"];
+        }
+        files.set("package.json", JSON.stringify(manifest));
+        const installed = JSON.parse(files.get("node_modules/stack-toolchain/package.json"));
+        if (mutation === "wrong-name") installed.name = "foreign-toolchain";
+        if (mutation === "wrong-version") installed.version = "999.0.0";
+        if (mutation === "graph-range") installed.dependencies.typescript = "^7.0.2";
+        files.set("node_modules/stack-toolchain/package.json", JSON.stringify(installed));
+        if (mutation === "pin-disagreement") {
+          const pins = JSON.parse(files.get("node_modules/stack-toolchain/toolchain-manifest.json"));
+          pins.typescript = "999.0.0";
+          files.set("node_modules/stack-toolchain/toolchain-manifest.json", JSON.stringify(pins));
+        }
+      });
+      try {
+        await copyQualityToolchain(root);
+        const report = await fullQualityCheck(root);
+        assert.equal(report.outcome, "invalid-input", JSON.stringify(report));
+        assert.equal(report.capabilities[0].problem.code, "QUALITY_TOOLCHAIN_INVALID", JSON.stringify(report));
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("v4 quality projects come only from the declared Stack configuration", async () => {
+  const root = await createFixture(files => {
+    const config = JSON.parse(files.get("toolchain.config.json"));
+    config.typecheck.projects = ["packages/core/tsconfig.json"];
+    files.set("toolchain.config.json", JSON.stringify(config));
+  });
+  try {
+    await copyQualityToolchain(root);
+    const rejected = await fullQualityCheck(root);
+    assert.equal(rejected.outcome, "violations", JSON.stringify(rejected));
+    assert.ok(ruleIds(rejected).includes("quality.source-coverage.type-context"), JSON.stringify(rejected));
+    const config = JSON.parse(await readFile(join(root, "toolchain.config.json"), "utf8"));
+    config.typecheck.projects.push("packages/assembly/tsconfig.json");
+    await writeFixtureFile(root, "toolchain.config.json", JSON.stringify(config));
+    const corrected = await fullQualityCheck(root);
+    assert.equal(corrected.outcome, "passed", JSON.stringify(corrected));
+    assert.equal(corrected.reportSchemaVersion, 1);
+    assert.equal(corrected.capabilities[0].capabilityConfigSchemaVersion, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("repository v4 quality policy retains all six production compiler projects", async () => {
+  const policy = parse(await readFile("architecture/foundation/quality-source-coverage.yaml", "utf8"));
+  const config = JSON.parse(await readFile(policy.toolchainConfigPath, "utf8"));
+  assert.equal(policy.schemaVersion, 4);
+  assert.equal(policy.compilerProjects, undefined);
+  assert.deepEqual(config.typecheck.projects, [
+    "packages/core/tsconfig.typecheck.json", "packages/assembly/tsconfig.json",
+    "packages/lifecycle-kernel/tsconfig.json", "packages/resources/tsconfig.json",
+    "packages/conformance/tsconfig.json", "packages/observation/tsconfig.json",
+  ]);
 });

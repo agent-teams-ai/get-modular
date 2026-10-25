@@ -49,7 +49,7 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
   try {
     const manifest = { name: "gm-runtime-test", private: true, type: "module", packageManager: `bun@${BUN_VERSION}`,
       engines: { node: ">=24.21.0 <25 || >=26.10.0 <27", bun: BUN_VERSION }, trustedDependencies: [],
-      workspaces: { packages: [], catalog: { pnpm: PNPM_VERSION } }, devDependencies: { pnpm: "catalog:", "@agent-teams/engineering-foundation": "2.0.1" }, scripts: { observe: "node observe.ts" } };
+      workspaces: { packages: [], catalog: { pnpm: PNPM_VERSION } }, devDependencies: { pnpm: "catalog:", "@agent-teams/engineering-foundation": "2.0.1", "stack-toolchain": "0.1.1" }, scripts: { observe: "node observe.ts" } };
     await put(root, "package.json", JSON.stringify(manifest, null, 2) + "\n");
     await put(root, ".gitignore", "node_modules/\n.get-modular-node-profile.json\n");
     await put(root, "observe.ts", "console.log(JSON.stringify({ node: process.versions.node, bun: process.versions.bun ?? null }));\n");
@@ -104,6 +104,41 @@ test("Bun manager preserves explicit Node qualification and runtime tools execut
     assert.match(stale.stderr, /runtime.tool.dependency-pin/u);
     assert.notEqual(run(root, "node", ["architecture/tooling/runtime/command.ts", "tool", "../observe.ts"]).status, 0);
     assert.notEqual(run(root, "node", ["architecture/tooling/runtime/command.ts", "run", "observe;invalid"]).status, 0);
+  });
+});
+
+// Stack's native process adapter requires Node even when Bun owns the install.
+test("Stack uses the physical supported Node controller in the Bun profile", async () => {
+  await fixture(async root => {
+    const bin = "node_modules/stack-toolchain";
+    await put(root, `${bin}/package.json`, JSON.stringify({ name: "stack-toolchain", version: "0.1.1", type: "module",
+      bin: { "stack-toolchain": "observe.js" } }));
+    // Published package bins are JavaScript; Node does not strip installed TS.
+    await put(root, `${bin}/observe.js`, "console.log(JSON.stringify({ bun: process.versions.bun ?? null, executable: process.execPath, args: process.argv.slice(2) }));\n");
+    const node = await realpath(process.execPath);
+    const args = ["doctor", "literal space & ; $(untouched)"];
+    const tool = ["architecture/tooling/runtime/command.ts", "tool", "stack-toolchain", ...args];
+    // An empty PATH proves neither the Node child nor its package bin uses a shim.
+    const invoked = run(root, node, tool, { PATH: "", Path: "" });
+    assert.equal(invoked.status, 0, invoked.stderr);
+    assert.deepEqual(JSON.parse(invoked.stdout), { bun: null, executable: node, args });
+    const bun = run(root, "bun", tool);
+    assert.notEqual(bun.status, 0);
+    assert.match(bun.stderr, /runtime.stack.requires-node-controller/u);
+    assert.equal(bun.stdout, "", "a rejected controller must not invoke the package bin");
+    for (const version of ["24.20.99", "26.9.99", "25.0.0"]) {
+      const unsupported = run(root, node, ["--input-type=module", "--eval",
+        `Object.defineProperty(process.versions, "node", { value: ${JSON.stringify(version)} }); const { invoke } = await import("./architecture/tooling/runtime/command.ts"); process.exitCode = invoke("tool", "stack-toolchain", []);`]);
+      assert.notEqual(unsupported.status, 0, version);
+      assert.match(unsupported.stderr, /NODE_VERSION_PREFLIGHT_FAILED/u, version);
+      assert.equal(unsupported.stdout, "", "unsupported Node must fail before package invocation");
+    }
+    await put(root, `${bin}/package.json`, JSON.stringify({ name: "stack-toolchain", version: "0.1.0", type: "module",
+      bin: { "stack-toolchain": "observe.js" } }));
+    const stale = run(root, node, tool);
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /runtime.tool.dependency-pin/u);
+    assert.equal(stale.stdout, "");
   });
 });
 
@@ -317,6 +352,8 @@ test("Node dispatch refuses every changed manager projection before executing a 
 test("both runtime roles and Node projection fail closed for unknown inputs", () => {
   assert.equal(toolRuntime("bun", "agent-teams-foundation"), "bun");
   assert.equal(toolRuntime("node", "agent-teams-foundation"), "node");
+  assert.equal(toolRuntime("bun", "stack-toolchain"), "node");
+  assert.equal(toolRuntime("node", "stack-toolchain"), "node");
   assert.throws(() => toolRuntime("bun", "node_modules/typescript/bin/tsc"), /runtime.tool.unknown/u);
   assert.throws(() => project("architecture/foundation/repository-agent-workflow.yaml", "schemaVersion: 1\npackageManager: bun\n"));
   assert.throws(() => project("package.json", '{"packageManager":"pnpm@11.20.0"}'));

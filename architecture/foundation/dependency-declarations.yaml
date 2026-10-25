@@ -27,3 +27,4 @@ policies:
     - "@agent-teams/docs-protocol"
     - "@agent-teams/engineering-foundation"
     - "@agent-teams/feature-module-standard"
+    - "stack-toolchain"

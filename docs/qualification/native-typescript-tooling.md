@@ -12,6 +12,26 @@ related:
 
 # Current TypeScript tooling qualification
 
+## Published Foundation 3 checkpoint, 2026-10-25
+
+Current exact development dependencies are Foundation 3.0.0, Feature Module
+Standard 0.3.0, Stack Toolchain 0.1.1 and Docs Protocol 0.6.6.
+[OIDC release 40187728694, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/40187728694/attempts/1)
+published them from source `23b5a885ba46a2b43b5715ce82db28fcf04f2175`.
+The FMS peer accepts Foundation 3; the adopted immutable FMS v1 authority,
+SDK pending/HOLD and historical package observations stay distinct.
+
+Stack owns the public TypeScript and Oxlint presets. Foundation quality policy
+v4 selects the consumer's explicit toolchain configuration and preserves all
+six production projects. Stack CLI executes under a physical supported Node
+controller even when Bun manages the repository. The Bun default and isolated
+Node 24 compatibility and Node 26 rollback retain separate installations and
+genuine manager lockfiles. This source migration does not establish the final
+native CI matrix, shared M3 archive qualification or production adoption.
+
+Earlier dated checkpoints below retain their original package coordinates,
+archive evidence and qualification limits.
+
 ## Scope and authority
 
 The repository owner's explicit instruction requires every executed TypeScript

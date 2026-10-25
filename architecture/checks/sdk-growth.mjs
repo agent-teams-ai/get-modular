@@ -21,18 +21,23 @@ const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
 const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json";
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
-const CMS_SHA256 = "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec";
-const PREVIOUS_CMS = Object.freeze({
+const CMS_SHA256 = "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86";
+const PRE_DRAIN_CMS = Object.freeze({
   "commit": "a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca",
   "gitBlob": "1da86de15c6def505aa57e212154e4d5ee5d6042",
   "sha256": "8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9"
+});
+const PREVIOUS_CMS = Object.freeze({
+  "commit": "0c2ea846f11532b216520e0e84e19ea1abf58342",
+  "gitBlob": "4bd50920f9b81d9f41456ceb3df9500b497e0453",
+  "sha256": "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec"
 });
 const P0_CMS = Object.freeze({
   commit: "24d6557a1b04b01a3a73c64b1d9a9afd83d89c8f",
   gitBlob: "63540f7b0420134ba685002d01770da2f213c65a",
   sha256: "33b41d5babf0a431c97e8e596a56e6ec1557ba1a0b26d39bf23e13d9a19e1fbd",
 });
-const CMS_EVIDENCE = Object.freeze({
+const DRAIN_EVIDENCE = Object.freeze({
   "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
   "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.txt",
   "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
@@ -46,6 +51,59 @@ const CMS_EVIDENCE = Object.freeze({
   "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-previous-source.ts.txt",
   "growthPreviousReviewSha256": "511ef4cb1875f3b6cde8504a32a77e5031df3653979807f9a5212b4ee543f3d0"
 });
+const CMS_EVIDENCE = Object.freeze({
+  "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
+  "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
+  "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
+  "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.diff",
+  "deltaSha256": "2806f5a2fee13a6ff06bbebd33867a7fea6989d57f3b113a30d9b04456d9bde2",
+  "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/previous-review.json",
+  "previousReviewSha256": "60ac927f3271ad8af6c1c0ed6095a0a9f51fbc72289b6dd62497f987ce8befec",
+  "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-common-assembly.txt",
+  "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-common-assembly.diff",
+  "growthDeltaSha256": "6e2482d1c056aec002c3e203ad5b40415c05b4fd86e24ce960a00db41ff2568f",
+  "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
+  "growthPreviousReviewSha256": "6dfd3cdbdaabf03439a62bca765f150c447e879ff88dc756f4b10945a1382c27"
+});
+const CMS_AUTHORING_REVIEW = Object.freeze({
+  "decision": {
+    "id": "ADR-0041",
+    "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
+    "commit": "b70ba39304ac71964175c42a77309406a7c30ca2",
+    "gitBlob": "1c0060afb1ecbe6ab38289fa7c7969b73c7a97aa",
+    "sha256": "747f926982bbf9065fb247c457a70538872a86b96a501a0306a1bf76f272b660"
+  },
+  "descriptorUnion": "complete-own-transitive-unused-private-child-contracts",
+  "capabilityBases": "separate-per-imported-union-plus-own-descriptors",
+  "sourceLists": "same-sources-generated-from-one-dependency-list",
+  "parity": "exact-keys-values-and-compatibility-tokens",
+  "conflicts": "TS2320-at-feature-or-team-before-selection",
+  "upwardReferences": "ancestor-descriptor-only",
+  "customMaps": "retain-complete-interface-until-separate-equivalence-proof",
+  "runtimeAndPublicApi": "unchanged",
+  "qualification": "fresh-current-source-required"
+});
+const CMS_DELTA = Object.freeze({
+  "classification": "complete-descriptor-union-authoring-successor",
+  "fromAcceptedCurrent": {
+    "commit": "0c2ea846f11532b216520e0e84e19ea1abf58342",
+    "gitBlob": "4bd50920f9b81d9f41456ceb3df9500b497e0453",
+    "sha256": "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec"
+  },
+  "changedHunks": 5,
+  "removedLines": 9,
+  "addedLines": 42,
+  "semanticChanges": [
+    "ADR-0041 succeeds direct inherited feature maps with complete descriptor unions and separate CapabilitiesOf bases for each imported union plus own descriptors; both lists use the same sources.",
+    "Complete transitive, unused and private-child contracts retain exact keys, values and compatibility tokens; each source interface remains checked. Separate bases reject unused value or revision conflicts with TS2320 before Host selection; identical overlaps remain valid.",
+    "Upward references use the ancestor descriptor rather than its aggregate; Hosts still use complete public parent interfaces. Declarations, entry brands, graph, inputs, groups, exact revisions, ownership and construction do not change.",
+    "Custom handwritten properties, index/call/construct signatures and map-level polymorphic this retain the existing complete interface until a separate compatibility proof; descriptor-owned value types are unchanged.",
+    "Existing TypeScript unions and Assembly CapabilitiesOf own the shared mechanism. CMS owns the authoring recipe; no new runtime, API alias, local type framework or selected-only map is introduced.",
+    "The merged current document retains five Bun repository verification commands relative to the descriptor-union upstream guide. SDK classification, HOLD, four authority blockers and historical evidence remain unchanged; changed growth source identities require fresh qualification."
+  ],
+  "changesGetModularCompositionContract": true,
+  "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
+});
 const CMS_300E = Object.freeze({
   "commit": "300e7e1c459c08f5e271627e4ca7d2486bdf5e1f",
   "gitBlob": "ae6792543bd19acc948e177e8d55632c9d51134e",
@@ -58,7 +116,7 @@ const PREVIOUS_BUN_EVIDENCE = Object.freeze({
   reviewPath: "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/previous-review.json",
   reviewSha256: "c4ecc5751ba0bce47b9d99767df15d66ba61cfa12314ddda211454d75ee9c989",
 });
-const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
+const DRAIN_GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
   "previousCurrent": {
     "commit": "7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333",
     "gitBlob": "dad8b6280cf999d9079d3106094e5626b63d83f4",
@@ -66,6 +124,19 @@ const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
   },
   "classification": "repository-verification-command-guidance",
   "changesSelectedFlatCompositionContract": false,
+  "observation": "not-selected",
+  "productionAdoption": "unchanged",
+  "qualification": "pending-current-subject"
+});
+const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
+  "previousCurrent": {
+    "commit": "b70ba39304ac71964175c42a77309406a7c30ca2",
+    "gitBlob": "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
+    "sha256": "11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824"
+  },
+  "classification": "repository-verification-command-guidance",
+  "changesSelectedFlatCompositionContract": false,
+  "authoringRepresentation": "complete-descriptor-union-separate-bases",
   "observation": "not-selected",
   "productionAdoption": "unchanged",
   "qualification": "pending-current-subject"
@@ -104,8 +175,8 @@ const OBSOLETE_ACTIVE_RECORDS = Object.freeze([
 ]);
 const FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
-  version: "2.1.1",
-  integrity: "sha512-NvjLwYgUILVpOHrvJwJLjG/5/vQcIPQwtDxNnUjna+Fdys5qJeZnw2IBgLlFi0sEYZ0DoZgondIBUAxiCkd9pQ==",
+  version: "3.0.0",
+  integrity: "sha512-FQYZjlU15ZasKWw0HpNJwh+GUuGgV9PfynP+I9kIPbSx0ydmtAWOzjOnJV57jcQ5PMVspah4zu7XhqgpFJiZXA==",
 });
 const RETAINED_FOUNDATION = Object.freeze({
   package: "@agent-teams/engineering-foundation",
@@ -184,6 +255,13 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     cmsGrowthPreviousBytes: await readFile(join(root, CMS_EVIDENCE.growthPreviousDocumentPath)),
     cmsGrowthDeltaBytes: await readFile(join(root, CMS_EVIDENCE.growthDeltaPath)),
     cmsGrowthReviewBytes: await readFile(join(root, CMS_EVIDENCE.growthPreviousReviewPath)),
+    cmsDrainPreviousBytes: await readFile(join(root, DRAIN_EVIDENCE.previousDocumentPath)),
+    cmsDrainDeltaBytes: await readFile(join(root, DRAIN_EVIDENCE.deltaPath)),
+    cmsDrainReviewBytes: await readFile(join(root, DRAIN_EVIDENCE.previousReviewPath)),
+    cmsDrainGrowthPreviousBytes: await readFile(join(root, DRAIN_EVIDENCE.growthPreviousDocumentPath)),
+    cmsDrainGrowthDeltaBytes: await readFile(join(root, DRAIN_EVIDENCE.growthDeltaPath)),
+    cmsDrainGrowthReviewBytes: await readFile(join(root, DRAIN_EVIDENCE.growthPreviousReviewPath)),
+    cmsAuthoringDecisionBytes: await readFile(join(root, CMS_AUTHORING_REVIEW.decision.path)),
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
@@ -291,21 +369,22 @@ export function validateCmsGuidance(model) {
     sha256: "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
   }, "original CMS pin");
   same(cms.acceptedCurrent, {
-    commit: "0c2ea846f11532b216520e0e84e19ea1abf58342",
-    gitBlob: "4bd50920f9b81d9f41456ceb3df9500b497e0453",
+    commit: "b2fec1fa15fe3998f51449d7df249f302645973f",
+    gitBlob: "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
     sha256: CMS_SHA256,
   }, "current CMS pin");
   same(cms.delta.fromAcceptedCurrent, PREVIOUS_CMS, "previous CMS pin");
-  if (cms.delta.classification !== "observation-load-drain-lifecycle-guidance" || cms.delta.changedHunks !== 1
-    || cms.delta.addedLines !== 7 || cms.delta.removedLines !== 0
-    || cms.delta.changesGetModularCompositionContract !== true
-    || cms.delta.pinAction !== "advance-reviewed-current-pin-with-historical-pin-retained") fail("CMS delta review drifted");
+  same(cms.delta, CMS_DELTA, "CMS delta review");
+  same(cms.authoringReview, CMS_AUTHORING_REVIEW, "CMS authoring contract review");
   same(cms.retainedEvidence, CMS_EVIDENCE, "CMS retained evidence identity");
   same(cms.scopeReview, CMS_SCOPE_REVIEW, "CMS scope review");
   same(cms.growthScopeReview, GROWTH_CMS_SCOPE_REVIEW, "growth CMS scope review");
   for (const [bytes, pin, label] of [
     [model.cmsBytes, cms.acceptedCurrent, "CMS document bytes"],
     [model.cmsPreviousBytes, PREVIOUS_CMS, "previous CMS document bytes"],
+    [model.cmsDrainPreviousBytes, PRE_DRAIN_CMS, "pre-drain CMS document bytes"],
+    [model.cmsDrainGrowthPreviousBytes, DRAIN_GROWTH_CMS_SCOPE_REVIEW.previousCurrent, "historical growth CMS document bytes"],
+    [model.cmsAuthoringDecisionBytes, CMS_AUTHORING_REVIEW.decision, "CMS authoring decision bytes"],
     [model.cmsP0Bytes, P0_CMS, "historical P0 CMS document bytes"],
     [model.cms300eBytes, CMS_300E, "historical 300e CMS document bytes"],
     [model.cmsGrowthPreviousBytes, GROWTH_CMS_SCOPE_REVIEW.previousCurrent, "growth previous CMS document bytes"],
@@ -327,6 +406,14 @@ export function validateCmsGuidance(model) {
     || createHash("sha256").update(model.cmsGrowthDeltaBytes).digest("hex") !== CMS_EVIDENCE.growthDeltaSha256
     || createHash("sha256").update(model.cmsGrowthReviewBytes).digest("hex") !== CMS_EVIDENCE.growthPreviousReviewSha256) {
     fail("CMS Bun or growth historical evidence bytes drifted");
+  }
+  for (const [bytes, expected] of [
+    [model.cmsDrainDeltaBytes, DRAIN_EVIDENCE.deltaSha256],
+    [model.cmsDrainReviewBytes, DRAIN_EVIDENCE.previousReviewSha256],
+    [model.cmsDrainGrowthDeltaBytes, DRAIN_EVIDENCE.growthDeltaSha256],
+    [model.cmsDrainGrowthReviewBytes, DRAIN_EVIDENCE.growthPreviousReviewSha256],
+  ]) {
+    if (createHash("sha256").update(bytes).digest("hex") !== expected) fail("CMS drain historical evidence bytes drifted");
   }
   const evidence = model.feasibility;
   if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"
@@ -391,7 +478,11 @@ function validateWiring(model) {
     "tests/qualification/sdk-growth-admission.mjs", "tests/qualification/sdk-growth-packed-consumers.mjs",
     "tests/qualification/sdk-growth-registry-consumer.ts", "tests/qualification/sdk-growth-public-import.ts", "tests/qualification/sdk-growth-synthetic-predecessor.ts",
     "tests/tsconfig.sdk-growth-registry.json"];
-  for (const path of required) if (!model.workflow.fullScanPaths?.includes(path)) fail(`changed-file routing omits ${path}`);
+  for (const path of required) {
+    const covered = model.workflow.fullScanPaths?.some(entry => typeof entry === "string"
+      && (path === entry || path.startsWith(`${entry}/`)));
+    if (!covered) fail(`changed-file routing omits ${path}`);
+  }
 }
 
 function validateScope(model) {

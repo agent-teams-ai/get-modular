@@ -122,12 +122,13 @@ production. The first production package must atomically:
 - change the admission state to `source-admitted`;
 - enable Engineering Foundation's `architecture.source-dependencies`
   capability at `architecture/foundation/source-dependencies.yaml`; and
-- execute the pinned `@agent-teams/engineering-foundation` `2.1.1` command
+- execute the pinned `@agent-teams/engineering-foundation` `3.0.0` command
   through `node architecture/tooling/runtime/command.ts tool agent-teams-foundation check`
   in both the complete and fast gates.
 
-The current tooling pins Foundation `2.1.1`, Feature Module Standard `0.2.3`
-and Docs Protocol `0.6.3` as exact registry development dependencies. The FMS
+The current tooling pins Foundation `3.0.0`, Feature Module Standard `0.3.0`,
+Stack Toolchain `0.1.1` and Docs Protocol `0.6.6` as exact registry development
+dependencies. The FMS
 package update does not change this repository's adopted FMS v1 authority.
 SDK growth admission remains
 explicitly pending: the active public-API capability retains schema v1 until a
@@ -143,23 +144,27 @@ workflow without a managed adapter or cohort binding.
 
 The earlier native Foundation 1.10.0 binding followed the retained 1.7.4 and
 1.7.2 records. Those archive, compiler and CLI observations remain historical
-evidence under their original identities. The current Foundation 2.1.1 binding
+evidence under their original identities. The current Foundation 3.0.0 binding
 keeps the immutable Feature Module Standard authority and the separately reviewed
 Consumer Module Standard chain. Neither publication nor a tooling pin confers
 SDK authority or completes composition qualification.
 SDK status stays pending, activation stays on hold and release eligibility stays
 false.
 
-The interim tooling migration selects the published Foundation 2.1.1 and FMS
-0.2.3 archives. FMS retains its optional `^1.8.0 || ^2.0.0` Foundation peer and the
-immutable FMS v1 adoption and selected v1.1 identities. The source-graph correction
-keeps ordinary import/export declarations with inline `type` specifiers in runtime
-mode; declaration-level `import type` and `export type` remain type-only. The
+The current tooling migration selects the published Foundation 3.0.0, FMS
+0.3.0, Stack Toolchain 0.1.1 and Docs Protocol 0.6.6 archives. FMS retains its
+optional `^1.8.0 || ^2.0.0 || ^3.0.0` Foundation peer and the immutable FMS v1
+adoption and selected v1.1 identities. Stack Toolchain owns the generic stack
+command and preset surface; Foundation retains source policy, quality and
+workflow semantics. Consumer profiles own applicability and exact command roles.
+The source-graph correction keeps ordinary import/export declarations with
+inline `type` specifiers in runtime mode; declaration-level `import type` and
+`export type` remain type-only. The
 [retained selected-flat source receipt](../../tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-21/observations.json)
 qualifies its original published package pair and source subjects. It does not
-qualify this Bun runtime migration or the current repository head. Installed Bun
-registry admission remains pending the actual successor publication and final
-consumer checks; no future package version or integrity is claimed here.
+qualify this Bun runtime migration or the current repository head. The selected
+successors are published; current Get Modular consumer qualification and the
+required CI matrix remain pending until actually executed on the candidate.
 
 The current `check:changed` script calls the published Foundation
 `agent-workflow check-changed` successor with repository-agent-workflow policy
@@ -186,8 +191,11 @@ consumer adoption scope.
 
 Bun 1.4.3 is the default package manager and runtime for the explicitly listed
 repository checks, Foundation and Docs CLIs. Nested package-script dispatch uses
-`architecture/tooling/runtime/command.ts`; it selects Bun throughout the default
-chain. Literal Node commands keep `node:test`, native TypeScript controls,
+`architecture/tooling/runtime/command.ts`; its finite tool-role policy selects
+Bun for Foundation and Docs. Stack Toolchain 0.1.1 is the explicit Node CLI
+exception in both profiles: its published archive uses Node loader behavior,
+and the controller validates the supported physical Node runtime before launch.
+Literal Node commands keep `node:test`, native TypeScript controls,
 Core generation/build qualification, packed consumers and release tooling on
 Node. No production package depends on these development tools.
 
@@ -256,25 +264,42 @@ primitive is supplied by the runtime. Host install projections and version
 policy remain local. Copying Foundation's complete Host runtime would duplicate
 policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
 
-The current Consumer Module Standard review pins exact source
-`a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca`, with full-document SHA-256
-`8f92029eec9610f6f83afe6f86352557f268b1abd8e2a241f16d86f5f0eaada9`.
-Its incremental delta from reviewed `300e7e1` changes only five current GM
-verification commands to Bun. The earlier `24d6557a` to `300e7e1` composition,
-resource, contract and observation review remains authenticated historical
-evidence. Current, previous and P0 snapshots, both retained deltas and prior
-reviews remain checked. SDK growth stays pending under its existing profile;
-this command guidance supplies none of its outstanding external authority.
+The current Consumer Module Standard review pins exact merged source
+`b2fec1fa15fe3998f51449d7df249f302645973f`, blob
+`df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, with full-document SHA-256
+`3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86`.
+Its complete delta from reviewed `0c2ea846` is the accepted ADR-0041 authoring
+successor: complete own, transitive, unused and private-child descriptor unions;
+one separate `CapabilitiesOf` base for each imported union plus own descriptors;
+matching source lists and compiled exact key, value and compatibility-token
+parity. Separate bases retain unused value/revision conflict rejection at a
+feature or team before Host selection. An upward edge names the ancestor's
+descriptor, and custom maps keep their complete interface until a separate
+compatibility proof. The Host continues to compose complete public parent maps.
+This uses existing TypeScript and Assembly types and adds no runtime mechanism.
 
-The current tool cohort is published and reconciled. Foundation 2.0.1 and FMS
-0.2.1 were published by successful
-[release run 39511720000, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39511720000/attempts/1)
-from exact source `1218dbb53369d3beb3ee5b1b7544c261bf93136c`. Docs 0.6.3 remains
-unchanged from its `4ca4ad30b1efc5e3b43a2c012348ea8afea21864` release source.
-The independent eight-package review and separate published Foundation verifier
-are recorded in the [published tooling checkpoint](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21).
-That record also preserves the earlier Foundation 2.0.0 cohort and its receipts
-as dated history. These upstream proofs do not qualify this Get Modular checkout.
+The prior P0, 300e, Bun, drain and selected-flat reviews and complete snapshots
+remain authenticated, including their accepted ADR and dated measurement bytes.
+The raw delta from upstream descriptor-union source `b70ba393` to this merged
+guide is five Bun verification command substitutions. Changed current growth
+source identities require fresh qualification; old timings do not qualify the
+successor. SDK growth stays fixed development tooling, pending with activation
+HOLD and the same four external authority/custody blockers. The full review and
+retained deltas are bound by
+`architecture/sdk-growth/evidence/consumer-module-standard.json` and its
+rejecting tests; no production adoption or SDK authority is inferred.
+
+The current tool cohort is published and reconciled. Foundation 3.0.0, FMS
+0.3.0, Stack Toolchain 0.1.1 and Docs Protocol 0.6.6 were published by successful
+[release run 40187728694, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/40187728694/attempts/1)
+from exact source `23b5a885ba46a2b43b5715ce82db28fcf04f2175`.
+Their archive identities and consumer observations are recorded in the
+[current tooling checkpoint](../qualification/native-typescript-tooling.md).
+The earlier Foundation 2.0.1/FMS 0.2.1 release run 39511720000 from source
+`1218dbb53369d3beb3ee5b1b7544c261bf93136c`, and Docs 0.6.3 from
+`4ca4ad30b1efc5e3b43a2c012348ea8afea21864`, remain dated history in the
+[published tooling checkpoint](../qualification/native-typescript-tooling.md#published-tooling-checkpoint-2026-10-21).
+Those upstream receipts do not qualify the current Get Modular checkout.
 
 Both real locks now exist. Pinned pnpm 11.20.0 generated its strict lock and
 passed frozen strict lock-only admission; Bun 1.4.3 generated `bun.lock` and
@@ -314,7 +339,7 @@ lanes on Ubuntu, macOS and Windows, including strict frozen installation,
 committed peer validation, the complete gate union and tracked workspace
 integrity. The governance lane explicitly executes policy typechecking and
 tests. The existing installed public archive compatibility lane remains
-separate. Docs Protocol is now pinned exactly to published `0.6.3`, declaring
+separate. The retained Docs Protocol `0.6.3` checkpoint declared
 Node `^24.18.0 || ^26.0.0`; `0.6.0` excludes Node 26.
 The `portable-v1` profile and schema remain unchanged. The Node 24.21.0 and
 Node 26.10.0 root routes, with the exact Docs `0.6.2` closure, strict frozen

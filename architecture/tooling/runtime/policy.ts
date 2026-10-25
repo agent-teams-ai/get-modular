@@ -23,6 +23,7 @@ export const runtimeBins: Readonly<Record<string, string>> = {
   "agent-teams-foundation": "@agent-teams/engineering-foundation",
   "agent-teams-docs": "@agent-teams/docs-protocol",
   "docs-protocol": "@agent-teams/docs-protocol",
+  "stack-toolchain": "stack-toolchain",
 };
 
 export function git(root: string, ...args: string[]): string {
@@ -88,5 +89,6 @@ export function assertProjection(root = repository): void {
 }
 export function toolRuntime(profile: Profile, entry: string): "bun" | "node" {
   if (!runtimeEntries.has(entry) && !Object.hasOwn(runtimeBins, entry)) throw new Error("runtime.tool.unknown");
+  if (entry === "stack-toolchain") return "node";
   return profile === "bun" ? "bun" : "node";
 }

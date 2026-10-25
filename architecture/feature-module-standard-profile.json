@@ -153,7 +153,7 @@
       "productionRoot": "packages",
       "foundation": {
         "package": "@agent-teams/engineering-foundation",
-        "version": "2.1.1",
+        "version": "3.0.0",
         "command": "node architecture/tooling/runtime/command.ts tool agent-teams-foundation check",
         "capability": "architecture.source-dependencies",
         "policy": "architecture/foundation/source-dependencies.yaml"

@@ -83,6 +83,7 @@ await test("unrelated errors, inventory changes and malformed mismatch fields ne
     ["unrelated diagnostic", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 0).diagnostics.push({ ...diagnostic(r), ruleId: "unrelated" }); }],
     ["missing capability", (r: ReturnType<typeof ordinary>["report"]) => { r.capabilities.pop(); }],
     ["duplicate capability", (r: ReturnType<typeof ordinary>["report"]) => { r.capabilities.push(capability(r, 0)); }],
+    ["quality input schema cannot replace the report schema", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 4).capabilityConfigSchemaVersion = 4; }],
     ["legacy workflow schema", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 6).capabilityConfigSchemaVersion = 1; }],
     ["unknown workflow schema", (r: ReturnType<typeof ordinary>["report"]) => { capability(r, 6).capabilityConfigSchemaVersion = 3; }],
     ["selected coverage", (r: ReturnType<typeof ordinary>["report"]) => { r.coverage = "selected"; }],

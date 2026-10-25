@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "n
 import { createRequire } from "node:module";
 import { basename, delimiter, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertSupportedToolingNodeVersion } from "../../checks/node-version.mjs";
 import { BUN_VERSION, PNPM_VERSION, repository, runtimeBins, selectedProfile, toolRuntime } from "./policy.ts";
 
 function run(command: string, args: string[], cwd = repository, environment = process.env): number {
@@ -122,6 +123,10 @@ export function invoke(operation: string, id: string, args: string[]): number {
   }
   if (operation !== "tool") throw new Error("runtime.operation.unknown");
   const runtime = toolRuntime(profile, id);
+  if (id === "stack-toolchain") {
+    if ("bun" in process.versions) throw new Error("runtime.stack.requires-node-controller");
+    assertSupportedToolingNodeVersion();
+  }
   if (runtime === "bun") assertBun();
   let entry = resolve(repository, id);
   const packageName = runtimeBins[id];
@@ -143,6 +148,7 @@ export function invoke(operation: string, id: string, args: string[]): number {
     return run(runtime, [entry, ...args], repository, { ...process.env,
       AGENT_TEAMS_FOUNDATION_NODE_EXECUTABLE: realpathSync(process.execPath) });
   }
+  if (id === "stack-toolchain") return run(realpathSync(process.execPath), [entry, ...args]);
   return run(runtime, [entry, ...args]);
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

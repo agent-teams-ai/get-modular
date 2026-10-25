@@ -64,7 +64,7 @@ fullScanPaths:
   - tests/qualification/consumer-fixtures/recovery/tsconfig.runtime.json
   - tests/qualification/consumer-fixtures/source/source-dependencies.yaml
   - tests/qualification/implementation-readiness/api-authoring
-  - architecture/checks/sdk-growth.mjs
+  - toolchain.config.json
   - architecture/sdk-growth
   - tests/sdk-growth.test.mjs
   - tests/qualification/sdk-growth-admission.mjs

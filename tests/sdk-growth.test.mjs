@@ -147,6 +147,13 @@ test("rejects missing command and Foundation identity drift", async t => {
   await t.test("no-op command", () => rejects(model => {
     model.packageJson.scripts["sdk-growth:check"] = "node -e ''";
   }, /missing or a no-op/u));
+  await t.test("SDK check loses full-scan coverage", () => rejects(model => {
+    const path = "architecture/checks/sdk-growth.mjs";
+    model.workflow.fullScanPaths = model.workflow.fullScanPaths.filter(entry =>
+      path !== entry && !path.startsWith(`${entry}/`));
+    // A sibling with the same textual prefix does not cover the required file.
+    model.workflow.fullScanPaths.push(`${path}-backup`);
+  }, /changed-file routing omits architecture\/checks\/sdk-growth\.mjs/u));
   await t.test("version range", () => rejects(model => {
     model.packageJson.devDependencies["@agent-teams/engineering-foundation"] = "^1.5.1";
   }, /exact dev dependency/u));
@@ -190,16 +197,39 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("previous current pin is stale", () => rejectCms(model => {
     model.cmsReview.acceptedCurrent = { ...model.cmsReview.delta.fromAcceptedCurrent };
   }, /current CMS pin/u));
-  await t.test("lifecycle successor cannot be mislabeled command-only", () => rejectCms(model => {
+  await t.test("descriptor-union successor cannot be mislabeled command-only", () => rejectCms(model => {
     model.cmsReview.delta.changesGetModularCompositionContract = false;
   }, /CMS delta review/u));
   for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsP0Bytes", "cmsSourceBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes",
     "cmsHistoricalDeltaBytes", "cmsP0ReviewBytes", "cms300eBytes", "cmsBunDeltaBytes", "cmsBunReviewBytes",
-    "cmsGrowthPreviousBytes", "cmsGrowthDeltaBytes", "cmsGrowthReviewBytes"]) {
+    "cmsGrowthPreviousBytes", "cmsGrowthDeltaBytes", "cmsGrowthReviewBytes",
+    "cmsDrainPreviousBytes", "cmsDrainDeltaBytes", "cmsDrainReviewBytes", "cmsDrainGrowthPreviousBytes",
+    "cmsDrainGrowthDeltaBytes", "cmsDrainGrowthReviewBytes", "cmsAuthoringDecisionBytes"]) {
     await t.test(field, () => rejectCms(model => {
       model[field] = Buffer.from("substituted input");
     }, /CMS .*bytes/u));
   }
+  // These mutations would admit a selected-only map, hide a conflict, or erase custom-map guarantees.
+  for (const [field, value] of [
+    ["descriptorUnion", "directly-selected-descriptors-only"],
+    ["capabilityBases", "one-combined-imported-union"],
+    ["sourceLists", "independent-lists-with-omissions"],
+    ["parity", "keys-only"],
+    ["conflicts", "checked-only-after-host-selection"],
+    ["upwardReferences", "ancestor-aggregate"],
+    ["customMaps", "silently-project-descriptor-properties"],
+    ["qualification", "qualified-by-historical-timings"],
+  ]) {
+    await t.test(field, () => rejectCms(model => {
+      model.cmsReview.authoringReview[field] = value;
+    }, /CMS authoring contract review/u));
+  }
+  await t.test("accepted authoring ADR identity cannot drift", () => rejectCms(model => {
+    model.cmsReview.authoringReview.decision.sha256 = "0".repeat(64);
+  }, /CMS authoring contract review/u));
+  await t.test("review cannot omit a semantic change", () => rejectCms(model => {
+    model.cmsReview.delta.semanticChanges.pop();
+  }, /CMS delta review/u));
   await t.test("growth lifecycle adoption cannot expand", () => rejectCms(model => {
     model.cmsReview.growthScopeReview.observation = "selected";
   }, /growth CMS scope review/u));
@@ -214,7 +244,7 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   }, /CMS scope review/u));
   await t.test("previous composition review cannot be rewritten", () => rejectCms(model => {
     const previous = JSON.parse(model.cmsPreviousReviewBytes.toString("utf8"));
-    previous.delta.changesGetModularCompositionContract = true;
+    previous.delta.changesGetModularCompositionContract = false;
     model.cmsPreviousReviewBytes = Buffer.from(JSON.stringify(previous));
   }, /CMS retained delta or previous review bytes/u));
   await t.test("current review cannot rewrite historical P0", () => rejectCms(model => {
@@ -231,7 +261,8 @@ test("CMS evidence loading rejects absent current and historical inputs", async 
   assert.equal(git.status, 0, git.stderr);
   await cp("architecture", join(root, "architecture"), { recursive: true });
   for (const path of ["package.json", "pnpm-lock.yaml", "foundation.config.yaml", "docs/architecture/common-assembly.md",
-    "packages/assembly/package.json", "packages/core/package.json"]) {
+    "packages/assembly/package.json", "packages/core/package.json",
+    "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md"]) {
     await mkdir(join(root, path, ".."), { recursive: true });
     await cp(path, join(root, path));
   }
@@ -241,7 +272,11 @@ test("CMS evidence loading rejects absent current and historical inputs", async 
     review.retainedEvidence.previousReviewPath, review.retainedEvidence.growthPreviousDocumentPath,
     review.retainedEvidence.growthDeltaPath, review.retainedEvidence.growthPreviousReviewPath,
     "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.diff",
-    "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-review.json"]) {
+    "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-review.json",
+    "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/previous-review.json",
+    "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-common-assembly.diff",
+    "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md"]) {
     await t.test(path, async () => {
       const target = join(root, path);
       const bytes = await readFile(target);

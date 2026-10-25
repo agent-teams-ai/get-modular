@@ -495,7 +495,7 @@ package:
 - TypeScript `7.0.2`, the npm `latest` release of 2026-07-08, is pinned exactly
   in the `pnpm-workspace.yaml` catalog and declared development-only.
 - `tsconfig.base.json` extends
-  `@agent-teams/engineering-foundation/presets/typescript/node.json` and adds
+  `stack-toolchain/presets/typescript/node.json` and adds
   `isolatedModules`, `isolatedDeclarations`, `erasableSyntaxOnly`,
   `declaration`, `types: []`, and `skipLibCheck`. Production emit starts at
   `src/index.ts`; the separate typecheck configuration checks every source
