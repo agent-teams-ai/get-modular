@@ -65,7 +65,7 @@ export function git(root: string, ...args: string[]): string {
   for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES"]) {
     assert.equal(process.env[name], undefined, `candidate.foreign-git-environment:${name}`);
   }
-  return execute(root, "git", ["-c", "core.autocrlf=false", ...args]);
+  return execute(root, "git", ["-c", "core.autocrlf=false", "-c", "core.longpaths=true", ...args]);
 }
 export function clean(root: string): void {
   assert.equal(git(root, "status", "--porcelain=v1", "--untracked-files=all"), "", "candidate.dirty-source");
