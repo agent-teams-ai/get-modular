@@ -12,6 +12,7 @@ export type SourceTree = Readonly<Record<string, SourceFile>>;
 export interface EngineIdentity {
   readonly entrypoint: string;
   readonly installations: readonly string[];
+  readonly resolutions: readonly { readonly from: string; readonly dependencies: Readonly<Record<string, string>> }[];
   readonly digest: string;
   readonly version: "3.0.2";
 }
@@ -91,10 +92,29 @@ export function historicalFile(root: string, revision: string, path: string): So
 export function historicalSnapshot(root: string, revision: string): SourceTree {
   assert.match(revision, /^[a-f0-9]{40}$/u, "candidate.source-identity");
   const files: Record<string, SourceFile> = Object.create(null) as Record<string, SourceFile>;
-  for (const path of git(root, "ls-tree", "-r", "--name-only", "-z", revision).split("\0").filter(Boolean)) {
-    const file = historicalFile(root, revision, path); assert(file, "candidate.missing-historical-source");
-    files[path] = file;
+  const entries = git(root, "ls-tree", "-r", "-z", revision).split("\0").filter(Boolean).map(row => {
+    const match = /^([0-7]{6}) blob ([a-f0-9]{40})\t([\s\S]+)$/u.exec(row);
+    assert(match, "candidate.historical-tree-entry");
+    return { mode: match[1]!, oid: match[2]!, path: match[3]! };
+  });
+  if (entries.length === 0) {return files;}
+  // One exact Git batch preserves binary payloads and object order. No checkout,
+  // path decoding, per-file subprocess or candidate-provided bytes are involved.
+  const bytes = execFileSync("git", ["cat-file", "--batch"], { cwd: root,
+    input: entries.map(entry => entry.oid).join("\n") + "\n", maxBuffer: 256 * 1024 * 1024 });
+  let offset = 0;
+  for (const entry of entries) {
+    const newline = bytes.indexOf(10, offset); assert(newline >= offset, "candidate.historical-batch-header");
+    const header = /^([a-f0-9]{40}) blob ([0-9]+)$/u.exec(bytes.subarray(offset, newline).toString("ascii"));
+    assert(header && header[1] === entry.oid, "candidate.historical-batch-object");
+    const size = Number(header[2]); offset = newline + 1;
+    assert(Number.isSafeInteger(size) && size >= 0 && size <= bytes.length - offset - 1,
+      "candidate.historical-batch-size");
+    const end = offset + size; assert.equal(bytes[end], 10, "candidate.historical-batch-framing");
+    files[entry.path] = sourceFile(bytes.subarray(offset, end), entry.mode);
+    offset = end + 1;
   }
+  assert.equal(offset, bytes.length, "candidate.historical-batch-trailing-data");
   return files;
 }
 /** Includes ignored generation output too; installed package-manager trees have separate engine custody. */
@@ -163,28 +183,40 @@ function installedToolAt(root: string, name: string, version: string, bin?: stri
   assert(contained(dirname(cliManifest), entrypoint), "candidate.foreign-engine-entrypoint");
   const pending = [cliManifest];
   const observed = new Map<string, unknown>();
+  const files = new Map<string, ReturnType<typeof installedFiles>>();
+  const resolutions = new Map<string, Record<string, string>>();
+  const packageFiles = (path: string): ReturnType<typeof installedFiles> => {
+    let value = files.get(path);
+    if (value === undefined) {value = installedFiles(dirname(path)); files.set(path, value);}
+    return value;
+  };
   while (pending.length > 0) {
     const path = pending.shift(); assert(path !== undefined && path !== "");
     if (observed.has(path)) {continue;}
     const manifest = record(JSON.parse(readFileSync(path, "utf8")));
     const edges: Record<string, string> = {};
+    const resolved: Record<string, string> = {};
     const optional = record(manifest["optionalDependencies"] ?? {});
     const peers = record(manifest["peerDependenciesMeta"] ?? {});
     for (const name of Object.keys({ ...record(manifest["dependencies"] ?? {}), ...record(manifest["peerDependencies"] ?? {}), ...optional }).toSorted()) {
       let dependency;
       try { dependency = packageManifest(path, name); }
       catch (error) {
-        if (name in optional || record(peers[name] ?? {})["optional"] === true) { edges[name] = "absent-optional"; continue; }
+        if (name in optional || record(peers[name] ?? {})["optional"] === true) { edges[name] = "absent-optional"; resolved[name] = "absent-optional"; continue; }
         throw error;
       }
       const target = record(JSON.parse(readFileSync(dependency, "utf8")));
-      edges[name] = `${text(target["name"])}@${text(target["version"])}`;
+      edges[name] = `${text(target["name"])}@${text(target["version"])}:${identity(packageFiles(dependency))}`;
+      resolved[name] = dependency;
       pending.push(dependency);
     }
-    observed.set(path, { name: manifest["name"], version: manifest["version"], edges, files: installedFiles(dirname(path)) });
+    resolutions.set(path, resolved);
+    observed.set(path, { name: manifest["name"], version: manifest["version"], edges, files: packageFiles(path) });
   }
   const content = [...observed.values()].toSorted((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : JSON.stringify(a) > JSON.stringify(b) ? 1 : 0);
-  return { entrypoint, installations: [...observed.keys()].toSorted(), digest: identity(content) };
+  return { entrypoint, installations: [...observed.keys()].toSorted(),
+    resolutions: [...resolutions.entries()].toSorted(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+      .map(([from, dependencies]) => ({ from, dependencies })), digest: identity(content) };
 }
 export function engineAt(root: string): EngineIdentity {
   return { ...installedToolAt(root, "@changesets/cli", "3.0.2", "changeset"), version: "3.0.2" };

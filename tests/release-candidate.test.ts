@@ -11,7 +11,7 @@ import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { assertNodeQualification, custody, engineAt, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, custody, engineAt, git, historicalFile, historicalSnapshot, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
 import { assertPromotionBranch, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
@@ -552,4 +552,17 @@ await test("real admitted metadata cohort promotes public baselines and independ
     const head = commit(root, "test(release): retain actual generated metadata candidate");
     assert.equal(verifyRelease(root, source, head).report.outcome, "passed");
   } finally { rmSync(temporary, { recursive: true, force: true }); }
+});
+
+await test("batched historical custody preserves every exact blob including binary framing", () => {
+  const subject = createFixture();
+  try {
+    const bytes = Buffer.from([0, 10, 13, 255, 10, 0, 254]);
+    writeFileSync(join(subject.root, "binary.dat"), bytes);
+    const source = commit(subject.root, "test(release): retain exact binary source framing");
+    const captured = historicalSnapshot(subject.root, source);
+    for (const path of Object.keys(captured)) {assert.deepEqual(captured[path], historicalFile(subject.root, source, path));}
+    assert.equal(captured["binary.dat"]?.leaf.digest, hash(bytes));
+    assert.deepEqual(captured, snapshot(subject.root));
+  } finally { subject.dispose(); }
 });
