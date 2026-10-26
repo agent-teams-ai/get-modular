@@ -127,6 +127,8 @@
     "runneradmin",
     "bunfig",
     "lockfiles",
-    "postpublication"
+    "postpublication",
+    "preimage",
+    "unadmitted"
   ]
 }
