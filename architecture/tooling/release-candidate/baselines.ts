@@ -1,23 +1,34 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { parse } from "yaml";
 import type { ExpectedInputs } from "@agent-teams/release-checks";
+import { ASSEMBLY_PAIR_DECISIONS } from "../../checks/assembly-admission.mjs";
 import type { PreparedRelease } from "./host.ts";
 import { assertCustody, custody, execute, git, hash, identity, record, snapshot, treeDigest, type SourceTree } from "./io.ts";
 
 export const baselinePaths = ["architecture/public-api/core.json", "architecture/public-api/assembly.json"] as const;
 const configPath = "architecture/foundation/public-api-compatibility.yaml";
-export const metadataDecision = "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md";
+const metadataAuthority = ASSEMBLY_PAIR_DECISIONS["0.7.1"];
+export const metadataDecision = metadataAuthority.path;
 // Full accepted bytes, not a permission inferred from a version or a filename.
-export const metadataDecisionDigest = "sha256:8f36ca78ed28153b0a7774bce2a8d5fb85d1fb51dd699e943886773ab804014f";
+export const metadataDecisionDigest = metadataAuthority.bytesDigest;
 export function plannedBaselines(tree: SourceTree, plan: ExpectedInputs["plan"]): readonly string[] {
   if (tree[configPath] === undefined) {return [];}
   const pair = plan.releases.filter(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
     && item.oldVersion !== item.newVersion);
   if (pair.length === 0) {return [];}
   assert.equal(hash(tree[metadataDecision]?.contents ?? ""), metadataDecisionDigest, "candidate.metadata-release-authority");
+  const registry = record(JSON.parse(tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}"));
+  assert(Array.isArray(registry["decisions"]), "candidate.metadata-release-registry");
+  assert.deepEqual(registry["decisions"].filter(value => {
+    const row = record(value); return row["id"] === metadataAuthority.entry.id || row["path"] === metadataDecision;
+  }), [metadataAuthority.entry], "candidate.metadata-release-registry");
+  for (const [name, version] of [["resources", "0.2.1"], ["observation", "0.2.0"]]) {
+    assert.equal(record(JSON.parse(tree[`packages/${name}/package.json`]?.contents ?? "{}"))["version"], version,
+      "candidate.metadata-release-unchanged-leaves");
+  }
   const rows = plan.releases.filter(item => item.oldVersion !== item.newVersion)
     .map(item => [item.packageName, item.oldVersion, item.newVersion, item.type]).toSorted();
   assert.deepEqual(rows, [["@get-modular/assembly", "0.7.0", "0.7.1", "patch"],
@@ -51,12 +62,17 @@ function linkInstall(source: string, target: string): void {
     symlinkSync(resolve(source, "node_modules", entry), join(target, "node_modules", entry), process.platform === "win32" ? "junction" : "dir");
   }
   mkdirSync(join(target, "node_modules/@get-modular"));
+  const observed: { name: string; version: unknown; path: string }[] = [];
   for (const name of ["core", "assembly", "conformance", "resources", "observation", "lifecycle-kernel"]) {
     const owned = resolve(target, "packages", name);
     const alias = join(target, "node_modules/@get-modular", name);
     symlinkSync(owned, alias, process.platform === "win32" ? "junction" : "dir");
     assert.equal(realpathSync(alias), realpathSync(owned), "candidate.promotion-workspace-alias");
+    const manifest = record(JSON.parse(readFileSync(join(alias, "package.json"), "utf8")));
+    if (name === "core" || name === "assembly") {assert.equal(manifest["version"], "0.7.1", "candidate.promotion-workspace-version");}
+    observed.push({ name, version: manifest["version"], path: realpathSync(alias) });
   }
+  console.log(JSON.stringify({ phase: "public-promotion-workspace", packages: observed }));
 }
 export function assertPromotionBranch(root: string): void {
   assert.equal(git(root, "branch", "--show-current").trim(), "changeset-release/main", "candidate.promotion-branch");
@@ -76,7 +92,7 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     git(store, "-c", "core.autocrlf=false", "worktree", "add", work, "changeset-release/main");
     assertPromotionBranch(work);
     for (const path of new Set([...Object.keys(prepared.before), ...Object.keys(candidate)])) {
-      if (identity(prepared.before[path]?.leaf) === identity(candidate[path]?.leaf)) {continue;}
+      if (identity(prepared.before[path]?.leaf ?? null) === identity(candidate[path]?.leaf ?? null)) {continue;}
       const file = candidate[path];
       if (file === undefined) {rmSync(join(work, path)); continue;}
       assert(file.leaf.type === "file" && file.leaf.mode === "100644", "candidate.promotion-input-file");
@@ -95,7 +111,7 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     assertBuildTools(prepared, work);
     const promoted = snapshot(work);
     const changed = [...new Set([...Object.keys(built), ...Object.keys(promoted)])]
-      .filter(path => identity(built[path]?.leaf) !== identity(promoted[path]?.leaf)).toSorted();
+      .filter(path => identity(built[path]?.leaf ?? null) !== identity(promoted[path]?.leaf ?? null)).toSorted();
     assert.deepEqual(changed, [...paths].toSorted(), "candidate.producer-extra-output");
     for (const path of paths) {assertMetadataBaseline(path, prepared.before, promoted);}
     assertCustody(prepared.execution, custody(caller));

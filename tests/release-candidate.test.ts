@@ -532,6 +532,12 @@ await test("real admitted metadata cohort promotes public baselines and independ
     assert.deepEqual(plannedBaselines(prepared.before, { releases: [], consumptions: [] }), []);
     assert.throws(() => assertPromotionBranch(root), /candidate.promotion-branch/u);
     assert.throws(() => produceBaselines({ ...prepared, hasRelease: false }, prepared.before, baselinePaths), /public-producer-required/u);
+    const registryPath = "architecture/decisions/accepted-decisions.json";
+    const registryFile = prepared.before[registryPath]; assert(registryFile);
+    const registry = record(JSON.parse(registryFile.contents)); assert(Array.isArray(registry["decisions"]));
+    assert.throws(() => plannedBaselines({ ...prepared.before, [registryPath]: { ...registryFile,
+      contents: JSON.stringify({ ...registry, decisions: registry["decisions"].filter(value => record(value)["id"] !== "ADR-0042") }) } },
+    prepared.expected.plan), /metadata-release-registry/u);
     const producer = prepared.execution.producer; assert(producer);
     assert.throws(() => versionPreparedRelease({ ...prepared, execution: { ...prepared.execution,
       producer: { ...producer, digest: "sha256:substituted" } } }), /execution-custody-drift/u);

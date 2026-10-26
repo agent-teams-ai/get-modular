@@ -32,6 +32,7 @@ export async function qualifyMetadataPacks(root: string, output: string): Promis
   assert.equal(manager["version"], "11.20.0");
   const cli = join(dirname(managerPath), "bin/pnpm.cjs");
   const results: unknown[] = [];
+  let unchangedArchivesEqual = true;
   for (const [name, version, retainedIntegrity] of [
     ["conformance", "0.5.1", ""],
     ["resources", "0.2.1", "sha512-qRmHsWuPajee+35BM5DhY6o1tCeDrzkei3SPBEIWF4PVkHO/pq+zODprvJ0cr+vCFtY0uJqgfnSor+ldRkwwGA=="],
@@ -43,6 +44,7 @@ export async function qualifyMetadataPacks(root: string, output: string): Promis
     const identity = hashes(bytes); const archive = readPackageArchive(bytes, identity); assert(archive);
     const manifest = record(JSON.parse(archive.files.get("package.json").toString("utf8")));
     assert.equal(manifest["version"], version);
+    let registryArchiveEqual: boolean | null = null;
     if (name === "conformance") {
       assert.deepEqual(manifest["peerDependencies"], { "@get-modular/assembly": "^0.7.1",
         "@get-modular/core": "^0.7.1", "@get-modular/resources": "^0.2.1" });
@@ -51,14 +53,17 @@ export async function qualifyMetadataPacks(root: string, output: string): Promis
       assert.equal(response.status, 200); const registryBytes = new Uint8Array(await response.arrayBuffer());
       const registryIdentity = hashes(registryBytes); assert.equal(registryIdentity.integrity, retainedIntegrity);
       const published = readPackageArchive(registryBytes, registryIdentity); assert(published);
+      registryArchiveEqual = bytes.equals(Buffer.from(registryBytes));
+      unchangedArchivesEqual &&= registryArchiveEqual;
       assert.deepEqual(archive.files, published.files, `${name}: actual packed payload differs from authenticated registry archive`);
       writeFileSync(join(output, `${name}-registry.tgz`), registryBytes);
     }
     results.push({ package: manifest["name"], version, file, ...identity, peers: manifest["peerDependencies"] ?? {},
-      registryPayloadEqual: name === "conformance" ? null : true });
+      registryArchiveEqual, registryPayloadEqual: name === "conformance" ? null : true });
   }
   writeFileSync(join(output, "metadata-pack-proof.json"), JSON.stringify({ source: git(root, "rev-parse", "HEAD").trim(),
-    node: process.versions.node, pnpm: manager["version"], packages: results }, null, 2) + "\n");
+    node: process.versions.node, unchangedArchivesEqual, pnpm: manager["version"], packages: results }, null, 2) + "\n");
+  assert(unchangedArchivesEqual, "Unchanged versions require exact registry archive bytes, not only payload equality");
 }
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [root, output] = process.argv.slice(2); assert(root && output, "Usage: metadata-patch-pack.ts TEST_ROOT NEW_OUTPUT");
