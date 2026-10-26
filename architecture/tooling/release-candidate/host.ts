@@ -243,7 +243,7 @@ export function versionPreparedRelease(prepared: PreparedRelease): CheckedCandid
   const candidate = snapshot(prepared.execution.root);
   const paths = plannedBaselines(prepared.before, prepared.expected.plan);
   const versionOnly = { ...prepared, expected: { ...prepared.expected,
-    permittedChanges: prepared.expected.permittedChanges.filter(item => !baselinePaths.includes(item.path as typeof baselinePaths[number])) } };
+    permittedChanges: prepared.expected.permittedChanges.filter(item => !baselinePaths.some(path => path === item.path)) } };
   check(versionOnly, candidate, prepared.execution, `worktree:${treeDigest(candidate)}`);
   produceBaselines(prepared, candidate, paths);
   return checkGeneratedCandidate(prepared);

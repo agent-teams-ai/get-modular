@@ -532,9 +532,9 @@ await test("real admitted metadata cohort promotes public baselines and independ
     assert.deepEqual(plannedBaselines(prepared.before, { releases: [], consumptions: [] }), []);
     assert.throws(() => assertPromotionBranch(root), /candidate.promotion-branch/u);
     assert.throws(() => produceBaselines({ ...prepared, hasRelease: false }, prepared.before, baselinePaths), /public-producer-required/u);
-    assert(prepared.execution.producer);
+    const producer = prepared.execution.producer; assert(producer);
     assert.throws(() => versionPreparedRelease({ ...prepared, execution: { ...prepared.execution,
-      producer: { ...prepared.execution.producer, digest: "sha256:substituted" } } }), /execution-custody-drift/u);
+      producer: { ...producer, digest: "sha256:substituted" } } }), /execution-custody-drift/u);
     const invalid = { ...prepared.expected.plan, releases: prepared.expected.plan.releases.map(release =>
       release.packageName === "@get-modular/conformance" ? { ...release, newVersion: "0.5.2" } : release) };
     assert.throws(() => plannedBaselines(prepared.before, invalid), /metadata-release-cohort/u);

@@ -40,7 +40,7 @@ export async function qualifyMetadataPacks(root: string, output: string): Promis
     assert(name && version && retainedIntegrity !== undefined);
     run(cli, "--pm-on-fail=ignore", "--dir", join(root, "packages", name), "pack", "--pack-destination", output);
     const file = `get-modular-${name}-${version}.tgz`; const bytes = readFileSync(join(output, file));
-    const identity = hashes(bytes); const archive = readPackageArchive(bytes, identity);
+    const identity = hashes(bytes); const archive = readPackageArchive(bytes, identity); assert(archive);
     const manifest = record(JSON.parse(archive.files.get("package.json").toString("utf8")));
     assert.equal(manifest["version"], version);
     if (name === "conformance") {
@@ -50,7 +50,7 @@ export async function qualifyMetadataPacks(root: string, output: string): Promis
       const response = await fetch(`https://registry.npmjs.org/@get-modular/${name}/-/${name}-${version}.tgz`);
       assert.equal(response.status, 200); const registryBytes = new Uint8Array(await response.arrayBuffer());
       const registryIdentity = hashes(registryBytes); assert.equal(registryIdentity.integrity, retainedIntegrity);
-      const published = readPackageArchive(registryBytes, registryIdentity);
+      const published = readPackageArchive(registryBytes, registryIdentity); assert(published);
       assert.deepEqual(archive.files, published.files, `${name}: actual packed payload differs from authenticated registry archive`);
       writeFileSync(join(output, `${name}-registry.tgz`), registryBytes);
     }
