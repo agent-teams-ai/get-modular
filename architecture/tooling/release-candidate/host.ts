@@ -148,7 +148,7 @@ function binding(tree: SourceTree, execution: ExecutionCustody, raw: unknown): I
   return { source: { repository, identity: execution.source, digest: treeDigest(tree) },
     engine: { name: "@changesets/cli", version: execution.engine.version, digest: execution.engine.digest },
     configDigest: required(tree, ".changeset/config.json").leaf.digest,
-    inventoryDigest: identity(packages), policyDigest: identity({ files: Object.fromEntries(policyPaths.map(path => [path, tree[path]?.leaf ?? null])), producer: execution.producer }),
+    inventoryDigest: identity(packages), policyDigest: identity({ files: Object.fromEntries(policyPaths.map(path => [path, tree[path]?.leaf ?? null])), producer: execution.producer, buildTools: execution.buildTools }),
     intentsDigest: identity(intentFiles(tree).map(path => [path, required(tree, path).leaf])), planDigest: identity(raw) };
 }
 function freeze(value: unknown): void {

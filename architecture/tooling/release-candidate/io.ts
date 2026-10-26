@@ -25,6 +25,7 @@ export interface ExecutionCustody {
   readonly source: string;
   readonly engine: EngineIdentity;
   readonly producer: FoundationIdentity | null;
+  readonly buildTools: readonly Omit<EngineIdentity, "version">[];
   readonly runtime: { readonly kind: "node"; readonly version: string; readonly executable: string };
 }
 
@@ -154,11 +155,11 @@ function installedFiles(root: string, prefix = ""): readonly [string, string][] 
     });
 }
 /** Binds the resolved CLI and its installed runtime dependency closure, including formatter code. */
-function installedToolAt(root: string, name: string, version: string, bin: string): Omit<EngineIdentity, "version"> {
+function installedToolAt(root: string, name: string, version: string, bin?: string): Omit<EngineIdentity, "version"> {
   const cliManifest = packageManifest(join(root, "package.json"), name);
   const cli = record(JSON.parse(readFileSync(cliManifest, "utf8")));
   assert.equal(cli["version"], version, "candidate.engine-version");
-  const entrypoint = realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])[bin])));
+  const entrypoint = bin === undefined ? cliManifest : realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])[bin])));
   assert(contained(dirname(cliManifest), entrypoint), "candidate.foreign-engine-entrypoint");
   const pending = [cliManifest];
   const observed = new Map<string, unknown>();
@@ -214,9 +215,10 @@ export function custody(root: string): ExecutionCustody {
     rootIdentity, "candidate.foreign-root");
   const source = git(actual, "rev-parse", "HEAD").trim();
   assert.match(source, /^[a-f0-9]{40}$/u, "candidate.source-identity");
+  const producer = existsSync(join(actual, "architecture/foundation/public-api-compatibility.yaml")) ? foundationAt(actual) : null;
   const gitDirectory = realpathSync(git(actual, "rev-parse", "--absolute-git-dir").trim());
   return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: engineAt(actual),
-    producer: existsSync(join(actual, "architecture/foundation/public-api-compatibility.yaml")) ? foundationAt(actual) : null,
+    producer, buildTools: producer === null ? [] : [installedToolAt(actual, "typescript", "7.0.2", "tsc"), installedToolAt(actual, "canonicalize", "4.0.0")],
     runtime: { kind: "node", version: process.versions.node, executable: realpathSync(process.execPath) } };
 }
 export function assertCustody(expected: ExecutionCustody, observed: ExecutionCustody): void {

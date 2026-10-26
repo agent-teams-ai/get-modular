@@ -41,7 +41,8 @@
     "../architecture/tooling/release-candidate/baselines.ts",
     "../architecture/tooling/release-candidate/run.ts",
     "qualification/support/forged-changesets-status.ts",
-    "release-candidate.test.ts"
+    "release-candidate.test.ts",
+    "qualification/metadata-patch-pack.ts"
   ],
   "include": []
 }

@@ -274,3 +274,14 @@ Its reviewed delta from the prepared branch changes five repository verification
 commands to Bun; the owning SDK evidence migration is retained unchanged.
 The earlier review observations above remain historical. SDK activation remains
 on HOLD. This tooling integration changes no production composition boundary.
+
+## Coordinated metadata patch
+
+ADR-0042 admits only Core/Assembly 0.7.1 with Conformance 0.5.1, Resources 0.2.1
+and Observation 0.2.0. The checked version route uses the ordinary installed
+public Foundation promoter in a private trusted release workspace, and its
+independent replay authenticates the exact two Core/Assembly baseline outputs.
+Preparation feature changes do not write those baselines. Public package versions,
+changelogs and peer minimums come from Changesets. Exact-source CI, archive
+identity, installed consumers and publication reconciliation remain separate
+requirements; this admission is not a release completion claim.

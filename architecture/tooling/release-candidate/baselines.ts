@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { parse } from "yaml";
@@ -38,6 +38,12 @@ export function assertMetadataBaseline(path: string, before: SourceTree, after: 
   assert.equal(promoted["packageVersion"], "0.7.1", "candidate.baseline-release-version");
   assert.deepEqual({ ...promoted, packageVersion: previous["packageVersion"] }, previous, "candidate.baseline-api-changed");
 }
+function assertBuildTools(prepared: PreparedRelease, work: string): void {
+  const observed = custody(work);
+  assert.deepEqual(observed.engine, prepared.execution.engine, "candidate.promotion-engine-drift");
+  assert.deepEqual(observed.producer, prepared.execution.producer, "candidate.promotion-producer-drift");
+  assert.deepEqual(observed.buildTools, prepared.execution.buildTools, "candidate.promotion-build-tool-drift");
+}
 function linkInstall(source: string, target: string): void {
   mkdirSync(join(target, "node_modules"));
   for (const entry of readdirSync(join(source, "node_modules"))) {
@@ -46,7 +52,10 @@ function linkInstall(source: string, target: string): void {
   }
   mkdirSync(join(target, "node_modules/@get-modular"));
   for (const name of ["core", "assembly", "conformance", "resources", "observation", "lifecycle-kernel"]) {
-    symlinkSync(resolve(target, "packages", name), join(target, "node_modules/@get-modular", name), process.platform === "win32" ? "junction" : "dir");
+    const owned = resolve(target, "packages", name);
+    const alias = join(target, "node_modules/@get-modular", name);
+    symlinkSync(owned, alias, process.platform === "win32" ? "junction" : "dir");
+    assert.equal(realpathSync(alias), realpathSync(owned), "candidate.promotion-workspace-alias");
   }
 }
 export function assertPromotionBranch(root: string): void {
@@ -75,12 +84,15 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     }
     linkInstall(caller, work);
     assert.equal(treeDigest(snapshot(work)), treeDigest(candidate), "candidate.promotion-input-drift");
+    assertBuildTools(prepared, work);
     execute(work, process.execPath, ["architecture/tooling/build-core.mjs"]);
     execute(work, process.execPath, ["architecture/tooling/build-assembly.mjs"]);
+    assertBuildTools(prepared, work);
     const built = snapshot(work);
     for (const [path, file] of Object.entries(candidate)) {assert.deepEqual(built[path], file, "candidate.build-source-drift");}
     assertCustody(prepared.execution, custody(caller));
     execute(work, process.execPath, [producer.entrypoint, "public-api-promote-release", "--consumer", work, "--json"]);
+    assertBuildTools(prepared, work);
     const promoted = snapshot(work);
     const changed = [...new Set([...Object.keys(built), ...Object.keys(promoted)])]
       .filter(path => identity(built[path]?.leaf) !== identity(promoted[path]?.leaf)).toSorted();
