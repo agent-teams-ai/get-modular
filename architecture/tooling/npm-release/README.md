@@ -131,18 +131,20 @@ remained exact throughout that run. This repeated an earlier run whose individua
 commands passed but whose final source-binding assertion failed; that earlier run
 is not a qualified source receipt.
 
-This is preparatory candidate evidence. Exact current-source full CI and the
-existing public registry archive/receipt/installed-consumer qualification remain
-required after the published `0.1.0` dependency is admitted. The production
-admission integrity stays null until that actual registry evidence exists.
+This records the original preparatory checkpoint. At that time, exact-source
+full CI and public registry archive/receipt/installed-consumer qualification
+were pending, and production admission integrity remained null. The current
+admitted dependency and its later installation evidence are recorded below.
 
 ### Release checks development dependency successor
 
-The independent `@agent-teams/release-checks` adoption permits one bounded
-addition to the retained release-tooling inputs. It preserves the five source
-tree, archive and checksum records above. The complete root build commands,
-toolchain inputs and all other development dependencies remain equal to
-`2cd561688bb223f944425718cc093e55ff4bc20d`.
+The historical retained-tooling relation permits one bounded development
+dependency addition and preserves the five original source tree, archive and
+checksum records. When applying that relation, the checker requires root build
+commands, toolchain inputs and every other development dependency to equal
+`2cd561688bb223f944425718cc093e55ff4bc20d`. Those rejecting checks are unchanged;
+they do not describe the separately accepted current Bun/Foundation 3 runtime
+or authorize a broader historical-input exception.
 
 The root development dependency must be `catalog:` and its workspace catalog
 must select exactly `0.1.0`. The lock must add exactly the matching default
@@ -158,12 +160,17 @@ different current lock.
 The [admission record](release-checks-adoption.json) records
 the independently qualified public version `0.1.0` integrity. Its installed-package,
 strict TypeScript 7.0.2, conformance and signature/provenance checks passed on
-2026-10-26. Retained archive admission remains bounded by its original source
-and cohort policy; current installation is pending until the owner managers
-generate the authoritative Bun and pnpm locks. Candidate `0.0.0` installation in a disposable
-TEST checkout proves the API integration only. The production lock has no
-invented package resolution, and this adoption must remain unmerged while its
-actual manager installations and final native CI are not yet qualified in this checkout.
+2026-10-26. The owner managers generated both authentic locks, and separate
+Bun 1.4.3 and unchanged-source Node/pnpm 11.20 installations passed strict
+TypeScript and focused Host qualification at `32c59334b43fc3aaec48fe8f2fffa056a7716092`.
+[PR #214](https://github.com/agent-teams-ai/get-modular/pull/214) merged that
+adoption as `b1866ac5328231b7fe1d63ed136e7a905a2facc1`, after the current runtime
+migrations in [#206](https://github.com/agent-teams-ai/get-modular/pull/206)
+and [#212](https://github.com/agent-teams-ai/get-modular/pull/212).
+The earlier disposable `0.0.0` installation remains API preparation evidence.
+Historical archive admission stays bounded by its original source/cohort policy.
+New metadata routing still requires its own exact-source CI and public consumer
+qualification; the merged dependency alone does not complete M3.
 
 The original Resources-only preparation retained four unchanged package trees.
 Those observations remain bound to that earlier source; the released base below
@@ -201,12 +208,13 @@ leaf installation and lock/SRI qualification, collect the official current
 Changesets plan. If it still has no releases, use the existing no-release path;
 do not create an artificial intent or reproduce the already published release.
 
-This owning publication qualifies source `7131d0d7`, not the future adoption
-source. The dependency admission remains pending. Reconcile the eventual
-adopting main through the existing manual publication route: all five current
-versions use current-source packing rather than the old retained catalog. Any
-registry-byte mismatch remains a failure; do not substitute an old manifest,
-invent integrity or broaden retained archive admission to hide it.
+This owning publication qualifies source `7131d0d7`; it did not qualify the later
+adoption source. PR #214 subsequently admitted the dependency. Reconcile each
+new qualification source through the existing publication route. Its ordinary
+current-source packing is distinct from the exact current-cohort original
+archive selection described below. Every registry-byte mismatch remains
+visible; never substitute an old manifest, invent integrity or broaden the
+historical retained-input guards to hide one.
 
 ## Artifact protocol and recovery
 
@@ -285,3 +293,24 @@ Preparation feature changes do not write those baselines. Public package version
 changelogs and peer minimums come from Changesets. Exact-source CI, archive
 identity, installed consumers and publication reconciliation remain separate
 requirements; this admission is not a release completion claim.
+
+For only this exact cohort, Resources 0.2.1 and Observation 0.2.0 keep their
+original authenticated registry archives. Ordinary current build and pnpm pack
+run first. The Host requires the fresh and original archives to have exactly
+the same complete file inventory, modes, sizes, content bytes and package
+manifests. The existing bounded inert archive reader rejects duplicate paths,
+escapes, links and unknown physical entry types. Fixed registry URLs, SHA-256
+and SHA-512 pins authenticate the original bytes; source/decision/cohort or
+payload drift rejects before publication. The other three packages keep their
+ordinary fresh archives.
+
+The fresh Resources/Observation containers differ from their original public
+archives even though their complete payloads match. Preparation always selects
+the original registry bytes for those two coordinates, including when container
+bytes happen to match. It never substitutes a fresh integrity for an already
+published version. Separate preparation evidence retains both archives,
+identities, complete inventory comparison, current qualification source/cohort
+and selection reason. The publisher artifact remains only `release.json` and
+its five selected archives. Its current source identifies this qualification;
+it does not relabel the original publication's provenance. The historical
+retained catalog and shared publisher's exact-byte protocol remain unchanged.

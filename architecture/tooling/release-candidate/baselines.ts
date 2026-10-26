@@ -5,27 +5,18 @@ import { hostname, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { parse } from "yaml";
 import type { ExpectedInputs } from "@agent-teams/release-checks";
-import { ASSEMBLY_PAIR_DECISIONS } from "../../checks/assembly-admission.mjs";
 import type { PreparedRelease } from "./host.ts";
 import { assertCustody, custody, execute, git, hash, identity, record, snapshot, treeDigest, type SourceTree } from "./io.ts";
+import { assertMetadataAuthority, metadataDecision } from "./metadata-authority.ts";
 
 export const baselinePaths = ["architecture/public-api/core.json", "architecture/public-api/assembly.json"] as const;
 const configPath = "architecture/foundation/public-api-compatibility.yaml";
-const metadataAuthority = ASSEMBLY_PAIR_DECISIONS["0.7.1"];
-export const metadataDecision = metadataAuthority.path;
-// Full accepted bytes, not a permission inferred from a version or a filename.
-export const metadataDecisionDigest = metadataAuthority.bytesDigest;
 export function plannedBaselines(tree: SourceTree, plan: ExpectedInputs["plan"]): readonly string[] {
   if (tree[configPath] === undefined) {return [];}
   const pair = plan.releases.filter(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
     && item.oldVersion !== item.newVersion);
   if (pair.length === 0) {return [];}
-  assert.equal(hash(tree[metadataDecision]?.contents ?? ""), metadataDecisionDigest, "candidate.metadata-release-authority");
-  const registry = record(JSON.parse(tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}"));
-  assert(Array.isArray(registry["decisions"]), "candidate.metadata-release-registry");
-  assert.deepEqual(registry["decisions"].filter(value => {
-    const row = record(value); return row["id"] === metadataAuthority.entry.id || row["path"] === metadataDecision;
-  }), [metadataAuthority.entry], "candidate.metadata-release-registry");
+  assertMetadataAuthority(tree[metadataDecision]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
   for (const [name, version] of [["resources", "0.2.1"], ["observation", "0.2.0"]]) {
     assert.equal(record(JSON.parse(tree[`packages/${name}/package.json`]?.contents ?? "{}"))["version"], version,
       "candidate.metadata-release-unchanged-leaves");

@@ -511,6 +511,8 @@ await test("custody rejects nested roots and same-spelling physical replacement"
 });
 
 await test("real admitted metadata cohort promotes public baselines and independently replays exact bytes", () => {
+  const started = performance.now(); let previous = started; const timings: Record<string, number> = {};
+  const mark = (phase: string): void => {const now = performance.now(); timings[phase] = now - previous; previous = now;};
   const revisions = [git(repositoryRoot, "rev-parse", "HEAD").trim(),
     ...git(repositoryRoot, "rev-list", "HEAD", "--", ".changeset/core-coordinated-metadata.md").trim().split("\n")];
   const source = revisions.find(revision => revision !== "" && git(repositoryRoot, "ls-tree", revision,
@@ -527,7 +529,9 @@ await test("real admitted metadata cohort promotes public baselines and independ
       if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
       symlinkSync(join(nodeModules, entry), join(root, "node_modules", entry), process.platform === "win32" ? "junction" : "dir");
     }
+    mark("clone-and-link");
     const prepared = prepareRelease(root);
+    mark("prepare");
     assert.deepEqual(plannedBaselines(prepared.before, prepared.expected.plan), baselinePaths);
     assert.deepEqual(plannedBaselines(prepared.before, { releases: [], consumptions: [] }), []);
     assert.throws(() => assertPromotionBranch(root), /candidate.promotion-branch/u);
@@ -544,8 +548,10 @@ await test("real admitted metadata cohort promotes public baselines and independ
     const invalid = { ...prepared.expected.plan, releases: prepared.expected.plan.releases.map(release =>
       release.packageName === "@get-modular/conformance" ? { ...release, newVersion: "0.5.2" } : release) };
     assert.throws(() => plannedBaselines(prepared.before, invalid), /metadata-release-cohort/u);
+    mark("admission-negatives");
     const generated = versionPreparedRelease(prepared);
     assert.equal(generated.report.outcome, "passed");
+    mark("version-and-public-promotion");
     for (const path of baselinePaths) {
       const actual = read(root, path); const baseline = record(JSON.parse(actual));
       assert.equal(baseline["packageVersion"], "0.7.1");
@@ -556,9 +562,15 @@ await test("real admitted metadata cohort promotes public baselines and independ
     write(root, "dist/unlisted-output.txt", "not a producer output");
     assert.throws(() => checkGeneratedCandidate(prepared), /candidate.rejected/u);
     rmSync(join(root, "dist"), { recursive: true });
+    mark("output-negatives");
     const head = commit(root, "test(release): retain actual generated metadata candidate");
+    mark("candidate-commit");
     assert.equal(verifyRelease(root, source, head).report.outcome, "passed");
-  } finally { rmSync(temporary, { recursive: true, force: true }); }
+    mark("independent-replay");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true }); mark("cleanup");
+    console.log(JSON.stringify({ phase: "real-metadata-release-test-timing", elapsedMs: performance.now() - started, timings }));
+  }
 });
 
 await test("private producer receipts reject foreign processes, barriers and noncanonical evidence", () => {

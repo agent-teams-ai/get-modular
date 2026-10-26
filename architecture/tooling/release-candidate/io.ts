@@ -182,45 +182,59 @@ function installedFiles(root: string, prefix = ""): readonly [string, string][] 
       return [[path, hash(readFileSync(join(root, path)))]] as [string, string][];
     });
 }
-/** Binds the resolved CLI and its installed runtime dependency closure, including formatter code. */
-function installedToolAt(root: string, name: string, version: string, bin?: string): Omit<EngineIdentity, "version"> {
+interface PackageObservation {
+  readonly manifest: Record<string, unknown>;
+  readonly files: ReturnType<typeof installedFiles>;
+  readonly filesDigest: string;
+  content?: { readonly edges: Record<string, string>; readonly dependencies: Record<string, string> };
+}
+type ToolObservation = Map<string, PackageObservation>;
+function observedPackage(path: string, observation: ToolObservation): PackageObservation {
+  let result = observation.get(path);
+  if (result === undefined) {
+    const manifest = record(JSON.parse(readFileSync(path, "utf8"))); const files = installedFiles(dirname(path));
+    result = { manifest, files, filesDigest: identity(files) }; observation.set(path, result);
+  }
+  return result;
+}
+function capturedPackage(path: string, observation: ToolObservation): PackageObservation {
+  const result = observedPackage(path, observation);
+  if (result.content !== undefined) {return result;}
+  const manifest = result.manifest; const edges: Record<string, string> = {}; const dependencies: Record<string, string> = {};
+  const optional = record(manifest["optionalDependencies"] ?? {}); const peers = record(manifest["peerDependenciesMeta"] ?? {});
+  for (const name of Object.keys({ ...record(manifest["dependencies"] ?? {}), ...record(manifest["peerDependencies"] ?? {}), ...optional }).toSorted()) {
+    let dependency;
+    try { dependency = packageManifest(path, name); }
+    catch (error) {
+      if (name in optional || record(peers[name] ?? {})["optional"] === true) {
+        edges[name] = "absent-optional"; dependencies[name] = "absent-optional"; continue;
+      }
+      throw error;
+    }
+    const target = observedPackage(dependency, observation);
+    edges[name] = `${text(target.manifest["name"])}@${text(target.manifest["version"])}:${target.filesDigest}`;
+    dependencies[name] = dependency;
+  }
+  result.content = { edges, dependencies }; return result;
+}
+/** The physical-manifest memo belongs to exactly one fresh custody observation. */
+function installedToolAt(root: string, name: string, version: string, bin: string | undefined, observation: ToolObservation): Omit<EngineIdentity, "version"> {
   const cliManifest = packageManifest(join(root, "package.json"), name);
-  const cli = record(JSON.parse(readFileSync(cliManifest, "utf8")));
+  const cli = observedPackage(cliManifest, observation).manifest;
   assert.equal(cli["name"], name, "candidate.engine-package-identity");
   assert.equal(cli["version"], version, "candidate.engine-version");
   const entrypoint = bin === undefined ? cliManifest : realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])[bin])));
   assert(contained(dirname(cliManifest), entrypoint), "candidate.foreign-engine-entrypoint");
   const pending = [cliManifest];
   const observed = new Map<string, unknown>();
-  const files = new Map<string, ReturnType<typeof installedFiles>>();
   const resolutions = new Map<string, Record<string, string>>();
-  const packageFiles = (path: string): ReturnType<typeof installedFiles> => {
-    let value = files.get(path);
-    if (value === undefined) {value = installedFiles(dirname(path)); files.set(path, value);}
-    return value;
-  };
   while (pending.length > 0) {
     const path = pending.shift(); assert(path !== undefined && path !== "");
     if (observed.has(path)) {continue;}
-    const manifest = record(JSON.parse(readFileSync(path, "utf8")));
-    const edges: Record<string, string> = {};
-    const resolved: Record<string, string> = {};
-    const optional = record(manifest["optionalDependencies"] ?? {});
-    const peers = record(manifest["peerDependenciesMeta"] ?? {});
-    for (const name of Object.keys({ ...record(manifest["dependencies"] ?? {}), ...record(manifest["peerDependencies"] ?? {}), ...optional }).toSorted()) {
-      let dependency;
-      try { dependency = packageManifest(path, name); }
-      catch (error) {
-        if (name in optional || record(peers[name] ?? {})["optional"] === true) { edges[name] = "absent-optional"; resolved[name] = "absent-optional"; continue; }
-        throw error;
-      }
-      const target = record(JSON.parse(readFileSync(dependency, "utf8")));
-      edges[name] = `${text(target["name"])}@${text(target["version"])}:${identity(packageFiles(dependency))}`;
-      resolved[name] = dependency;
-      pending.push(dependency);
-    }
-    resolutions.set(path, resolved);
-    observed.set(path, { name: manifest["name"], version: manifest["version"], edges, files: packageFiles(path) });
+    const item = capturedPackage(path, observation); assert(item.content);
+    pending.push(...Object.values(item.content.dependencies).filter(dependency => dependency !== "absent-optional"));
+    resolutions.set(path, item.content.dependencies);
+    observed.set(path, { name: item.manifest["name"], version: item.manifest["version"], edges: item.content.edges, files: item.files });
   }
   const content = [...observed.values()].toSorted((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : JSON.stringify(a) > JSON.stringify(b) ? 1 : 0);
   return { entrypoint, installations: [...observed.keys()].toSorted(),
@@ -228,10 +242,16 @@ function installedToolAt(root: string, name: string, version: string, bin?: stri
       .map(([from, dependencies]) => ({ from, dependencies })), digest: identity(content) };
 }
 export function engineAt(root: string): EngineIdentity {
-  return { ...installedToolAt(root, "@changesets/cli", "3.0.2", "changeset"), version: "3.0.2" };
+  return observedEngine(root, new Map());
 }
 export function foundationAt(root: string): FoundationIdentity {
-  return { ...installedToolAt(root, "@agent-teams/engineering-foundation", "3.0.0", "agent-teams-foundation"), version: "3.0.0" };
+  return observedFoundation(root, new Map());
+}
+function observedEngine(root: string, observation: ToolObservation): EngineIdentity {
+  return { ...installedToolAt(root, "@changesets/cli", "3.0.2", "changeset", observation), version: "3.0.2" };
+}
+function observedFoundation(root: string, observation: ToolObservation): FoundationIdentity {
+  return { ...installedToolAt(root, "@agent-teams/engineering-foundation", "3.0.0", "agent-teams-foundation", observation), version: "3.0.0" };
 }
 /** Version generation uses the unchanged-source pnpm installation route, never a manager projection. */
 export function assertNodeQualification(root: string): void {
@@ -256,10 +276,11 @@ export function custody(root: string): ExecutionCustody {
     rootIdentity, "candidate.foreign-root");
   const source = git(actual, "rev-parse", "HEAD").trim();
   assert.match(source, /^[a-f0-9]{40}$/u, "candidate.source-identity");
-  const producer = existsSync(join(actual, "architecture/foundation/public-api-compatibility.yaml")) ? foundationAt(actual) : null;
+  const observation: ToolObservation = new Map();
+  const producer = existsSync(join(actual, "architecture/foundation/public-api-compatibility.yaml")) ? observedFoundation(actual, observation) : null;
   const gitDirectory = realpathSync(git(actual, "rev-parse", "--absolute-git-dir").trim());
-  return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: engineAt(actual),
-    producer, buildTools: producer === null ? [] : [installedToolAt(actual, "typescript", "7.0.2", "tsc"), installedToolAt(actual, "canonicalize", "4.0.0")],
+  return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: observedEngine(actual, observation),
+    producer, buildTools: producer === null ? [] : [installedToolAt(actual, "typescript", "7.0.2", "tsc", observation), installedToolAt(actual, "canonicalize", "4.0.0", undefined, observation)],
     runtime: { kind: "node", version: process.versions.node, executable: realpathSync(process.execPath) } };
 }
 export function assertCustody(expected: ExecutionCustody, observed: ExecutionCustody): void {

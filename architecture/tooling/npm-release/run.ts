@@ -11,6 +11,7 @@ import {
 } from "./policy.ts";
 
 import { registryVersion } from "./registry.ts";
+import { assertCurrentArchiveSource, currentArchivesFor, prepareCurrentArchive } from "./current-archives.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 function run(command: string, args: string[], cwd = root, extraEnv: NodeJS.ProcessEnv = {}): string {
@@ -88,6 +89,12 @@ async function prepare(destination: string): Promise<void> {
     return;
   }
   await mkdir(destination, { recursive: false });
+  const currentArchives = currentArchivesFor(packages);
+  const currentEvidence = `${destination}-current-archive-evidence`;
+  if (currentArchives.length > 0) {
+    assertCurrentArchiveSource(root, source, packages);
+    await mkdir(currentEvidence, { recursive: false });
+  }
   const candidates = packages.map(item => ({ ...item, retained: retainedPackage(item.name, item.version, item.tree) }));
   if (candidates.some(item => item.retained)) {
     const currentInputs: Record<string, string> = {};
@@ -120,6 +127,10 @@ async function prepare(destination: string): Promise<void> {
       console.log(`Retained qualified bytes: ${item.name}@${item.version}, package tree ${item.tree}`);
     } else {
       run("pnpm", ["--pm-on-fail=ignore", "--dir", `packages/${item.id}`, "pack", "--pack-destination", destination]);
+      if (currentArchives.some(pin => pin.name === item.name)) {
+        const proof = await prepareCurrentArchive(root, source, packages, item.name, join(destination, file), currentEvidence);
+        console.log(JSON.stringify({ package: item.name, source, selected: proof.selected, containerBytesEqual: proof.containerBytesEqual }));
+      }
     }
     entries.push({ name: item.name, version: item.version, file, ...archiveHashes(await readFile(join(destination, file))) });
   }

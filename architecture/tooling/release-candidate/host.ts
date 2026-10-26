@@ -24,7 +24,7 @@ const policyPaths = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "b
   "architecture/tooling/runtime/admission.ts", "architecture/tooling/runtime/dev.ts",
   "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/policy.ts",
   "architecture/tooling/release-candidate/host.ts", "architecture/tooling/release-candidate/io.ts",
-  "architecture/tooling/release-candidate/run.ts", "architecture/tooling/release-candidate/baselines.ts",
+  "architecture/tooling/release-candidate/run.ts", "architecture/tooling/release-candidate/baselines.ts", "architecture/tooling/release-candidate/metadata-authority.ts",
   "architecture/foundation/public-api-compatibility.yaml", "architecture/tooling/build-core.mjs", "architecture/tooling/build-assembly.mjs"] as const;
 export interface PreparedRelease {
   readonly execution: ExecutionCustody;
