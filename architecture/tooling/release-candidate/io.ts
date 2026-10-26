@@ -115,7 +115,11 @@ export function decodeHistoricalBatch(entries: readonly { readonly mode: string;
     assert(Number.isSafeInteger(size) && size >= 0 && size <= bytes.length - offset - 1,
       "candidate.historical-batch-size");
     const end = offset + size; assert.equal(bytes[end], 10, "candidate.historical-batch-framing");
-    files[entry.path] = sourceFile(bytes.subarray(offset, end), entry.mode);
+    const body = bytes.subarray(offset, end);
+    assert.equal(createHash("sha1").update(`blob ${size}\0`).update(body).digest("hex"), entry.oid,
+      "candidate.historical-batch-content");
+    assert(!Object.hasOwn(files, entry.path), "candidate.historical-batch-duplicate-path");
+    files[entry.path] = sourceFile(body, entry.mode);
     offset = end + 1;
   }
   assert.equal(offset, bytes.length, "candidate.historical-batch-trailing-data");
@@ -182,6 +186,7 @@ function installedFiles(root: string, prefix = ""): readonly [string, string][] 
 function installedToolAt(root: string, name: string, version: string, bin?: string): Omit<EngineIdentity, "version"> {
   const cliManifest = packageManifest(join(root, "package.json"), name);
   const cli = record(JSON.parse(readFileSync(cliManifest, "utf8")));
+  assert.equal(cli["name"], name, "candidate.engine-package-identity");
   assert.equal(cli["version"], version, "candidate.engine-version");
   const entrypoint = bin === undefined ? cliManifest : realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])[bin])));
   assert(contained(dirname(cliManifest), entrypoint), "candidate.foreign-engine-entrypoint");

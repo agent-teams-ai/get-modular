@@ -569,7 +569,8 @@ await test("batched historical custody preserves every exact blob including bina
 });
 
 await test("historical batch decoder rejects malformed or missing object responses", () => {
-  const oid = "1".repeat(40); const body = Buffer.from([0, 255, 10, 13]);
+  const body = Buffer.from([0, 255, 10, 13]);
+  const oid = createHash("sha1").update(`blob ${body.length}\0`).update(body).digest("hex");
   const entry = { mode: "100755", oid, path: "name\nwith\tseparators" };
   const valid = Buffer.concat([Buffer.from(`${oid} blob ${body.length}\n`), body, Buffer.from("\n")]);
   const result = decodeHistoricalBatch([entry], valid);
@@ -579,7 +580,8 @@ await test("historical batch decoder rejects malformed or missing object respons
   for (const invalid of [Buffer.alloc(0), Buffer.from(`${oid} blob 4`),
     Buffer.from(`${"2".repeat(40)} blob 0\n\n`), Buffer.from(`${oid} missing\n`),
     Buffer.from(`${oid} blob 9007199254740992\n\n`), valid.subarray(0, -1),
-    Buffer.concat([valid, Buffer.from("unlisted")])]) {
+    Buffer.concat([valid, Buffer.from("unlisted")]),
+    Buffer.concat([Buffer.from(`${oid} blob 4\n`), Buffer.from([0, 254, 10, 13]), Buffer.from("\n")])]) {
     assert.throws(() => decodeHistoricalBatch([entry], invalid), /candidate.historical-batch/u);
   }
   assert.throws(() => decodeHistoricalBatch([{ ...entry, mode: "160000" }], valid), /unsupported-file-type/u);
