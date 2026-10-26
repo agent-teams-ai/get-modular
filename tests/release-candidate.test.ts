@@ -14,6 +14,8 @@ import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, ver
 import { assertNodeQualification, custody, engineAt, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
+import { assertPromotionBranch, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nodeModules = join(repositoryRoot, "node_modules");
 const require = createRequire(import.meta.url);
@@ -506,4 +508,48 @@ await test("custody rejects nested roots and same-spelling physical replacement"
     }
     subject.dispose();
   }
+});
+
+await test("real admitted metadata cohort promotes public baselines and independently replays exact bytes", () => {
+  const revisions = [git(repositoryRoot, "rev-parse", "HEAD").trim(),
+    ...git(repositoryRoot, "rev-list", "HEAD", "--", ".changeset/core-coordinated-metadata.md").trim().split("\n")];
+  const source = revisions.find(revision => revision !== "" && git(repositoryRoot, "ls-tree", revision,
+    "--", ".changeset/core-coordinated-metadata.md").trim() !== "");
+  assert(source, "The real metadata admission preparation must remain in authenticated history");
+  const temporary = mkdtempSync(join(tmpdir(), "get-modular-real-metadata-release-TEST-"));
+  const root = join(temporary, "source");
+  try {
+    git(repositoryRoot, "clone", "--quiet", "--shared", "--no-hardlinks", repositoryRoot, root);
+    git(root, "checkout", "--detach", source);
+    mkdirSync(join(root, "node_modules"));
+    for (const entry of readdirSync(nodeModules)) {
+      if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
+      symlinkSync(join(nodeModules, entry), join(root, "node_modules", entry), process.platform === "win32" ? "junction" : "dir");
+    }
+    const prepared = prepareRelease(root);
+    assert.deepEqual(plannedBaselines(prepared.before, prepared.expected.plan), baselinePaths);
+    assert.deepEqual(plannedBaselines(prepared.before, { releases: [], consumptions: [] }), []);
+    assert.throws(() => assertPromotionBranch(root), /candidate.promotion-branch/u);
+    assert.throws(() => produceBaselines({ ...prepared, hasRelease: false }, prepared.before, baselinePaths), /public-producer-required/u);
+    assert(prepared.execution.producer);
+    assert.throws(() => versionPreparedRelease({ ...prepared, execution: { ...prepared.execution,
+      producer: { ...prepared.execution.producer, digest: "sha256:substituted" } } }), /execution-custody-drift/u);
+    const invalid = { ...prepared.expected.plan, releases: prepared.expected.plan.releases.map(release =>
+      release.packageName === "@get-modular/conformance" ? { ...release, newVersion: "0.5.2" } : release) };
+    assert.throws(() => plannedBaselines(prepared.before, invalid), /metadata-release-cohort/u);
+    const generated = versionPreparedRelease(prepared);
+    assert.equal(generated.report.outcome, "passed");
+    for (const path of baselinePaths) {
+      const actual = read(root, path); const baseline = record(JSON.parse(actual));
+      assert.equal(baseline["packageVersion"], "0.7.1");
+      write(root, path, { ...baseline, packageVersion: "0.7.2" });
+      assert.throws(() => checkGeneratedCandidate(prepared), /baseline-release-version/u);
+      write(root, path, actual);
+    }
+    write(root, "dist/unlisted-output.txt", "not a producer output");
+    assert.throws(() => checkGeneratedCandidate(prepared), /candidate.rejected/u);
+    rmSync(join(root, "dist"), { recursive: true });
+    const head = commit(root, "test(release): retain actual generated metadata candidate");
+    assert.equal(verifyRelease(root, source, head).report.outcome, "passed");
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
 });

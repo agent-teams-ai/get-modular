@@ -49,6 +49,9 @@ function linkInstall(source: string, target: string): void {
     symlinkSync(resolve(target, "packages", name), join(target, "node_modules/@get-modular", name), process.platform === "win32" ? "junction" : "dir");
   }
 }
+export function assertPromotionBranch(root: string): void {
+  assert.equal(git(root, "branch", "--show-current").trim(), "changeset-release/main", "candidate.promotion-branch");
+}
 /** Owns a disposable trusted branch; never mutates caller refs or copies build output. */
 export function produceBaselines(prepared: PreparedRelease, candidate: SourceTree, paths: readonly string[]): void {
   if (paths.length === 0) {return;}
@@ -62,7 +65,7 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     git(caller, "clone", "--quiet", "--bare", "--shared", "--no-hardlinks", caller, store);
     git(store, "update-ref", "refs/heads/changeset-release/main", prepared.execution.source);
     git(store, "-c", "core.autocrlf=false", "worktree", "add", work, "changeset-release/main");
-    assert.equal(git(work, "branch", "--show-current").trim(), "changeset-release/main", "candidate.promotion-branch");
+    assertPromotionBranch(work);
     for (const path of new Set([...Object.keys(prepared.before), ...Object.keys(candidate)])) {
       if (identity(prepared.before[path]?.leaf) === identity(candidate[path]?.leaf)) {continue;}
       const file = candidate[path];
