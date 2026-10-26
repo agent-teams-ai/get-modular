@@ -9,6 +9,8 @@ import { checkReleaseCandidate, type CheckReport, type ExpectedInputs, type File
 import { array, assertCustody, clean, custody, execute, git, historicalFile, historicalSnapshot, identity, record, semantic,
   snapshot, text, treeDigest, type ExecutionCustody, type SourceFile, type SourceTree } from "./io.ts";
 
+import { plannedBaselines, produceBaselines, assertMetadataBaseline, baselinePaths } from "./baselines.ts";
+
 export const releaseBranch = "changeset-release/main";
 export const repository = "agent-teams-ai/get-modular";
 const manifestPath = /^(?:package\.json|packages\/[^/]+\/package\.json)$/u;
@@ -22,7 +24,8 @@ const policyPaths = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "b
   "architecture/tooling/runtime/admission.ts", "architecture/tooling/runtime/dev.ts",
   "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/policy.ts",
   "architecture/tooling/release-candidate/host.ts", "architecture/tooling/release-candidate/io.ts",
-  "architecture/tooling/release-candidate/run.ts"] as const;
+  "architecture/tooling/release-candidate/run.ts", "architecture/tooling/release-candidate/baselines.ts",
+  "architecture/foundation/public-api-compatibility.yaml", "architecture/tooling/build-core.mjs", "architecture/tooling/build-assembly.mjs"] as const;
 export interface PreparedRelease {
   readonly execution: ExecutionCustody;
   readonly before: SourceTree;
@@ -131,6 +134,9 @@ function permissions(tree: SourceTree, plan: ExpectedInputs["plan"], acceptedInt
   for (const release of plan.releases.filter(item => item.oldVersion !== item.newVersion)) {
     result.push(permission(tree, release.manifestPath), permission(tree, release.manifestPath.replace(/package\.json$/u, "CHANGELOG.md")));
   }
+  for (const path of plannedBaselines(tree, plan)) {
+    result.push({ ...permission(tree, path), contentAuthority: "get-modular.public-baseline-public-cli-replay" });
+  }
   for (const consumption of plan.consumptions) {
     const intent = acceptedIntents.find(item => item.id === consumption.intentId); assert(intent);
     result.push(permission(tree, intent.path, true));
@@ -142,7 +148,7 @@ function binding(tree: SourceTree, execution: ExecutionCustody, raw: unknown): I
   return { source: { repository, identity: execution.source, digest: treeDigest(tree) },
     engine: { name: "@changesets/cli", version: execution.engine.version, digest: execution.engine.digest },
     configDigest: required(tree, ".changeset/config.json").leaf.digest,
-    inventoryDigest: identity(packages), policyDigest: identity(Object.fromEntries(policyPaths.map(path => [path, tree[path]?.leaf ?? null]))),
+    inventoryDigest: identity(packages), policyDigest: identity({ files: Object.fromEntries(policyPaths.map(path => [path, tree[path]?.leaf ?? null])), producer: execution.producer }),
     intentsDigest: identity(intentFiles(tree).map(path => [path, required(tree, path).leaf])), planDigest: identity(raw) };
 }
 function freeze(value: unknown): void {
@@ -227,12 +233,19 @@ export function checkGeneratedCandidate(prepared: PreparedRelease): CheckedCandi
   const actual = custody(prepared.execution.root);
   assertCustody(prepared.execution, actual);
   const after = snapshot(actual.root);
+  for (const path of plannedBaselines(prepared.before, prepared.expected.plan)) {assertMetadataBaseline(path, prepared.before, after);}
   return check(prepared, after, actual, `worktree:${treeDigest(after)}`);
 }
 export function versionPreparedRelease(prepared: PreparedRelease): CheckedCandidate {
   assertCustody(prepared.execution, custody(prepared.execution.root));
   assert.equal(treeDigest(snapshot(prepared.execution.root)), treeDigest(prepared.before), "candidate.inputs-drifted-before-version");
   if (prepared.hasRelease) {execute(prepared.execution.root, process.execPath, [prepared.execution.engine.entrypoint, "version"]);}
+  const candidate = snapshot(prepared.execution.root);
+  const paths = plannedBaselines(prepared.before, prepared.expected.plan);
+  const versionOnly = { ...prepared, expected: { ...prepared.expected,
+    permittedChanges: prepared.expected.permittedChanges.filter(item => !baselinePaths.includes(item.path as typeof baselinePaths[number])) } };
+  check(versionOnly, candidate, prepared.execution, `worktree:${treeDigest(candidate)}`);
+  produceBaselines(prepared, candidate, paths);
   return checkGeneratedCandidate(prepared);
 }
 export function generateRelease(root: string): CheckedCandidate { return versionPreparedRelease(prepareRelease(root)); }
@@ -266,6 +279,7 @@ export function verifyRelease(root: string, base: string, head: string): Checked
     const actual = snapshot(candidateRoot);
     assertCustody(candidateExecution, custody(candidateRoot));
     assert.equal(candidateExecution.engine.digest, expected.execution.engine.digest, "candidate.substituted-engine");
+    assert.deepEqual(candidateExecution.producer, expected.execution.producer, "candidate.substituted-producer");
     const result = check(expected, actual, { ...candidateExecution, source: base }, `commit:${head}:${treeDigest(actual)}`);
     assert.deepEqual(result.observed.diff, generated.observed.diff, "candidate.generated-output-drift");
     return result;

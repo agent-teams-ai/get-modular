@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0042: Admit the coordinated 0.7.1 metadata release](0042-admit-the-coordinated-0-7-1-metadata-release.md)
+
 - [ADR-0041: Preserve complete feature maps with descriptor unions](0041-preserve-complete-feature-maps-with-descriptor-unions.md)
 
 - [ADR-0040: Admit the Core and Assembly 0.7 diagnostic release pair](0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md)

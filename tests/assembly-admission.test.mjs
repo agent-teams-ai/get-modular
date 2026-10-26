@@ -619,7 +619,7 @@ test("next pair requires the exact accepted successor and retains first-release 
     readBytes: candidate => candidate === path ? replacement : next.readBytes(candidate),
   }), /ADR-002[357]/u);
   for (const [coreVersion, assemblyVersion] of [["0.1.0", "0.2.0"], ["0.2.0", "0.1.0"],
-    ["0.8.0", "0.8.0"], ["0.7.0", "0.6.0"], ["0.6.0", "0.7.0"], ["0.4.0", "0.3.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
+    ["0.7.1", "0.7.0"], ["0.7.0", "0.7.1"], ["0.7.2", "0.7.2"], ["0.8.0", "0.8.0"], ["0.7.0", "0.6.0"], ["0.6.0", "0.7.0"], ["0.4.0", "0.3.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
     await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
       ...JSON.parse(read(path)), version: path === ASSEMBLY_MANIFEST_PATH ? assemblyVersion : coreVersion,
     }) }), /pair|manifest violates/u);
@@ -737,7 +737,7 @@ test("0.5.0 pair requires the exact accepted ADR-0036 and retains earlier author
   }
 });
 
-for (const [version, decision] of [["0.6.0", "ADR-0038"], ["0.7.0", "ADR-0040"]]) {
+for (const [version, decision] of [["0.6.0", "ADR-0038"], ["0.7.0", "ADR-0040"], ["0.7.1", "ADR-0042"]]) {
 const decisionPath = ASSEMBLY_PAIR_DECISIONS[version].path;
 test(`${version} pair requires the exact accepted ${decision} and retains earlier authority`, async () => {
   const accepted = read(decisionPath);
@@ -753,8 +753,10 @@ test(`${version} pair requires the exact accepted ${decision} and retains earlie
   const withDecisions = decisions => Buffer.from(JSON.stringify({ ...registry, decisions }));
   const next = {
     // The next Core/Assembly pair leaves every leaf package at its own version.
-    readPackageManifest: async path => LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
-      ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version },
+    readPackageManifest: async path => version === "0.7.1" && path === "packages/conformance/package.json"
+      ? { ...JSON.parse(read(path)), version: "0.5.1" }
+      : LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
+        ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version },
   };
   assert.deepEqual(await admit(next), artifacts.slice(2));
   for (const [path, replacement, message] of [
@@ -775,3 +777,14 @@ test(`${version} pair requires the exact accepted ${decision} and retains earlie
 });
 
 }
+
+test("metadata pair rejects a different coordinated leaf profile", async () => {
+  for (const leaf of ["conformance", "resources", "observation"]) {
+    await assert.rejects(admit({ readPackageManifest: async path => {
+      const manifest = JSON.parse(read(path));
+      if ([ASSEMBLY_MANIFEST_PATH, "packages/core/package.json"].includes(path)) {return { ...manifest, version: "0.7.1" };}
+      if (path === `packages/${leaf}/package.json`) {return { ...manifest, version: "0.9.0" };}
+      return path === "packages/conformance/package.json" ? { ...manifest, version: "0.5.1" } : manifest;
+    } }), /exact coordinated leaf profile/u);
+  }
+});

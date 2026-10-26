@@ -14,6 +14,7 @@ export interface EngineIdentity {
   readonly digest: string;
   readonly version: "3.0.2";
 }
+export type FoundationIdentity = Omit<EngineIdentity, "version"> & { readonly version: "3.0.0" };
 export interface DirectoryIdentity { readonly device: string; readonly inode: string }
 export interface ExecutionCustody {
   readonly root: string;
@@ -22,6 +23,7 @@ export interface ExecutionCustody {
   readonly gitDirectoryIdentity: DirectoryIdentity;
   readonly source: string;
   readonly engine: EngineIdentity;
+  readonly producer: FoundationIdentity | null;
   readonly runtime: { readonly kind: "node"; readonly version: string; readonly executable: string };
 }
 
@@ -153,11 +155,11 @@ function installedFiles(root: string, prefix = ""): readonly [string, string][] 
     });
 }
 /** Binds the resolved CLI and its installed runtime dependency closure, including formatter code. */
-export function engineAt(root: string): EngineIdentity {
-  const cliManifest = packageManifest(join(root, "package.json"), "@changesets/cli");
+function installedToolAt(root: string, name: string, version: string, bin: string): Omit<EngineIdentity, "version"> {
+  const cliManifest = packageManifest(join(root, "package.json"), name);
   const cli = record(JSON.parse(readFileSync(cliManifest, "utf8")));
-  assert.equal(cli["version"], "3.0.2", "candidate.engine-version");
-  const entrypoint = realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])["changeset"])));
+  assert.equal(cli["version"], version, "candidate.engine-version");
+  const entrypoint = realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])[bin])));
   assert(contained(dirname(cliManifest), entrypoint), "candidate.foreign-engine-entrypoint");
   const pending = [cliManifest];
   const observed = new Map<string, unknown>();
@@ -182,7 +184,13 @@ export function engineAt(root: string): EngineIdentity {
     observed.set(path, { name: manifest["name"], version: manifest["version"], edges, files: installedFiles(dirname(path)) });
   }
   const content = [...observed.values()].toSorted((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : JSON.stringify(a) > JSON.stringify(b) ? 1 : 0);
-  return { version: "3.0.2", entrypoint, installations: [...observed.keys()].toSorted(), digest: identity(content) };
+  return { entrypoint, installations: [...observed.keys()].toSorted(), digest: identity(content) };
+}
+export function engineAt(root: string): EngineIdentity {
+  return { ...installedToolAt(root, "@changesets/cli", "3.0.2", "changeset"), version: "3.0.2" };
+}
+export function foundationAt(root: string): FoundationIdentity {
+  return { ...installedToolAt(root, "@agent-teams/engineering-foundation", "3.0.0", "agent-teams-foundation"), version: "3.0.0" };
 }
 /** Version generation uses the unchanged-source pnpm installation route, never a manager projection. */
 export function assertNodeQualification(root: string): void {
@@ -209,6 +217,7 @@ export function custody(root: string): ExecutionCustody {
   assert.match(source, /^[a-f0-9]{40}$/u, "candidate.source-identity");
   const gitDirectory = realpathSync(git(actual, "rev-parse", "--absolute-git-dir").trim());
   return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: engineAt(actual),
+    producer: existsSync(join(actual, "architecture/foundation/public-api-compatibility.yaml")) ? foundationAt(actual) : null,
     runtime: { kind: "node", version: process.versions.node, executable: realpathSync(process.execPath) } };
 }
 export function assertCustody(expected: ExecutionCustody, observed: ExecutionCustody): void {
