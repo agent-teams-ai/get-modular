@@ -403,6 +403,8 @@ boundaries:
       - packages/lifecycle-kernel/tests/packed-root.test.mjs
       - packages/lifecycle-kernel/tests/semantic-suite.mjs
       - packages/lifecycle-kernel/tests/types.ts
+      - packages/lifecycle-kernel/tests/support/pinned-pnpm.ts
+      - packages/lifecycle-kernel/tests/support/pnpm-probe.ts
     allow:
       boundaries:
         - lifecycle-kernel-contract
@@ -487,6 +489,8 @@ boundaries:
       - packages/resources/tests/gc-probe.mjs
       - packages/resources/tests/s1-probe.mjs
       - packages/resources/tests/types.ts
+      - packages/resources/tests/support/pinned-pnpm.ts
+      - packages/resources/tests/support/pnpm-probe.ts
     allow:
       boundaries:
         - resources-contract
@@ -680,6 +684,8 @@ boundaries:
       - packages/conformance/tests/packed-root.test.mjs
       - packages/conformance/tests/handle-probe.mjs
       - packages/conformance/tests/types.ts
+      - packages/conformance/tests/support/pinned-pnpm.ts
+      - packages/conformance/tests/support/pnpm-probe.ts
     allow:
       boundaries: []
       packages:
@@ -841,6 +847,8 @@ boundaries:
       - packages/observation/tests/types-traps.ts
       - packages/observation/tests/types.ts
       - packages/observation/tests/writer-gate.test.ts
+      - packages/observation/tests/support/pinned-pnpm.ts
+      - packages/observation/tests/support/pnpm-probe.ts
     allow:
       boundaries: []
       packages:
@@ -989,6 +997,12 @@ boundaries:
       - architecture/tooling/first-core-release.mjs
       - architecture/tooling/npm-release/run.ts
       - architecture/tooling/release-candidate/run.ts
+      - architecture/tooling/runtime/admission.ts
+      - architecture/tooling/runtime/command.ts
+      - architecture/tooling/runtime/dev.ts
+      - architecture/tooling/runtime/ci.ts
+      - architecture/tooling/runtime/projection-check.ts
+      - architecture/tooling/runtime/projection-custody.ts
       - architecture/tooling/generate-core.mjs
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs
@@ -998,6 +1012,7 @@ boundaries:
       - tests/source-dependencies.test.mjs
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts
+      - tests/qualification/support/pinned-pnpm.ts
     allow:
       boundaries:
         - assembly-examples

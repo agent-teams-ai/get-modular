@@ -26,8 +26,8 @@ keeps the common npm invariant reusable while package qualification remains loca
 2. A completed `CI` run on main wakes `npm release`. Preparation requires the
    exact current main source, the actual `.github/workflows/ci.yml`, and every
    expected job from that run attempt to have succeeded. Matrix job names are
-   expanded from the checked-in workflow. Currently this is 43 jobs: 36 lanes,
-   six aggregates and one installed Node 24 compatibility job. Missing, skipped,
+   expanded from the checked-in workflow. Currently this is 64 jobs; the accepted Bun/Node runtime matrix retains all lanes,
+   nine aggregates and one installed Node 24 compatibility job. Missing, skipped,
    cancelled, duplicate or foreign-source jobs fail admission. An older
    `workflow_run` is skipped when its source differs from `github.sha` or live main.
 3. Automatic runs compare current public versions with live npm version and
@@ -155,14 +155,15 @@ complete parsed workspace and lock. Git blob identities bind both supplied
 texts to the current and retained source; copied historical text cannot hide a
 different current lock.
 
-The [admission record](release-checks-adoption.json) intentionally has
-`integrity: null` while supported public version `0.1.0` is unpublished. This is
-preparation, and retained archive admission fails until the exact registry
-archive is independently qualified, its real integrity is recorded and pnpm
-generates the authoritative lock. Candidate `0.0.0` installation in a disposable
+The [admission record](release-checks-adoption.json) records
+the independently qualified public version `0.1.0` integrity. Its installed-package,
+strict TypeScript 7.0.2, conformance and signature/provenance checks passed on
+2026-10-26. Retained archive admission remains bounded by its original source
+and cohort policy; current installation is pending until the owner managers
+generate the authoritative Bun and pnpm locks. Candidate `0.0.0` installation in a disposable
 TEST checkout proves the API integration only. The production lock has no
 invented package resolution, and this adoption must remain unmerged while its
-registry dependency is unavailable.
+actual manager installations and final native CI are not yet qualified in this checkout.
 
 The original Resources-only preparation retained four unchanged package trees.
 Those observations remain bound to that earlier source; the released base below
@@ -261,3 +262,15 @@ boundary; its pin and frozen evidence are preserved. Full current-standard
 migration and external SDK authority remain pending in that owner track. This
 release workflow does not activate it or use its historical pin as current
 production guidance.
+
+## Current cohort integration
+
+The prepared Host intentionally incorporates accepted main `081ae02b` (PR #206
+and #212), preserving Bun 1.4.3, Foundation 3.0.0, FMS 0.3.0, Stack 0.1.1
+and the unchanged shared publisher `ff94f771`. The standard's current document
+is Git blob `df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, SHA-256
+`3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86`.
+Its reviewed delta from the prepared branch changes five repository verification
+commands to Bun; the owning SDK evidence migration is retained unchanged.
+The earlier review observations above remain historical. SDK activation remains
+on HOLD. This tooling integration changes no production composition boundary.

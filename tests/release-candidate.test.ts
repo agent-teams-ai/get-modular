@@ -11,7 +11,7 @@ import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -401,7 +401,9 @@ await test("the version-only action and CI lane preserve publisher separation an
   const steps = job.steps; assert(Array.isArray(steps));
   const action = steps.map(record).find(step => String(step.uses).startsWith("changesets/action@")); assert(action);
   assert.equal(action.uses, "changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d");
-  assert.equal(record(action.with).version, "pnpm release:version");
+  assert.equal(record(action.with).version, "node architecture/tooling/release-candidate/run.ts version");
+  assert(steps.map(record).some(step => step.run === "node architecture/tooling/runtime/dev.ts install-node-qualification"));
+  assert(!steps.map(record).some(step => String(step.run).startsWith("pnpm install")));
   assert.equal(record(action.with).publish, undefined);
   assert.equal(record(action.with).createGithubReleases, false);
   assert.equal(action.if, "steps.plan.outputs.has-release == 'true'");
@@ -410,4 +412,23 @@ await test("the version-only action and CI lane preserve publisher separation an
   assert.equal(record(manifest.scripts)["release:version"], "node architecture/tooling/release-candidate/run.ts version");
   assert(String(record(manifest.scripts)["runtime:policy:test"]).includes("tests/release-candidate.test.ts"));
   assert(String(record(manifest.scripts)["runtime:policy:test"]).includes("release-candidate/run.ts check-pr"));
+});
+
+await test("version generation requires the unchanged-source Node qualification installation", () => {
+  const subject = createFixture();
+  try {
+    assert.throws(() => assertNodeQualification(subject.root), /qualification-source-manager/u);
+    const path = "package.json";
+    write(subject.root, path, { ...record(JSON.parse(read(subject.root, path))), packageManager: "bun@1.4.3" });
+    // The ordinary fixture links an installed tree. Use an independent marker
+    // directory to inspect route rejection without changing that shared tree.
+    rmSync(join(subject.root, "node_modules"), { recursive: true, force: true });
+    mkdirSync(join(subject.root, "node_modules/.pnpm"), { recursive: true });
+    assertNodeQualification(subject.root);
+    mkdirSync(join(subject.root, "node_modules/.bun"));
+    assert.throws(() => assertNodeQualification(subject.root), /node-qualification-install-required/u);
+    rmSync(join(subject.root, "node_modules/.bun"), { recursive: true });
+    write(subject.root, ".get-modular-node-profile.json", {});
+    assert.throws(() => assertNodeQualification(subject.root), /node-qualification-install-required/u);
+  } finally { subject.dispose(); }
 });

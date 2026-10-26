@@ -477,3 +477,20 @@ source and per-size aggregate limits. Failed results are retained;
 an existing output directory is refused. Raw reports stay with their compact
 hash-bound index and supervisor receipt. This optional measurement is included
 in the existing strict fixture typecheck, not added to every repository check.
+
+### Current source guidance review after the Bun source union
+
+Current `source.ts` pins the reviewed guide at source checkpoint
+`0c2ea846f11532b216520e0e84e19ea1abf58342`, blob
+`4bd50920f9b81d9f41456ceb3df9500b497e0453`, SHA-256
+`d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec`.
+The preceding `7131d0d` review and every dated source report above remain
+historical evidence. The retained raw delta from that review changes only five
+repository verification examples to Bun commands; its seven Observation drain
+lines were already present. The SDK review from `a7d8db4` separately recognizes
+those seven lines as a lifecycle contract change. The flat growth TEST selects
+no Observation lifecycle, nested or dynamic consumer and expands no production
+adoption. Current-source qualification is pending; SDK activation remains HOLD.
+The full snapshot, both raw deltas and exact prior SDK/source reviews are retained
+as non-authoritative evidence in
+`architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/`.

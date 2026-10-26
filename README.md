@@ -7,14 +7,16 @@ turns inert module declarations and an explicit profile into a deterministic,
 immutable composition plan. Product hosts retain authorization, executable
 loading, lifecycle, readiness, publication, routing, and recovery authority.
 
-Node.js 26.11 is the production/default toolchain; the owner authorized this
-cutover before Node.js 26 reached LTS status. Node.js 26.10 and later 26.x and
-Node.js 24.18 and later 24.x releases remain supported, and Node.js 25 is
-unsupported. The Node.js 24 CI
-compatibility job installs Core, Assembly, resources, conformance and observation archives built
-on Node.js 26 in a disposable consumer and exercises their public package roots.
-Repository tooling and its pinned development dependencies run in the Node.js 26
-default check lane and in the Node.js 24 compatibility check lane.
+Bun 1.4.3 is the default repository manager and development-tool runtime.
+Node.js 26.11.1 remains the explicit runtime for native compiler controls,
+`node:test`, packed qualification and release tooling. Node.js 24.21.0 is the
+tooling compatibility route; public package support keeps its separate
+Node.js 24.18.0 floor. Node.js 25 is unsupported.
+
+Install with `node architecture/tooling/runtime/dev.ts install`, then use
+`bun run check:changed`, `bun run check:fast` and `bun run check`.
+The [runtime profiles](docs/architecture/feature-module-standard.md#repository-runtime-profiles)
+describe isolated Node/pnpm rollback and pending cutover verification.
 
 ```mermaid
 flowchart LR

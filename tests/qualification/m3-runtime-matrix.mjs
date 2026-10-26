@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { assertM3NodePin, m3NodePinPath } from './support/m3-node-policy.ts';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
@@ -131,16 +132,17 @@ async function init() {
   await appendFile(process.env.GITHUB_ENV, `M3_ROOT=${root}\n`);
 }
 
-async function context() {
+async function context(action) {
   const sourceCommit = dispatchSHA();
   const root = absolute(process.env.M3_ROOT);
   assert.equal(await realpath(root), root);
   assert.ok(within(root, await realpath(absolute(process.env.RUNNER_TEMP))));
   assert.ok(!within(root, repository) && !within(repository, root));
   assert.equal(await realpath(repository), repository);
-  const pinned = (await readBytes(join(repository, '.node-version'))).toString().trim();
-  assert.equal(process.version, `v${pinned}`);
-  assert.equal(pinned, '24.18.0');
+  const pinPath = m3NodePinPath(action);
+  const committedPin = command(process.platform === 'win32' ? 'git.exe' : 'git',
+    ['-c', 'core.fsmonitor=false', '-C', repository, 'show', `${sourceCommit}:${pinPath}`], repository);
+  assertM3NodePin((await readBytes(join(repository, pinPath))).toString(), committedPin, process.version);
   return { root, sourceCommit, diagnostics: join(root, 'diagnostics') };
 }
 
@@ -322,7 +324,7 @@ async function pack(ctx) {
   await json(join(ctx.diagnostics, 'trusted-runner.json'), trusted);
   const tools = await nodeAndNpm();
   const pnpmPath = await realpath(command('/usr/bin/which', ['pnpm'], repository).trim());
-  const pnpm = { path: pnpmPath, version: command(pnpmPath, ['--version'], repository).trim(),
+  const pnpm = { path: pnpmPath, version: command(pnpmPath, ['--pm-on-fail=ignore', '--version'], repository).trim(),
     sha256: digest(await readBytes(pnpmPath)) };
   assert.equal(pnpm.version, '11.20.0');
   const dependenciesRoot = await realpath(join(repository, 'node_modules/.pnpm'));
@@ -686,7 +688,7 @@ async function collect(ctx) {
 async function main() {
   const { command: action, row: id } = parseArguments(process.argv.slice(2));
   if (action === 'init') return init();
-  const ctx = await context();
+  const ctx = await context(action);
   try {
     if (action === 'pack') await pack(ctx);
     else if (action === 'node') await node(ctx, id);

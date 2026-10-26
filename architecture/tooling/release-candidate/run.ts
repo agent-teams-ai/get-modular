@@ -3,7 +3,7 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepareRelease, releaseBranch, repository, verifyRelease, versionPreparedRelease, type PreparedRelease } from "./host.ts";
-import { git, record, text } from "./io.ts";
+import { assertNodeQualification, git, record, text } from "./io.ts";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 function processedMain(prepared: PreparedRelease): void {
@@ -13,6 +13,7 @@ function processedMain(prepared: PreparedRelease): void {
   assert.equal(prepared.execution.source, process.env.GITHUB_SHA, "candidate.processed-main-drift");
 }
 export function releaseCandidateMain(command: string | undefined): void {
+  if (command === "status" || command === "version") { assertNodeQualification(root); }
   if (command === "status") {
     const prepared = prepareRelease(root);
     processedMain(prepared);

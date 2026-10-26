@@ -1,3 +1,4 @@
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from "../tooling/runtime/projection-custody.ts";
 import { lstat, readFile, readdir } from "node:fs/promises";
 import { posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -9,7 +10,6 @@ import {
 import {
   indexSnapshotPaths,
   indexSnapshotSymlinkPaths,
-  readIndexSnapshotFile,
 } from "./tracked-file-custody.mjs";
 
 const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;

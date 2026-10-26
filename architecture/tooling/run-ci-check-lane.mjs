@@ -7,13 +7,17 @@ if (!scripts.every(script => /^[A-Za-z0-9][A-Za-z0-9:._-]*$/u.test(script))) {
 }
 
 // Keep the platform's native PATH: Git Bash selects GNU tar on Windows.
+if (![undefined, "bun", "node"].includes(process.env.ROOT_CI_RUNTIME_PROFILE)) {
+  throw new Error("Unknown CI runtime profile");
+}
+const manager = process.env.ROOT_CI_RUNTIME_PROFILE === "node" ? "pnpm" : "bun";
 const windows = process.platform === "win32";
 for (const script of scripts) {
-  const result = spawnSync(windows ? (process.env.ComSpec || "cmd.exe") : "pnpm",
-    windows ? ["/d", "/s", "/c", `pnpm run ${script}`] : ["run", script],
+  const result = spawnSync(windows ? (process.env.ComSpec || "cmd.exe") : manager,
+    windows ? ["/d", "/s", "/c", `${manager} run ${script}`] : ["run", script],
     { stdio: "inherit" });
   if (result.error || result.signal) {
-    console.error(result.error?.message ?? `pnpm terminated by ${result.signal}`);
+    console.error(result.error?.message ?? `${manager} terminated by ${result.signal}`);
     process.exit(1);
   }
   if (result.status !== 0) process.exit(result.status ?? 1);

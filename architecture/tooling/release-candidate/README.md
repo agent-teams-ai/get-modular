@@ -7,18 +7,24 @@ Changesets selects every version and dependent release. The leaf owns normalized
 pure comparisons; this Host owns Git, files, installed engine custody,
 configuration, changelog history and the version workflow.
 
-The implementation is prepared for exact registry version `0.1.0`. That public
-version is not yet available at this preparation checkpoint. The production
-catalog expresses the intended version, the existing lock has no fabricated
-resolution, and the
-[retained-input admission](../npm-release/release-checks-adoption.json) remains
-unqualified with `integrity: null`. The owner keeps this adoption unmerged until
-the supported archive is published and its actual registry installation,
-integrity, authoritative pnpm lock and final native CI are qualified.
+The implementation selects exact registry version `0.1.0`, now published.
+The public archive passed independent installed-package, strict TypeScript 7.0.2,
+conformance and signature/provenance checks on 2026-10-26. Its actual SRI is
+recorded in the [admission](../npm-release/release-checks-adoption.json). Both
+authentic manager locks and final native CI remain required before merge.
+The historical retained-input comparison still rejects the independent
+Foundation/Bun cohort change; this leaf admission does not widen that exception.
 
 ## Version and review route
 
-`pnpm release:version` runs the checked Host. The
+The version workflow installs the unchanged-source Node qualification profile
+with `node architecture/tooling/runtime/dev.ts install-node-qualification`,
+then runs `node architecture/tooling/release-candidate/run.ts version`.
+The Host requires a Node process, Bun source metadata, a pnpm installation and
+no Bun installation or Node manager projection. It binds the actual Node version
+and executable as well as the installed engine. The root `release:version`
+script names the same checked Host; invoking it requires that qualification
+installation. The
 [version workflow](../../../.github/workflows/release-version.yml) uses pinned
 Changesets action 1.9.0 without a publish command or OIDC permission. It captures
 the actual processed main after the action's admitted reset. The
@@ -70,7 +76,7 @@ existing shared publisher pin.
    when a PR checkout has no local main. Candidate versions never provide expected
    plan facts. It compares the actual candidate against the accepted plan and
    exact generated output, including new changelog content. Later branch edits
-   and stale bases reject. The existing 43 required product jobs remain intact.
+   and stale bases reject. The existing 64 required product jobs remain intact.
 8. The owner obtains independent review and exact head/base CI, then uses the
    [canonical owner merge guard](https://github.com/agent-teams-ai/.github/blob/main/scripts/merge-owner-pr.mjs).
    After the reviewed adoption and real version merge, run the existing manual
@@ -100,13 +106,13 @@ promotion must qualify its concrete owning operation before it can use this
 route's complete-diff check. It currently fails closed rather than silently
 allowing arbitrary baseline edits. The native migration packet and eight-capability
 configuration are unchanged. Preparation incorporates the separate upstream tooling
-migration to Foundation 2.1.1 and FMS 0.2.3. That migration preserves the immutable
+accepted migration to Bun 1.4.3, Foundation 3.0.0, FMS 0.3.0 and Stack 0.1.1. That migration preserves the immutable
 adoption identities and does not expand the release-checks-only retained-input
 exception or qualify current-source archives against previously published bytes.
 
 ## Qualification
 
-`pnpm tooling:native:typecheck` checks every new maintained TypeScript source and
+`node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit` checks every new maintained TypeScript source and
 test with strict TypeScript 7.0.2. `node --test tests/release-candidate.test.ts`
 runs the installed public conformance corpus and actual Changesets fixtures for
 direct/dependent propagation, symbolic ranges, the Resources patch, no-release
@@ -125,7 +131,7 @@ no-release fixtures accept the reader's documentation names and reject hidden
 documentation edits before and after generation. Those results retain their
 original source bindings; synchronizing to a later released main does not
 establish new qualification. This does not certify
-an unpublished `0.1.0` registry installation, hosted workflow execution, owner PR,
+the `0.1.0` registry installation, hosted workflow execution, owner PR,
 publication, promotion or retained-archive reconciliation. Those checkpoints
 remain separate in the accepted delivery plan.
 

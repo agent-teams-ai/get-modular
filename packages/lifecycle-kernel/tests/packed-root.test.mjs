@@ -1,9 +1,10 @@
+import { pinnedPnpmCli } from "./support/pinned-pnpm.ts";
 import { supportedCompilers } from "./support/compilers.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { access, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
@@ -16,30 +17,11 @@ function run(command, args, cwd) {
   return result.stdout.trim();
 }
 
-async function pinnedPnpmCli() {
-  const candidates = [];
-  if (process.env.npm_execpath && /pnpm\.(?:c?js|mjs)$/u.test(process.env.npm_execpath)) {
-    candidates.push(process.env.npm_execpath);
-  }
-  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
-    try {
-      const target = await realpath(join(directory, "pnpm"));
-      if (/\.(?:c?js|mjs)$/u.test(target)) candidates.push(target);
-    } catch (error) {
-      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
-    }
-  }
-  for (const candidate of candidates) {
-    try { await access(candidate); return await realpath(candidate); } catch {}
-  }
-  throw new Error("Pinned pnpm JavaScript CLI is required; no shell/download fallback");
-}
-
 test("candidate archive exposes the full lifecycle semantics through its public ESM root", async () => {
   const temporary = await mkdtemp(join(tmpdir(), "lifecycle-kernel-pack-"));
   try {
     const filename = run(process.execPath,
-      [await pinnedPnpmCli(), "pack", "--pack-destination", temporary], packageRoot)
+      [await pinnedPnpmCli(resolve(packageRoot, "../..")), "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], packageRoot)
       .split("\n").at(-1);
     assert.match(filename, /\.tgz$/);
     const installed = join(temporary, "consumer/node_modules/@get-modular/lifecycle-kernel");

@@ -7,7 +7,7 @@ import { mkdir, readFile, writeFile, rename, open, readdir, lstat, realpath }
   from 'node:fs/promises';
 import { isAbsolute, join, dirname } from 'node:path';
 import { arch, platform } from 'node:os';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readPackageArchive } from './support/package-archive.mjs';
 import { typeScriptPackageRoots } from './support/typescript-project.ts';
@@ -18,6 +18,7 @@ import { produceSemanticRuntimeFixtures } from './support/m3-semantic-runtime-fi
 import { produceDescriptorRuntimeFixtures } from './support/m3-descriptor-runtime-fixtures.mjs';
 import { produceInvocationRuntimeFixtures } from './support/m3-invocation-runtime-fixtures.mjs';
 import { bounded } from './support/m3-cdp.mjs';
+import { assertM3NativeController } from './support/m3-node-policy.ts';
 import {
   publicArchiveRoot, routeHandler, verifyRecords, verifySemanticRecords,
   verifyDescriptorRecords, descriptorBrowserSource, descriptorHelperNames,
@@ -371,7 +372,7 @@ async function stopOwned(child, exited) {
 
 export async function runElectronConsumer(rawInput) {
   const input = validateInput(rawInput);
-  assert.equal(Number(process.versions.node.split('.')[0]), 24, 'Node 24 parent required');
+  assertM3NativeController(fileURLToPath(new URL('../../', import.meta.url)), input.exactSourceSHA, process.version);
   assert.ok(['linux', 'darwin'].includes(platform()), 'POSIX process groups required');
   const archive = await archiveIdentity(input);
   const runtimeRoot = publicArchiveRoot(archive.files);

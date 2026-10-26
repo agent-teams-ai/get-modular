@@ -14,3 +14,7 @@
 
 # Retained generated observations keep their original bytes and remain inspectable.
 /tests/qualification/consumer-fixtures/growth/source-evidence/** linguist-generated=true
+
+# Raw retained Git patches include space-prefixed context and preserve exact bytes.
+/architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.diff -whitespace
+/architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-common-assembly.diff -whitespace

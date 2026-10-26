@@ -12,6 +12,26 @@ related:
 
 # Current TypeScript tooling qualification
 
+## Published Foundation 3 checkpoint, 2026-10-25
+
+Current exact development dependencies are Foundation 3.0.0, Feature Module
+Standard 0.3.0, Stack Toolchain 0.1.1 and Docs Protocol 0.6.6.
+[OIDC release 40187728694, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/40187728694/attempts/1)
+published them from source `23b5a885ba46a2b43b5715ce82db28fcf04f2175`.
+The FMS peer accepts Foundation 3; the adopted immutable FMS v1 authority,
+SDK pending/HOLD and historical package observations stay distinct.
+
+Stack owns the public TypeScript and Oxlint presets. Foundation quality policy
+v4 selects the consumer's explicit toolchain configuration and preserves all
+six production projects. Stack CLI executes under a physical supported Node
+controller even when Bun manages the repository. The Bun default and isolated
+Node 24 compatibility and Node 26 rollback retain separate installations and
+genuine manager lockfiles. This source migration does not establish the final
+native CI matrix, shared M3 archive qualification or production adoption.
+
+Earlier dated checkpoints below retain their original package coordinates,
+archive evidence and qualification limits.
+
 ## Scope and authority
 
 The repository owner's explicit instruction requires every executed TypeScript
@@ -92,8 +112,7 @@ historical inputs and evidence. This checkpoint does not claim a fresh retained
 historical qualification. Fixed-two transition data, original registry subjects,
 SDK predecessor inputs, HOLD and unverified-authority expectations are unchanged.
 The earlier 1.7.4 installation was refused by the compiler preflight. The
-current local candidate instead binds the verified published native archive
-below. Earlier local results keep their original source identities; they do
+current candidate binds the verified published Foundation 2.0.1 archive below. Earlier local results keep their original source identities; they do
 not claim an aggregate gate or final head/base CI for this candidate.
 
 ## Installed Foundation boundary
@@ -117,7 +136,75 @@ exact 0.2.0 candidate files. The original five typed observations and four
 transitions retain their incomplete-evidence, HOLD and unverified-authority
 expectations. This fixture supplies no release authority or G1 activation.
 
-### Published native artifact and local candidate
+### Published tooling checkpoint, 2026-10-21
+
+Current exact development pins are Foundation 2.0.1, FMS 0.2.1 and unchanged
+Docs 0.6.3. The FMS optional peer remains `^1.8.0 || ^2.0.0`; adopted FMS v1,
+SDK pending/HOLD and mutable workflow feedback remain unchanged.
+
+[Protected release run 39511720000, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39511720000/attempts/1)
+published Foundation 2.0.1 and FMS 0.2.1 from exact source
+`1218dbb53369d3beb3ee5b1b7544c261bf93136c`. Foundation's actual archive binds
+SHA-256 `911978aab96560997035e2d09fdffc1fb428ffdb04817747f6af4e9bd5bf4d48`
+and SRI `sha512-Nh7jjvGz0XQXXXjDALD024a88N86digBhJIeyAkOHTGpV6O+eNJtjg+bF+J77khLxCyB4c7gB8GqwN8HxX+pkg==`.
+Docs 0.6.3 and its dependency closure remain the published artifacts from
+`4ca4ad30b1efc5e3b43a2c012348ea8afea21864`.
+
+Independent eight-package cohort reconciliation returned GO;
+`ef201-published-cohort-review/independent-final-review.json` has SHA-256
+`406dca7764dd01827a27be8bff88a94307dba0ef545aeccf1b9451e52c497d6d`.
+The separate complete published Foundation verifier passed 2,780 file checks,
+four quality CLI controls and six workflow controls across Node/Bun profiles;
+`foundation-2.0.1-postpublication-built-source/verification.json` has SHA-256
+`1c58c0590dad3510663c24deeb06c5be05be5154f517b000497808993f33b036`.
+
+Both genuine GM locks were regenerated with pinned pnpm 11.20.0 and Bun 1.4.3.
+Strict frozen pnpm lock-only admission and Bun's frozen dry run passed, with
+workspace/catalog bytes preserved. The managers retain their own peer and
+optional dependency graphs. `gm-ef201-dual-lock-generation-receipt.json` has
+SHA-256 `feb5e45ac3111a6f068e4d87b8fe3aba5c8d01c646cafaa6ec409f41e05759c5`.
+These upstream and lock-admission proofs do not qualify the new GM checkout.
+Clean Bun/Node installations, focused installed checks, full CI, M3 and packed
+qualification remain pending. The current failure-retention producer binds
+Foundation 2.0.1 and its actual SRI; captured historical CLI bytes stay exact.
+
+### Published tooling checkpoint, 2026-10-20
+
+This dated checkpoint retains its original 2.0.0 cohort and receipts below;
+its current-state wording refers to that earlier checkpoint.
+
+Current exact development pins are Foundation 2.0.0, FMS 0.2.0 and Docs 0.6.3.
+FMS's optional Foundation peer is `^1.8.0 || ^2.0.0`; GM's adopted FMS v1
+identity remains unchanged. Foundation's actual archive binds:
+
+- SHA-256: `855227b2383f7a69358142ccec2bc88b601d97428104504d775524a6fdc856d3`.
+- SRI: `sha512-n12TlBVEyR0p9JL+3cjvCn+YukOu5wmKV2AK5Q1F44S+ULusTTNR9EyCplENsHrtAHFL3CeDhUYw/NpJmxVc9g==`.
+- Source: `18bc5d1c1310b9837f26ac43b16dab63a087154f`.
+
+[Protected release run 39473703985, attempt 1](https://github.com/agent-teams-ai/engineering-foundation/actions/runs/39473703985/attempts/1)
+succeeded. Independent cohort reconciliation returned GO, including the actual
+Docs 0.6.3 archive from its earlier release source; `cohort-verdict.json` has
+SHA-256 `293f074e95c22ff8425fc5ad937c50aa9b6a8af3e7b9e678da19b08242997b73`.
+The separate Foundation installed verifier passed 2,776 file checks, four CLI
+controls and six workflow controls across Node/Bun profiles; `verification.json`
+has SHA-256 `016514224f6112f21ba2f2fde305fe6db8a47fa91f7cbc7ab27a1184328d9bd7`.
+
+Both actual GM locks were generated with these pins. Pnpm 11.20.0 passed strict
+generation and frozen strict lock-only admission; Bun 1.4.3 passed generation
+and a frozen dry run with the manifest projection preserved. Receipt
+`gm-dual-lock-generation-receipt.json` has SHA-256
+`d8756838f51d1f534d4d6932275ef31158d5446dea6cb6aa60bdab8794ba2403`.
+These are Foundation verification and GM lock-admission proofs. Clean GM
+Bun/Node installations, compiler/native checks, full CI, M3 and packed
+qualification remain pending. The current failure-retention producer binds
+Foundation 2.0.0 and its actual SRI; historical CLI bytes remain unchanged.
+SDK growth stays pending/HOLD with its external proof requirements intact.
+
+### Historical 1.10.0 native artifact and local candidate
+
+The following record retains its original wording and receipt bytes. References
+to the current candidate or producer in this record mean its earlier 1.10.0
+checkpoint, not the current pins and qualification state above.
 
 The current local candidate pins the public registry package
 `@agent-teams/engineering-foundation@1.10.0` with this exact archive identity:
@@ -187,10 +274,13 @@ required by `foundation:check`; no additional release workflow is introduced.
 
 ## Verification and merge sequence
 
-The existing five CI lane groups, all six operating-system/Node combinations,
-three optional leaf admissions, public entrypoint inventories and release-owned
-file checks retain their scope. Current source changes must pass the existing
-fast and full gates with the actual installed native registry package.
+The current CI matrix has six roles on each of Ubuntu, macOS and Windows for
+default Bun, projected Node 24 compatibility and projected Node 26 rollback.
+Node 26.11.1 remains the default controller; explicit Node qualification and
+packed routes retain their separate guards. Existing leaf admissions, public
+entrypoint inventories and release-owned file checks retain their scope. The
+current cohort still needs clean Get Modular installation, fast/full and native
+CI/M3 evidence; the published Foundation verifier does not provide it.
 
 The sequence is:
 
@@ -209,7 +299,7 @@ does not replace the versioned release preflight or authorize an extra baseline
 release. The planned implementation minor provides the actual release context.
 
 This local candidate records the actual native registry artifact and its
-separate cryptographic verification. Protected release closure, current
-aggregate qualification and final head/base CI are not inferred from that
-artifact record. Exact results belong to the final PR and release evidence;
+separate cryptographic verification. Foundation protected release completion is independently verified above; Get
+Modular aggregate qualification and final head/base CI are not inferred from
+that artifact record. Exact results belong to the final PR and release evidence;
 earlier candidate checks retain their original source and artifact bindings.

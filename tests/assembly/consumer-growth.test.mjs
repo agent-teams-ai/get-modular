@@ -6,7 +6,23 @@ import { join } from "node:path";
 import test from "node:test";
 import { runGrowthCorrectness } from "../qualification/consumer-fixtures/growth/run.mjs";
 import { readUpstreamCandidate, upstreamSelection } from "../qualification/consumer-fixtures/growth/upstream-compiler.ts";
-import { runGrowthSourceCorrectness } from "../qualification/consumer-fixtures/growth/source.ts";
+import { growthSourceAuthority, runGrowthSourceCorrectness } from "../qualification/consumer-fixtures/growth/source.ts";
+
+test("growth CMS witness matches authenticated current guidance without expanding adoption", async () => {
+  const { loadSdkGrowthModel, validateCmsGuidance } = await import("../../architecture/checks/sdk-growth.mjs");
+  const model = await loadSdkGrowthModel();
+  validateCmsGuidance(model);
+  const witness = growthSourceAuthority.reviewedCms;
+  assert.deepEqual(witness, {
+    repository: model.cmsReview.repository, path: model.cmsReview.path, anchor: model.cmsReview.anchor,
+    ...model.cmsReview.acceptedCurrent,
+    scope: `selected flat growth source predicates; production adoption ${model.cmsReview.growthScopeReview.productionAdoption}`,
+  });
+  assert.equal(Object.isFrozen(growthSourceAuthority), true);
+  assert.equal(Object.isFrozen(witness), true);
+  assert.equal(model.cmsReview.growthScopeReview.observation, "not-selected");
+  assert.equal(model.cmsReview.scopeReview.activation, "hold");
+});
 
 test("growth source qualifies its flat mapping through installed public owners", { timeout: 600000 }, async t => {
   t.diagnostic(JSON.stringify(await runGrowthSourceCorrectness()));

@@ -18,7 +18,9 @@ function isIntentPath(path: string): boolean {
   return name !== undefined && !name.startsWith(".") && name.endsWith(".md")
     && !/^README\.md$/iu.test(name) && !["AGENTS.md", "CLAUDE.md", "GEMINI.md"].includes(name);
 }
-const policyPaths = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc",
+const policyPaths = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "bun.lock", "bunfig.toml", ".bun-version", ".node-version", ".npmrc",
+  "architecture/tooling/runtime/admission.ts", "architecture/tooling/runtime/dev.ts",
+  "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/policy.ts",
   "architecture/tooling/release-candidate/host.ts", "architecture/tooling/release-candidate/io.ts",
   "architecture/tooling/release-candidate/run.ts"] as const;
 export interface PreparedRelease {
@@ -43,7 +45,12 @@ function configuration(tree: SourceTree): Record<string, unknown> {
   const workspace = record(parse(required(tree, "pnpm-workspace.yaml").contents));
   assert.deepEqual(workspace["packages"], ["packages/*"], "candidate.workspace-topology");
   assert.equal(record(workspace["catalog"])["@changesets/cli"], "3.0.2", "candidate.declared-engine-version");
-  assert.equal(record(semantic(required(tree, "package.json"))["devDependencies"])["@changesets/cli"], "catalog:", "candidate.engine-declaration");
+  const manifest = semantic(required(tree, "package.json"));
+  assert.equal(record(manifest["devDependencies"])["@changesets/cli"], "catalog:", "candidate.engine-declaration");
+  if (manifest["packageManager"] === "bun@1.4.3") {
+    assert.deepEqual(manifest["workspaces"], { packages: workspace["packages"], catalog: workspace["catalog"] },
+      "candidate.workspace-catalog-drift");
+  }
   return config;
 }
 function inventory(tree: SourceTree): readonly WorkspacePackage[] {

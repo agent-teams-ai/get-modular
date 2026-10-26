@@ -1,10 +1,11 @@
+import { pinnedPnpmCli } from "./support/pinned-pnpm.ts";
 import { supportedCompilers } from "./support/compilers.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { access, cp, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -20,35 +21,16 @@ function run(command, args, cwd, timeout) {
   return result.stdout.trim();
 }
 
-async function pinnedPnpmCli() {
-  const candidates = [];
-  if (process.env.npm_execpath && /pnpm\.(?:c?js|mjs)$/u.test(process.env.npm_execpath)) {
-    candidates.push(process.env.npm_execpath);
-  }
-  for (const directory of (process.env.PATH ?? "").split(delimiter)) {
-    try {
-      const target = await realpath(join(directory, "pnpm"));
-      if (/\.(?:c?js|mjs)$/u.test(target)) candidates.push(target);
-    } catch (error) {
-      if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
-    }
-  }
-  for (const candidate of candidates) {
-    try { await access(candidate); return await realpath(candidate); } catch {}
-  }
-  throw new Error("Pinned pnpm JavaScript CLI is required; no shell/download fallback");
-}
-
 test("the archive installs beside its peer archives as one root-only ESM package", async (t) => {
   const temporary = await mkdtemp(join(tmpdir(), "conformance-pack-"));
   try {
-    const pnpm = await pinnedPnpmCli();
+    const pnpm = await pinnedPnpmCli(resolve(packageRoot, "../.."));
     const consumer = join(temporary, "consumer");
     const sources = {};
     const archiveDigests = {};
     for (const name of ["conformance", ...PEERS]) {
       const root = join(workspace, "packages", name);
-      const filename = run(process.execPath, [pnpm, "pack", "--pack-destination", temporary], root)
+      const filename = run(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], root)
         .split(/\r?\n/u).at(-1);
       assert.match(filename, /\.tgz$/u);
       const archive = resolve(temporary, filename);

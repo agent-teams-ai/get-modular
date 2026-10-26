@@ -16,6 +16,27 @@
       "kind": "test"
     },
     {
+      "file": "tests/repository-agent-workflow.test.ts",
+      "names": [
+        "full-scan roots retain Core metadata coverage within the published schema bound"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/repository-agent-workflow.test.ts",
+      "names": [
+        "check-changed reports v2 repository coverage with unverified mutable custody"
+      ],
+      "kind": "test"
+    },
+    {
+      "file": "tests/repository-agent-workflow.test.ts",
+      "names": [
+        "check-changed rejects v1 and legacy v2 policies before executing checks"
+      ],
+      "kind": "test"
+    },
+    {
       "file": "tests/source-dependencies.test.mjs",
       "names": [
         "Foundation rejects consumer imports of a concrete provider"

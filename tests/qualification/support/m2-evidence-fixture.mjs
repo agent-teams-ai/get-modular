@@ -8,14 +8,16 @@ import { promisify } from 'node:util';
 import { parse } from 'yaml';
 import { M2_EVIDENCE_LEDGER } from '../../../architecture/checks/m2-evidence.mjs';
 import { M2_ORIGINAL_DECISION, m2Digest, readCurrentM2Authority } from '../../../architecture/checks/m2-lock-witness.mjs';
-import { assertGitIndexSnapshotCurrent, readIndexSnapshotFile } from '../../../architecture/checks/tracked-file-custody.mjs';
+import { assertGitIndexSnapshotCurrent } from '../../../architecture/checks/tracked-file-custody.mjs';
+import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from '../../../architecture/tooling/runtime/projection-custody.ts';
 
 const exec = promisify(execFile);
 const SUITES = Object.freeze(['tests/m2-start.test.mjs',
   'tests/qualification/m2-candidate/retained-acceptance.test.mjs']);
 const CURRENT_MODULES = ['architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.mjs',
   'architecture/checks/private-core-start.mjs', 'architecture/checks/production-artifacts.mjs',
-  'architecture/checks/tracked-file-custody.mjs'];
+  'architecture/checks/tracked-file-custody.mjs', 'architecture/tooling/runtime/projection-custody.ts',
+  'architecture/tooling/runtime/policy.ts'];
 const ADR20 = 'docs/decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md';
 const TOOLS = ['canonicalize', 'jsonc-parser', 'yaml'];
 const REPORTER = 'export default async function* (events) {\n'
@@ -95,7 +97,7 @@ export async function prepareM2EvidenceFixture(snapshot) {
   const workspace = parse(observed.get('pnpm-workspace.yaml').toString());
   const lock = parse(observed.get('pnpm-lock.yaml').toString());
   const toolInputs = [];
-  // Static import closure: 15 repository modules reach these three leaf tools.
+  // The explicit static repository import closure reaches these three leaf tools.
   // No copied consumer, dependency install, package script or tool override.
   for (const name of TOOLS) {
     const directory = await realpath(join(snapshot.repositoryRoot, 'node_modules', name));

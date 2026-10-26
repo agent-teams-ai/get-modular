@@ -75,7 +75,7 @@ async function change(root: string, path: string, delta: MetadataDelta) {
 
 async function nativeFixture(root: string, paths: FixturePaths) {
   const compiler = dirname(paths.foundation);
-  await change(root, paths.foundationPackage, { dependencies: {
+  await change(root, paths.foundationPackage, { version: "3.0.0", dependencies: {
     typescript: "7.0.2", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0",
   } });
   await change(root, paths.foundation, { optionalDependencies: {
@@ -245,23 +245,23 @@ test("CLI and direct SDK admission stop before loading the incompatible extracto
 test("Foundation CLI, mandatory runner and SDK scripts retain their commands after the blocking preflight", async () => {
   const { scripts } = JSON.parse(await readFile(join(repository, "package.json"), "utf8")) as { readonly scripts: Readonly<Record<string, string>> };
   for (const [name, next] of [
-    ["foundation:check", "pnpm foundation:migration:typecheck && pnpm foundation:migration:test && node architecture/checks/native-public-api-migration.ts"],
+    ["foundation:check", "node architecture/tooling/runtime/command.ts run foundation:migration:typecheck && node architecture/tooling/runtime/command.ts run foundation:migration:test && node architecture/checks/native-public-api-migration.ts"],
     ["ownership:checkpoint:test", "node --test tests/ownership-checkpoint.test.mjs"],
-    ["foundation:assert-dev-only", "agent-teams-foundation assert-dev-only"],
-    ["foundation:assert-registry", "agent-teams-foundation assert-registry"],
-    ["foundation:status", "agent-teams-foundation status"],
-    ["quality:critical:test", "node architecture/checks/required-quality-tests.mjs"],
-    ["sdk-growth:check", "pnpm sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs"],
+    ["foundation:assert-dev-only", "node architecture/tooling/runtime/command.ts tool agent-teams-foundation assert-dev-only"],
+    ["foundation:assert-registry", "node architecture/tooling/runtime/command.ts tool agent-teams-foundation assert-registry"],
+    ["foundation:status", "node architecture/tooling/runtime/command.ts tool agent-teams-foundation status"],
+    ["quality:critical:test", "node architecture/tooling/runtime/command.ts tool architecture/checks/required-quality-tests.mjs"],
+    ["sdk-growth:check", "node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs"],
     ["sdk-growth:test", "node --test tests/sdk-growth.test.mjs"],
-    ["sdk-growth:admission", "pnpm sdk-growth:typecheck && node tests/qualification/sdk-growth-admission.mjs"],
-    ["sdk-growth:registry", "pnpm sdk-growth:typecheck && node tests/qualification/sdk-growth-registry-consumer.ts"],
+    ["sdk-growth:admission", "node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node tests/qualification/sdk-growth-admission.mjs"],
+    ["sdk-growth:registry", "node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node tests/qualification/sdk-growth-registry-consumer.ts"],
   ] as const) {
     assert.ok(scripts[name]?.startsWith(`node ${guard} && ${next}`), name);
   }
-  assert.equal(scripts["check:changed"], "agent-teams-foundation agent-workflow changed --consumer .");
-  assert.equal(scripts["quality:coverage:scope"], "agent-teams-foundation quality check --consumer . --scope-only");
-  assert.equal(scripts["lint:typed"], "agent-teams-foundation quality check --consumer .");
-  assert.equal(scripts["precheck:changed"], `pnpm runtime:preflight && node ${guard}`);
+  assert.equal(scripts["check:changed"], "node architecture/tooling/runtime/command.ts tool agent-teams-foundation agent-workflow check-changed --consumer .");
+  assert.equal(scripts["quality:coverage:scope"], "node architecture/tooling/runtime/command.ts tool agent-teams-foundation quality check --consumer . --scope-only");
+  assert.equal(scripts["lint:typed"], "node architecture/tooling/runtime/command.ts tool agent-teams-foundation quality check --consumer .");
+  assert.equal(scripts["precheck:changed"], `node architecture/tooling/runtime/command.ts run runtime:preflight && node ${guard}`);
   assert.equal(scripts["prequality:coverage:scope"], `node ${guard}`);
   assert.equal(scripts["prelint:typed"], `node ${guard}`);
   assert.equal(scripts["runtime:preflight"], "node architecture/checks/node-version.mjs");
@@ -275,19 +275,18 @@ test("Foundation CLI, mandatory runner and SDK scripts retain their commands aft
 // Copy the canonical commands, hooks and configuration. The existing checked
 // docs fixture is a CLI sentinel: its deliberate assertion proves it was reached.
 // Only the executable host shim differs by OS; no compiler/package body is loaded.
-test("pinned pnpm and the actual CI runner enforce compiler hooks before the public CLI", async context => {
+test("pinned Bun and the actual CI runner enforce compiler hooks before the public CLI", async context => {
   const { scripts, packageManager } = JSON.parse(await readFile(join(repository, "package.json"), "utf8")) as {
     readonly scripts: Readonly<Record<string, string>>; readonly packageManager: string;
   };
   const windows = process.platform === "win32";
-  const command = windows ? process.env["ComSpec"] ?? "cmd.exe" : "pnpm";
-  const pnpmArguments = (args: readonly string[]): string[] => windows
-    ? ["/d", "/s", "/c", `pnpm ${args.join(" ")}`] : [...args];
-  const version = spawnSync(command, pnpmArguments(["--version"]), { encoding: "utf8", timeout: 30_000 });
+  const command = "bun";
+  const managerArguments = (args: readonly string[]): string[] => [...args];
+  const version = spawnSync(command, managerArguments(["--version"]), { encoding: "utf8", timeout: 30_000 });
   assert.ifError(version.error);
   assert.equal(version.status, 0, version.stderr);
-  assert.equal(version.stdout.trim(), "11.20.0");
-  assert.equal(packageManager, "pnpm@11.20.0");
+  assert.equal(version.stdout.trim(), "1.4.3");
+  assert.ok(["bun@1.4.3", "pnpm@11.20.0"].includes(packageManager));
   const entries = ["check:changed", "quality:coverage:scope", "lint:typed"] as const;
   const modes = ["compatible", "below-floor", "legacy"] as const;
   const script = (name: string): string => {
@@ -305,7 +304,7 @@ test("pinned pnpm and the actual CI runner enforce compiler hooks before the pub
         await nativeFixture(root, paths);
         const fixtureScripts: Record<string, string> = {
           "runtime:preflight": script("runtime:preflight"),
-          "check:fast": "pnpm quality:coverage:scope",
+          "check:fast": "node architecture/tooling/runtime/command.ts run quality:coverage:scope",
         };
         for (const name of entries) {
           fixtureScripts[name] = script(name);
@@ -313,12 +312,13 @@ test("pinned pnpm and the actual CI runner enforce compiler hooks before the pub
         }
         if (entry === "missing-hook-control") delete fixtureScripts["prequality:coverage:scope"];
         await put(root, "package.json", { name: "gm-compiler-hook-test", private: true, type: "module",
-          packageManager, scripts: fixtureScripts });
+          packageManager: "bun@1.4.3", devDependencies: { "@agent-teams/engineering-foundation": "3.0.0" }, scripts: fixtureScripts });
         await put(root, ".npmrc", npmrc);
         await put(root, "README.md", "deliberate CLI sentinel: no heading\n");
         const driver = "tests/fixtures/repository-agent-workflow/docs-check.ts";
         for (const path of [guard, "architecture/checks/node-version.mjs", driver,
-          "architecture/tooling/run-ci-check-lane.mjs"]) {
+          "architecture/tooling/run-ci-check-lane.mjs", "architecture/tooling/runtime/command.ts",
+          "architecture/tooling/runtime/policy.ts"]) {
           await mkdir(dirname(join(root, path)), { recursive: true });
           await cp(join(repository, path), join(root, path));
         }
@@ -327,18 +327,19 @@ test("pinned pnpm and the actual CI runner enforce compiler hooks before the pub
         await writeFile(join(bin, `agent-teams-foundation${windows ? ".cmd" : ""}`), windows
           ? `@"${process.execPath}" "${join(root, driver)}" %*\r\n@exit /b %errorlevel%\r\n`
           : `#!/bin/sh\nexec ${quote(process.execPath)} ${quote(join(root, driver))} "$@"\n`, { mode: 0o755 });
+        await change(root, paths.foundationPackage, { bin: { "agent-teams-foundation": join(root, driver) } });
         if (mode === "below-floor") await change(root, paths.foundation, { version: "5.9.3" });
         if (mode === "legacy") {
           await change(root, paths.foundationPackage, { dependencies: { "@microsoft/api-extractor": "7.58.12" } });
           await change(root, paths.extractor, { version: "5.9.3" });
         }
         // Exercise the normal alias, explicit run, unchanged CI dispatcher and
-        // nested pnpm invocation without replacing the three actual CLI routes.
+        // nested manager invocation without replacing the three actual CLI routes.
         const result = entry === "lint:typed"
           ? spawnSync(process.execPath, [join(root, "architecture/tooling/run-ci-check-lane.mjs")], {
-            cwd: root, env: { ...process.env, LANE_SCRIPTS: "lint:typed" }, encoding: "utf8", timeout: 30_000,
+            cwd: root, env: { ...process.env, ROOT_CI_RUNTIME_PROFILE: "bun", LANE_SCRIPTS: "lint:typed" }, encoding: "utf8", timeout: 30_000,
           })
-          : spawnSync(command, pnpmArguments(entry === "check:changed" ? [entry]
+          : spawnSync(command, managerArguments(entry === "check:changed" ? [entry]
             : ["run", entry === "nested-fast" ? "check:fast"
               : entry === "missing-hook-control" ? "quality:coverage:scope" : entry]), {
             cwd: root, encoding: "utf8", timeout: 30_000,

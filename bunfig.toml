@@ -1,0 +1,7 @@
+[install]
+ignoreScripts = true
+linker = "isolated"
+
+[run]
+# Preserve explicit Node commands and node:test qualification.
+bun = false
