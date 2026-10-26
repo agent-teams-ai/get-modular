@@ -103,13 +103,14 @@ function validateLanes(value, manifest = packageJson) {
       "node-version": "${{ env.ROOT_CI_NODE_VERSION }}",
       "node-version-file": ".node-version",
     }, "runtime selection must retain the Node 26 default and explicit Node 24 override");
-    assert.equal(job.steps.length, 10, "checkout, provisioning, projection, install, peers, payload and integrity");
+    assert.equal(job.steps.length, 11, "checkout, provisioning, projection, install, peers, payload and integrity");
     assert.equal(job.steps[3].uses, "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     assert.equal(job.steps[3].with["bun-version-file"], ".bun-version");
-    assert.equal(job.steps[4].run, "node architecture/tooling/runtime/ci.ts");
-    assert.equal(job.steps[5].run, "node architecture/tooling/runtime/dev.ts install");
-    assert.equal(job.steps[6].run, "node architecture/tooling/runtime/dev.ts peers");
-    for (const step of job.steps.slice(5, 9)) {
+    assert.equal(job.steps[4].run, "node architecture/tooling/runtime/retained-history.ts");
+    assert.equal(job.steps[5].run, "node architecture/tooling/runtime/ci.ts");
+    assert.equal(job.steps[6].run, "node architecture/tooling/runtime/dev.ts install");
+    assert.equal(job.steps[7].run, "node architecture/tooling/runtime/dev.ts peers");
+    for (const step of job.steps.slice(6, 10)) {
       assert.equal(step["working-directory"], "${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}");
     }
     for (const step of job.steps.slice(0, -1)) {
@@ -339,8 +340,8 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
         .replace("governance:check assembly:build", "assembly:build governance:check");
     });
     mutate(job => { job.steps[6].if = "false"; });
-    mutate(job => { job.steps[5].run = "bun install"; });
-    mutate(job => { job.steps[6].run = "pnpm peers check"; });
+    mutate(job => { job.steps[6].run = "bun install"; });
+    mutate(job => { job.steps[7].run = "pnpm peers check"; });
     mutate(job => { job.steps.splice(6, 1); });
     mutate(job => { job.env = { ROOT_CI_NODE_VERSION: "26.9.9" }; });
     mutate(job => { job.steps[2].with["node-version"] = "26.9.9"; });
