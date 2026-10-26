@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
+import { createRequire, findPackageJSON } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { FileLeaf, JsonRecord } from "@agent-teams/release-checks";
 
 export interface SourceFile { readonly leaf: FileLeaf; readonly contents: string }
@@ -133,15 +134,13 @@ function packageManifest(from: string, name: string): string {
   const require = createRequire(from);
   try { return realpathSync(require.resolve(`${name}/package.json`)); }
   catch {
-    let directory = dirname(realpathSync(require.resolve(name)));
-    while (dirname(directory) !== directory) {
-      try {
-        const path = join(directory, "package.json");
-        if (record(JSON.parse(readFileSync(path, "utf8")))["name"] === name) {return path;}
-      } catch (error) { if (record(error)["code"] !== "ENOENT") {throw error;} }
-      directory = dirname(directory);
-    }
-    throw new Error(`candidate.unresolved-engine-package:${name}`);
+    // The Node public resolver handles import-only packages whose exports hide
+    // package.json and have no require condition (for example node-or-bun).
+    const path = findPackageJSON(name, pathToFileURL(from));
+    assert(path !== undefined, `candidate.unresolved-engine-package:${name}`);
+    const actual = realpathSync(path);
+    assert.equal(record(JSON.parse(readFileSync(actual, "utf8")))["name"], name, "candidate.engine-package-identity");
+    return actual;
   }
 }
 function installedFiles(root: string, prefix = ""): readonly [string, string][] {
