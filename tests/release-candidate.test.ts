@@ -232,10 +232,13 @@ for (const mode of ["request", "summary"] as const) {
       changeset(subject.root, "release", { "@get-modular/resources": "patch" });
       commit(subject.root, "fixture: independent source intent facts");
       assert(subject.copiedEngine !== undefined);
-      cpSync(join(repositoryRoot, "tests/qualification/support/forged-changesets-status.ts"), join(subject.copiedEngine, "forged-status.ts"));
+      // Node deliberately refuses type stripping inside node_modules. Compile
+      // the maintained, strict-checked helper before binding the corrupted engine.
+      execFileSync(process.execPath, [join(repositoryRoot, "node_modules/typescript/bin/tsc"),
+        "-p", join(repositoryRoot, "tests/tsconfig.forged-changesets-status.json"), "--outDir", subject.copiedEngine]);
       writeFileSync(join(subject.copiedEngine, "forged-status-mode"), mode);
       const manifest = record(JSON.parse(readFileSync(join(subject.copiedEngine, "package.json"), "utf8")));
-      writeFileSync(join(subject.copiedEngine, "package.json"), JSON.stringify({ ...manifest, bin: { ...record(manifest["bin"]), changeset: "./forged-status.ts" } }));
+      writeFileSync(join(subject.copiedEngine, "package.json"), JSON.stringify({ ...manifest, bin: { ...record(manifest["bin"]), changeset: "./forged-changesets-status.js" } }));
       assert.throws(() => prepareRelease(subject.root), mode === "request" ? /candidate.intent-plan-request-drift/u : /candidate.intent-plan-summary-drift/u);
       assert(existsSync(join(subject.root, ".changeset/release.md")), "Rejection must precede versioning and intent removal");
       assert.equal(record(JSON.parse(read(subject.root, "packages/resources/package.json")))["version"], "0.2.0");
