@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { hostname, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { parse } from "yaml";
 import type { ExpectedInputs } from "@agent-teams/release-checks";
@@ -77,6 +78,62 @@ function linkInstall(source: string, target: string): void {
 export function assertPromotionBranch(root: string): void {
   assert.equal(git(root, "branch", "--show-current").trim(), "changeset-release/main", "candidate.promotion-branch");
 }
+const receiptDirectory = ".agent-teams-local/foundation-operation-lock.completed-evidence";
+const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+/** Exact Repository Mutation 0.4.2 successful-release evidence, never candidate content. */
+export function assertPromotionReceipt(path: string, contents: string, pid: number): string {
+  assert(Buffer.byteLength(contents, "utf8") <= 8192, "candidate.producer-receipt-size");
+  assert(new RegExp(`^${receiptDirectory.replaceAll(".", "\\.")}/released\\.${uuid}/evidence$`, "u").test(path),
+    "candidate.producer-receipt-path");
+  const row = record(JSON.parse(contents));
+  assert.equal(row["host"], hostname(), "candidate.producer-receipt-host");
+  assert.equal(row["pid"], pid, "candidate.producer-receipt-process");
+  assert(Number.isSafeInteger(pid) && pid > 0, "candidate.producer-receipt-process");
+  assert(typeof row["token"] === "string" && new RegExp(`^${uuid}$`, "u").test(row["token"]),
+    "candidate.producer-receipt-token");
+  // The installed writer emits this exact closed JSON shape/order. Byte equality
+  // also rejects duplicate keys, BOMs, trailing data and noncanonical encodings.
+  assert.equal(contents, JSON.stringify({ host: hostname(), kind: "active", pid, schemaVersion: 1, token: row["token"] }) + "\n",
+    "candidate.producer-receipt-shape");
+  return row["token"];
+}
+function archivePromotionReceipts(work: string, temporary: string, before: SourceTree, after: SourceTree, pid: number): readonly string[] {
+  assert(!Object.keys(before).some(path => path.startsWith(".agent-teams-local/")), "candidate.producer-receipt-preimage");
+  const paths = Object.keys(after).filter(path => path.startsWith(".agent-teams-local/")).toSorted();
+  assert.equal(paths.length, 2, "candidate.producer-receipt-count");
+  const tokens = new Set<string>(); const receipts: { path: string; contents: string; digest: string }[] = [];
+  assert.deepEqual(readdirSync(join(work, ".agent-teams-local")), ["foundation-operation-lock.completed-evidence"],
+    "candidate.producer-receipt-state");
+  assert.deepEqual(readdirSync(join(work, receiptDirectory)).toSorted(), paths.map(path => path.split("/")[2]),
+    "candidate.producer-receipt-census");
+  for (const path of paths) {
+    const file = after[path]!;
+    assert.deepEqual([file.leaf.type, file.leaf.mode], ["file", "100644"], "candidate.producer-receipt-file");
+    for (const directory of [".agent-teams-local", receiptDirectory, dirname(path)]) {
+      assert(lstatSync(join(work, directory)).isDirectory(), "candidate.producer-receipt-directory");
+    }
+    assert.deepEqual(readdirSync(join(work, dirname(path))), ["evidence"], "candidate.producer-receipt-census");
+    const physical = join(work, path); const previous = lstatSync(physical, { bigint: true });
+    assert(previous.isFile() && previous.size <= 8192n, "candidate.producer-receipt-file");
+    const bytes = readFileSync(physical); const current = lstatSync(physical, { bigint: true });
+    for (const field of ["dev", "ino", "mode", "nlink", "size", "mtimeNs", "ctimeNs", "birthtimeNs"] as const) {
+      assert.equal(current[field], previous[field], "candidate.producer-receipt-drift");
+    }
+    assert.equal(hash(bytes), file.leaf.digest, "candidate.producer-receipt-drift");
+    const contents = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+    const token = assertPromotionReceipt(path, contents, pid);
+    assert(!tokens.has(token), "candidate.producer-receipt-duplicate"); tokens.add(token);
+    receipts.push({ path, contents, digest: hash(bytes) });
+  }
+  const delta = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter(path => identity(before[path]?.leaf ?? null) !== identity(after[path]?.leaf ?? null)).toSorted();
+  assert.deepEqual(delta, [...baselinePaths, ...paths].toSorted(), "candidate.producer-extra-output");
+  // Observe and retain the complete private delta before archiving the closed
+  // auxiliary set. No source ignore, general cleanup or caller write is involved.
+  console.log(JSON.stringify({ phase: "public-promotion-execution-evidence", root: realpathSync(work), pid, delta, receipts }));
+  renameSync(join(work, ".agent-teams-local"), join(temporary, "execution-evidence"));
+  return paths;
+}
 /** Owns a disposable trusted branch; never mutates caller refs or copies build output. */
 export function produceBaselines(prepared: PreparedRelease, candidate: SourceTree, paths: readonly string[]): void {
   if (paths.length === 0) {return;}
@@ -107,8 +164,14 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     const built = snapshot(work);
     for (const [path, file] of Object.entries(candidate)) {assert.deepEqual(built[path], file, "candidate.build-source-drift");}
     assertCustody(prepared.execution, custody(caller));
-    execute(work, process.execPath, [producer.entrypoint, "public-api-promote-release", "--consumer", work, "--json"]);
+    assert(!existsSync(join(work, ".agent-teams-local")), "candidate.producer-receipt-preimage");
+    const invocation = spawnSync(process.execPath, [producer.entrypoint, "public-api-promote-release", "--consumer", work, "--json"],
+      { cwd: work, encoding: "utf8", timeout: 120_000, maxBuffer: 32 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: "" } });
+    assert.ifError(invocation.error);
+    assert.equal(invocation.status, 0, `candidate.public-producer-failed:${invocation.stderr}`);
     assertBuildTools(prepared, work);
+    const observed = snapshot(work);
+    archivePromotionReceipts(work, temporary, built, observed, invocation.pid);
     const promoted = snapshot(work);
     const changed = [...new Set([...Object.keys(built), ...Object.keys(promoted)])]
       .filter(path => identity(built[path]?.leaf ?? null) !== identity(promoted[path]?.leaf ?? null)).toSorted();

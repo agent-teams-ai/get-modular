@@ -113,8 +113,17 @@ resolve to that private source; producer/tool dependencies retain their captured
 installation identity. The public `public-api-promote-release` command owns
 extraction and baseline writing. No historical native-transition request is used.
 
-Before copying anything back, observe all producer output, require exactly the
-two configured Core/Assembly baselines, unchanged API/extractor data and new
+Before copying anything back, observe all producer output. Foundation 3 also
+retires exactly two operation leases into private execution receipts. Validate
+their closed Repository Mutation 0.4.2 schema, canonical UTF-8 JSON, stable
+bounded regular files, fresh UUID paths/tokens, actual host and CLI child PID.
+Reject active locks, transaction barriers, foreign or extra entries. Retain the
+complete observed delta and receipt bytes in execution evidence before archiving
+that exact auxiliary set outside source. No receipt crosses back to the caller;
+this adds no ignored path or general cleanup permission.
+
+Require exactly the two configured Core/Assembly baseline source outputs,
+unchanged API/extractor data and new
 0.7.1 metadata, and revalidate caller custody and every preimage. Private build
 outputs stay in that owned workspace. Every other caller output remains governed
 by the whole-tree check, ignored files included. Independent current-base PR replay

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -14,7 +14,7 @@ import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, ver
 import { assertNodeQualification, array, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
-import { assertPromotionBranch, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
+import { assertPromotionBranch, assertPromotionReceipt, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nodeModules = join(repositoryRoot, "node_modules");
@@ -559,6 +559,25 @@ await test("real admitted metadata cohort promotes public baselines and independ
     const head = commit(root, "test(release): retain actual generated metadata candidate");
     assert.equal(verifyRelease(root, source, head).report.outcome, "passed");
   } finally { rmSync(temporary, { recursive: true, force: true }); }
+});
+
+await test("private producer receipts reject foreign processes, barriers and noncanonical evidence", () => {
+  const token = "12345678-1234-4234-8234-123456789abc";
+  const path = ".agent-teams-local/foundation-operation-lock.completed-evidence/released.87654321-4321-4321-8321-cba987654321/evidence";
+  const row = { host: hostname(), kind: "active", pid: process.pid, schemaVersion: 1, token };
+  const contents = JSON.stringify(row) + "\n";
+  assert.equal(assertPromotionReceipt(path, contents, process.pid), token);
+  for (const invalid of [{ ...row, kind: "transaction-barrier" }, { ...row, host: "foreign-host" },
+    { ...row, pid: process.pid + 1 }, { ...row, schemaVersion: 2 }, { ...row, token: "invalid" },
+    { ...row, extra: "unowned" }]) {
+    assert.throws(() => assertPromotionReceipt(path, JSON.stringify(invalid) + "\n", process.pid), /candidate.producer-receipt/u);
+  }
+  for (const invalid of [contents.trimEnd(), `\ufeff${contents}`, contents.replace('"schemaVersion":1', '"schemaVersion":1,"schemaVersion":1')]) {
+    assert.throws(() => assertPromotionReceipt(path, invalid, process.pid));
+  }
+  for (const invalid of [path.replace("released.", "active."), `${path}/extra`, path.replace(".agent-teams-local", "foreign")]) {
+    assert.throws(() => assertPromotionReceipt(invalid, contents, process.pid), /candidate.producer-receipt-path/u);
+  }
 });
 
 await test("batched historical custody preserves every exact blob including binary framing", () => {
