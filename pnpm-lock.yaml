@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@agent-teams/release-checks':
+      specifier: 0.1.0
+      version: 0.1.0
     '@changesets/cli':
       specifier: 3.0.2
       version: 3.0.2
@@ -65,6 +68,9 @@ importers:
       '@agent-teams/feature-module-standard':
         specifier: 0.3.0
         version: 0.3.0(@agent-teams/engineering-foundation@3.0.0(@types/node@24.19.1))
+      '@agent-teams/release-checks':
+        specifier: 'catalog:'
+        version: 0.1.0
       '@changesets/cli':
         specifier: 'catalog:'
         version: 3.0.2
@@ -208,6 +214,10 @@ packages:
     peerDependenciesMeta:
       '@agent-teams/engineering-foundation':
         optional: true
+
+  '@agent-teams/release-checks@0.1.0':
+    resolution: {integrity: sha512-bspWdQYc85GCvmR6fFn1wffHk6ZNRlY7ox288X7zN6yfzXbEE+a4WVPa3FU3TCaiZ6e2dqsiutgR3V0gZTPXjw==}
+    engines: {node: ^24.18.0 || ^26.0.0, pnpm: '>=11.17.0 <12'}
 
   '@agent-teams/repository-mutation@0.4.2':
     resolution: {integrity: sha512-gPjDKKIJU+7eNyPFRsnVpRJqQyhjg2F0XTsiGKSGYDI6w/oRfbdvRs2l7EBHFo3AGRWDk+dQVTGJ6gDr6a/BkQ==}
@@ -1931,6 +1941,8 @@ snapshots:
   '@agent-teams/feature-module-standard@0.3.0(@agent-teams/engineering-foundation@3.0.0(@types/node@24.19.1))':
     optionalDependencies:
       '@agent-teams/engineering-foundation': 3.0.0(@types/node@24.19.1)
+
+  '@agent-teams/release-checks@0.1.0': {}
 
   '@agent-teams/repository-mutation@0.4.2': {}
 
