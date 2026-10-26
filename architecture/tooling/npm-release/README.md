@@ -77,6 +77,13 @@ five `latest` targets; the archived intent is not rewritten.
 SHA-256 and SHA-512 integrity. Preparation reuses those exact archives only if
 that version and current package tree match, then verifies both hashes before
 copying. Package metadata, README, changelog and license are inside those trees.
+The historical commit `2cd561688bb223f944425718cc093e55ff4bc20d` is not an
+ancestor of current main. Explicit CI setup materializes only that fixed commit,
+requires tree `f04c469d8070a16a6b81c787eab72f2fd483c56b`, and retains it at
+`refs/qualification/retained-observation-0.1.0` before a Node profile is cloned.
+The selected clone verifies and retains the same exact object. Offline/local
+qualification requires that pinned history to be available already; tests never
+fetch it or accept missing-path fallbacks.
 Root build scripts, compiler/pack configuration, lockfile, toolchain selection
 and root license must also match the qualified release source; root development
 scripts unrelated to package construction may evolve independently. Input drift

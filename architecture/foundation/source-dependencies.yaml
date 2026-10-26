@@ -1001,6 +1001,7 @@ boundaries:
       - architecture/tooling/runtime/command.ts
       - architecture/tooling/runtime/dev.ts
       - architecture/tooling/runtime/ci.ts
+      - architecture/tooling/runtime/retained-history.ts
       - architecture/tooling/runtime/projection-check.ts
       - architecture/tooling/runtime/projection-custody.ts
       - architecture/tooling/generate-core.mjs

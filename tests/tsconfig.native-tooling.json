@@ -42,6 +42,7 @@
     "../architecture/tooling/release-candidate/baselines.ts",
     "../architecture/tooling/release-candidate/metadata-authority.ts",
     "../architecture/tooling/release-candidate/run.ts",
+    "../architecture/tooling/runtime/retained-history.ts",
     "qualification/support/forged-changesets-status.ts",
     "release-candidate.test.ts",
     "qualification/metadata-patch-pack.ts"
