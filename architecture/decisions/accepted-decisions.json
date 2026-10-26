@@ -186,6 +186,11 @@
       "id": "ADR-0041",
       "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
       "immutableDigest": "sha256:1876caeaec5aa79bc8a007e544f9c9303dda6a6f40f82e0de6e42ac37e02fdb2"
+    },
+    {
+      "id": "ADR-0042",
+      "path": "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md",
+      "immutableDigest": "sha256:1abf9f97ebe089f82c2183dc45a15f8528b09322184b6c19ecdc95df1dd0557f"
     }
   ]
 }

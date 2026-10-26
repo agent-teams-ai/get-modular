@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { gzipSync } from "node:zlib";
+import { Header } from "tar";
 import test from "node:test";
 import { parse } from "yaml";
 import {
@@ -10,7 +14,11 @@ import {
   json, manifestFrom, packageIds, record, repository, requiresRelease, retainedBuildPaths, retainedPackage, retainedSource, type ReleaseManifest,
 } from "../architecture/tooling/npm-release/policy.ts";
 
-import { registryVersion } from "../architecture/tooling/npm-release/registry.ts";
+import { registryArchive, registryVersion } from "../architecture/tooling/npm-release/registry.ts";
+import { assertArchivePayload, assertCurrentArchiveSource, currentArchivesFor, currentOriginalArchives,
+  metadataCohort, qualifyCurrentArchive } from "../architecture/tooling/npm-release/current-archives.ts";
+import { metadataDecision } from "../architecture/tooling/release-candidate/metadata-authority.ts";
+import { git } from "../architecture/tooling/release-candidate/io.ts";
 
 const source = "a".repeat(40);
 const workflow = await readFile(resolve(".github/workflows/ci.yml"), "utf8");
@@ -224,4 +232,101 @@ test("OIDC effects are isolated behind downloaded-byte consumer verification", a
   assert.deepEqual(record(releaseJobs.publish).needs, "prepare");
   assert.deepEqual(record(releaseJobs.verify).needs, ["prepare", "publish"]);
   assert.deepEqual(record(releaseJobs.promote).needs, ["prepare", "verify"]);
+});
+
+test("current archive routing is limited to the complete admitted metadata cohort", () => {
+  assert.deepEqual(currentArchivesFor(metadataCohort), currentOriginalArchives);
+  assert.deepEqual(currentArchivesFor(metadataCohort.map(item => ({ ...item, version: "9.0.0" }))), []);
+  for (const invalid of [metadataCohort.slice(1), [...metadataCohort, metadataCohort[0]!],
+    metadataCohort.map(item => item.name === "@get-modular/core" ? { ...item, version: "0.7.2" } : item),
+    metadataCohort.map(item => item.name === "@get-modular/conformance" ? { ...item, version: "0.5.0" } : item)]) {
+    assert.throws(() => currentArchivesFor(invalid), /release.current-archive-cohort/u);
+  }
+});
+
+function archiveFixture(rows: readonly { path: string; bytes: Buffer; mode?: number; type?: "File" | "SymbolicLink" }[]): Buffer {
+  const chunks: Buffer[] = [];
+  for (const row of rows) {
+    const header = Buffer.alloc(512);
+    new Header({ path: row.path, type: row.type ?? "File", mode: row.mode ?? 0o644, uid: 0, gid: 0,
+      mtime: new Date(0), size: row.bytes.length, ...(row.type === "SymbolicLink" ? { linkpath: "foreign" } : {}) }).encode(header);
+    chunks.push(header, row.bytes, Buffer.alloc((512 - row.bytes.length % 512) % 512));
+  }
+  chunks.push(Buffer.alloc(1024)); return gzipSync(Buffer.concat(chunks));
+}
+const archiveRows = [
+  { path: "package/package.json", bytes: Buffer.from(JSON.stringify({ name: "@get-modular/resources", version: "0.2.1" })) },
+  { path: "package/dist/index.js", bytes: Buffer.from("export const value = 1;\n") },
+] as const;
+
+test("current payload comparison rejects content, member modes, manifests, extra paths and unsafe archive headers", () => {
+  const original = archiveFixture(archiveRows);
+  assert.equal(assertArchivePayload("@get-modular/resources", "0.2.1", original, original).length, 2);
+  for (const rows of [
+    [archiveRows[0], { ...archiveRows[1], bytes: Buffer.from("changed") }],
+    [archiveRows[0], { ...archiveRows[1], mode: 0o755 }],
+    [{ ...archiveRows[0], bytes: Buffer.from('{"name":"foreign","version":"0.2.1"}') }, archiveRows[1]],
+    [...archiveRows, { path: "package/extra.js", bytes: Buffer.from("extra") }],
+    [...archiveRows, archiveRows[1]],
+    [archiveRows[0], { ...archiveRows[1], path: "package/../foreign" }],
+    [archiveRows[0], { ...archiveRows[1], type: "SymbolicLink" as const, bytes: Buffer.alloc(0) }],
+  ]) {
+    assert.throws(() => assertArchivePayload("@get-modular/resources", "0.2.1", archiveFixture(rows), original),
+      /release.current-archive-|Invalid package archive/u);
+  }
+});
+
+function archiveSourceFixture() {
+  const root = mkdtempSync(join(tmpdir(), "get-modular-current-archive-unit-TEST-"));
+  git(root, "init", "--quiet");
+  const paths = metadataCohort.map(item => `packages/${item.name.slice("@get-modular/".length)}/package.json`);
+  for (const [index, path] of paths.entries()) {
+    mkdirSync(dirname(join(root, path)), { recursive: true }); writeFileSync(join(root, path), JSON.stringify(metadataCohort[index]));
+  }
+  for (const path of [metadataDecision, "architecture/decisions/accepted-decisions.json"]) {
+    mkdirSync(dirname(join(root, path)), { recursive: true }); writeFileSync(join(root, path), readFileSync(resolve(path)));
+  }
+  const commit = (): string => {
+    const settings = ["-c", "user.name=iliya", "-c", "user.email=iliyazelenkog@gmail.com"];
+    git(root, "add", "--force", "--", ...paths, metadataDecision, "architecture/decisions/accepted-decisions.json");
+    for (const role of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) {
+      assert.match(git(root, ...settings, "var", role), /^iliya <iliyazelenkog@gmail\.com> \d+ [+-]\d{4}\n$/u);
+    }
+    git(root, ...settings, "commit", "--quiet", "-m", "test(release): retain current archive policy unit source",
+      "-m", "Refs: #214, #211, agent-teams-ai/engineering-foundation#421");
+    return git(root, "rev-parse", "HEAD").trim();
+  };
+  return { root, source: commit(), commit, dispose: () => rmSync(root, { recursive: true, force: true }) };
+}
+
+test("current archive selection rejects foreign source, tracked drift, changed authority and nonpublic byte pins", () => {
+  const subject = archiveSourceFixture();
+  try {
+    assertCurrentArchiveSource(subject.root, subject.source, metadataCohort);
+    assert.throws(() => assertCurrentArchiveSource(subject.root, "a".repeat(40), metadataCohort), /release.current-archive-source/u);
+    const unpinned = archiveFixture(archiveRows);
+    assert.throws(() => qualifyCurrentArchive(subject.root, subject.source, metadataCohort,
+      "@get-modular/resources", unpinned, unpinned), /release.archive-mismatch/u);
+    writeFileSync(join(subject.root, metadataDecision), "foreign authority");
+    assert.throws(() => assertCurrentArchiveSource(subject.root, subject.source, metadataCohort), /release.current-archive-source-drift/u);
+    const changed = subject.commit();
+    assert.throws(() => assertCurrentArchiveSource(subject.root, changed, metadataCohort), /candidate.metadata-release-authority/u);
+  } finally {subject.dispose();}
+});
+
+test("public archive reads are fixed-origin, bounded, and retry only read-only transient requests", async () => {
+  const url = currentOriginalArchives[0]!.url;
+  let calls = 0;
+  assert.deepEqual(await registryArchive(url, { pause: async () => undefined, request: async (_url, options) => {
+    calls += 1; assert.equal(options.redirect, "error");
+    return calls === 1 ? new Response(null, { status: 503 }) : new Response(new Uint8Array([1, 2, 3]));
+  } }), Buffer.from([1, 2, 3]));
+  assert.equal(calls, 2);
+  await assert.rejects(registryArchive("https://foreign.example/package.tgz"), /release.registry-archive-url/u);
+  await assert.rejects(registryArchive(url, { request: async () => new Response("x", { headers: { "content-length": "16777217" } }) }),
+    /release.registry-archive-size/u);
+  await assert.rejects(registryArchive(url, { request: async () => new Response(new Uint8Array(16 * 1024 * 1024 + 1)) }),
+    /release.registry-archive-size/u);
+  await assert.rejects(registryArchive(url, { request: async () => new Response("x", { headers: { "content-length": "2" } }) }),
+    /release.registry-archive-size/u);
 });

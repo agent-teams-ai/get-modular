@@ -10,6 +10,7 @@ import test from "node:test";
 import { assertM3NativeController, assertM3NodePin, m3NodePinPath } from "./qualification/support/m3-node-policy.ts";
 import { pinnedPnpmCli } from "./qualification/support/pinned-pnpm.ts";
 import { BUN_VERSION, PNPM_VERSION, project, selectedProfile, toolRuntime } from "../architecture/tooling/runtime/policy.ts";
+import { assertRetainedHistory, retainHistory } from "../architecture/tooling/runtime/retained-history.ts";
 import { provisionedPnpmCli } from "../architecture/tooling/runtime/command.ts";
 
 const repository = resolve(import.meta.dirname, "..");
@@ -455,4 +456,40 @@ test("M3 bounds physical Node bytes separately and retains file custody checks",
     await assert.rejects(readM3NodeExecutable(temporary), /pack.file/u);
     assert.deepEqual(await readM3NodeExecutable(candidate), await readFile(candidate));
   } finally { await rm(temporary, { recursive: true, force: true }); }
+});
+
+
+test("explicit retained history survives a selected clone without a regular branch", async () => {
+  await fixture(async (root, temporary) => {
+    const initial = run(root, "git", ["rev-parse", "HEAD"]).stdout.trim();
+    await put(root, "retained-only.txt", "historical observation\n");
+    assert.equal(run(root, "git", ["add", "retained-only.txt"]).status, 0);
+    for (const variable of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) {
+      assert.match(run(root, "git", ["var", variable]).stdout, /^iliya <iliyazelenkog@gmail\.com> /u);
+    }
+    assert.equal(run(root, "git", ["commit", "-m", "test: create detached retained observation"]).status, 0);
+    const commit = run(root, "git", ["rev-parse", "HEAD"]).stdout.trim();
+    const tree = run(root, "git", ["rev-parse", "HEAD^{tree}"]).stdout.trim();
+    assert.equal(run(root, "git", ["reset", "--hard", initial]).status, 0);
+    const pin = { commit, tree, ref: "refs/qualification/retained-observation-test" };
+    const selected = join(temporary, "selected");
+    assert.equal(run(root, "git", ["clone", "--no-local", root, selected]).status, 0);
+    assert.notEqual(run(selected, "git", ["cat-file", "-t", commit]).status, 0);
+    retainHistory(root, root, pin);
+    const foreignGit = process.env.GIT_DIR;
+    const foreignWork = process.env.GIT_WORK_TREE;
+    try {
+      process.env.GIT_DIR = join(temporary, "foreign-missing.git");
+      process.env.GIT_WORK_TREE = root;
+      retainHistory(selected, root, pin);
+      assertRetainedHistory(selected, pin);
+    } finally {
+      if (foreignGit === undefined) delete process.env.GIT_DIR; else process.env.GIT_DIR = foreignGit;
+      if (foreignWork === undefined) delete process.env.GIT_WORK_TREE; else process.env.GIT_WORK_TREE = foreignWork;
+    }
+    assertRetainedHistory(selected, pin);
+    assert.equal(run(selected, "git", ["show", `${commit}:retained-only.txt`]).stdout, "historical observation\n");
+    assert.equal(run(selected, "git", ["for-each-ref", "--format=%(refname)", "refs/heads"]).stdout.trim(), "refs/heads/main");
+    assert.throws(() => assertRetainedHistory(selected, { ...pin, tree: initial }), /runtime.history.tree/u);
+  });
 });

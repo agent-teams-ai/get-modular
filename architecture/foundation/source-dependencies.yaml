@@ -1001,6 +1001,7 @@ boundaries:
       - architecture/tooling/runtime/command.ts
       - architecture/tooling/runtime/dev.ts
       - architecture/tooling/runtime/ci.ts
+      - architecture/tooling/runtime/retained-history.ts
       - architecture/tooling/runtime/projection-check.ts
       - architecture/tooling/runtime/projection-custody.ts
       - architecture/tooling/generate-core.mjs
@@ -1010,6 +1011,7 @@ boundaries:
       - tests/codemods/codemods.test.mjs
       - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
+      - tests/qualification/metadata-patch-pack.ts
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts
       - tests/qualification/support/pinned-pnpm.ts

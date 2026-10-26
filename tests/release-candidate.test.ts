@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -11,8 +11,10 @@ import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { assertNodeQualification, custody, engineAt, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, array, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
+
+import { assertPromotionBranch, assertPromotionReceipt, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nodeModules = join(repositoryRoot, "node_modules");
@@ -506,4 +508,118 @@ await test("custody rejects nested roots and same-spelling physical replacement"
     }
     subject.dispose();
   }
+});
+
+await test("real admitted metadata cohort promotes public baselines and independently replays exact bytes", () => {
+  const started = performance.now(); let previous = started; const timings: Record<string, number> = {};
+  const mark = (phase: string): void => {const now = performance.now(); timings[phase] = now - previous; previous = now;};
+  const revisions = [git(repositoryRoot, "rev-parse", "HEAD").trim(),
+    ...git(repositoryRoot, "rev-list", "HEAD", "--", ".changeset/core-coordinated-metadata.md").trim().split("\n")];
+  const source = revisions.find(revision => revision !== "" && git(repositoryRoot, "ls-tree", revision,
+    "--", ".changeset/core-coordinated-metadata.md").trim() !== "");
+  assert(source, "The real metadata admission preparation must remain in authenticated history");
+  const temporary = mkdtempSync(join(tmpdir(), "get-modular-real-metadata-release-TEST-"));
+  const root = join(temporary, "source");
+  try {
+    git(repositoryRoot, "clone", "--quiet", "--shared", "--no-hardlinks", repositoryRoot, root);
+    git(root, "checkout", "--detach", source);
+    git(root, "update-ref", "refs/heads/main", source);
+    mkdirSync(join(root, "node_modules"));
+    for (const entry of readdirSync(nodeModules)) {
+      if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
+      symlinkSync(join(nodeModules, entry), join(root, "node_modules", entry), process.platform === "win32" ? "junction" : "dir");
+    }
+    mark("clone-and-link");
+    const prepared = prepareRelease(root);
+    mark("prepare");
+    assert.deepEqual(plannedBaselines(prepared.before, prepared.expected.plan), baselinePaths);
+    assert.deepEqual(plannedBaselines(prepared.before, { releases: [], consumptions: [] }), []);
+    assert.throws(() => assertPromotionBranch(root), /candidate.promotion-branch/u);
+    assert.throws(() => produceBaselines({ ...prepared, hasRelease: false }, prepared.before, baselinePaths), /public-producer-required/u);
+    const registryPath = "architecture/decisions/accepted-decisions.json";
+    const registryFile = prepared.before[registryPath]; assert(registryFile);
+    const registry = record(JSON.parse(registryFile.contents)); const decisions = array(registry["decisions"]);
+    assert.throws(() => plannedBaselines({ ...prepared.before, [registryPath]: { ...registryFile,
+      contents: JSON.stringify({ ...registry, decisions: decisions.filter(value => record(value)["id"] !== "ADR-0042") }) } },
+    prepared.expected.plan), /metadata-release-registry/u);
+    const producer = prepared.execution.producer; assert(producer);
+    assert.throws(() => versionPreparedRelease({ ...prepared, execution: { ...prepared.execution,
+      producer: { ...producer, digest: "sha256:substituted" } } }), /execution-custody-drift/u);
+    const invalid = { ...prepared.expected.plan, releases: prepared.expected.plan.releases.map(release =>
+      release.packageName === "@get-modular/conformance" ? { ...release, newVersion: "0.5.2" } : release) };
+    assert.throws(() => plannedBaselines(prepared.before, invalid), /metadata-release-cohort/u);
+    mark("admission-negatives");
+    const generated = versionPreparedRelease(prepared);
+    assert.equal(generated.report.outcome, "passed");
+    mark("version-and-public-promotion");
+    for (const path of baselinePaths) {
+      const actual = read(root, path); const baseline = record(JSON.parse(actual));
+      assert.equal(baseline["packageVersion"], "0.7.1");
+      write(root, path, { ...baseline, packageVersion: "0.7.2" });
+      assert.throws(() => checkGeneratedCandidate(prepared), /baseline-release-version/u);
+      write(root, path, actual);
+    }
+    write(root, "dist/unlisted-output.txt", "not a producer output");
+    assert.throws(() => checkGeneratedCandidate(prepared), /candidate.rejected/u);
+    rmSync(join(root, "dist"), { recursive: true });
+    mark("output-negatives");
+    const head = commit(root, "test(release): retain actual generated metadata candidate");
+    mark("candidate-commit");
+    assert.equal(verifyRelease(root, source, head).report.outcome, "passed");
+    mark("independent-replay");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true }); mark("cleanup");
+    console.log(JSON.stringify({ phase: "real-metadata-release-test-timing", elapsedMs: performance.now() - started, timings }));
+  }
+});
+
+await test("private producer receipts reject foreign processes, barriers and noncanonical evidence", () => {
+  const token = "12345678-1234-4234-8234-123456789abc";
+  const path = ".agent-teams-local/foundation-operation-lock.completed-evidence/released.87654321-4321-4321-8321-cba987654321/evidence";
+  const row = { host: hostname(), kind: "active", pid: process.pid, schemaVersion: 1, token };
+  const contents = JSON.stringify(row) + "\n";
+  assert.equal(assertPromotionReceipt(path, contents, process.pid), token);
+  for (const invalid of [{ ...row, kind: "transaction-barrier" }, { ...row, host: "foreign-host" },
+    { ...row, pid: process.pid + 1 }, { ...row, schemaVersion: 2 }, { ...row, token: "invalid" },
+    { ...row, extra: "unowned" }]) {
+    assert.throws(() => assertPromotionReceipt(path, JSON.stringify(invalid) + "\n", process.pid), /candidate.producer-receipt/u);
+  }
+  for (const invalid of [contents.trimEnd(), `\ufeff${contents}`, contents.replace('"schemaVersion":1', '"schemaVersion":1,"schemaVersion":1')]) {
+    assert.throws(() => assertPromotionReceipt(path, invalid, process.pid));
+  }
+  for (const invalid of [path.replace("released.", "active."), `${path}/extra`, path.replace(".agent-teams-local", "foreign")]) {
+    assert.throws(() => assertPromotionReceipt(invalid, contents, process.pid), /candidate.producer-receipt-path/u);
+  }
+});
+
+await test("batched historical custody preserves every exact blob including binary framing", () => {
+  const subject = createFixture();
+  try {
+    const bytes = Buffer.from([0, 10, 13, 255, 10, 0, 254]);
+    writeFileSync(join(subject.root, "binary.dat"), bytes);
+    const source = commit(subject.root, "test(release): retain exact binary source framing");
+    const captured = historicalSnapshot(subject.root, source);
+    for (const path of Object.keys(captured)) {assert.deepEqual(captured[path], historicalFile(subject.root, source, path));}
+    assert.equal(captured["binary.dat"]?.leaf.digest, hash(bytes));
+    assert.deepEqual(captured, snapshot(subject.root));
+  } finally { subject.dispose(); }
+});
+
+await test("historical batch decoder rejects malformed or missing object responses", () => {
+  const body = Buffer.from([0, 255, 10, 13]);
+  const oid = createHash("sha1").update(`blob ${body.length}\0`).update(body).digest("hex");
+  const entry = { mode: "100755", oid, path: "name\nwith\tseparators" };
+  const valid = Buffer.concat([Buffer.from(`${oid} blob ${body.length}\n`), body, Buffer.from("\n")]);
+  const result = decodeHistoricalBatch([entry], valid);
+  assert.equal(result[entry.path]?.leaf.digest, hash(body));
+  assert.equal(result[entry.path]?.leaf.mode, "100755");
+  assert.equal(decodeHistoricalBatch([{ ...entry, mode: "120000" }], valid)[entry.path]?.leaf.type, "symlink");
+  for (const invalid of [Buffer.alloc(0), Buffer.from(`${oid} blob 4`),
+    Buffer.from(`${"2".repeat(40)} blob 0\n\n`), Buffer.from(`${oid} missing\n`),
+    Buffer.from(`${oid} blob 9007199254740992\n\n`), valid.subarray(0, -1),
+    Buffer.concat([valid, Buffer.from("unlisted")]),
+    Buffer.concat([Buffer.from(`${oid} blob 4\n`), Buffer.from([0, 254, 10, 13]), Buffer.from("\n")])]) {
+    assert.throws(() => decodeHistoricalBatch([entry], invalid), /candidate.historical-batch/u);
+  }
+  assert.throws(() => decodeHistoricalBatch([{ ...entry, mode: "160000" }], valid), /unsupported-file-type/u);
 });

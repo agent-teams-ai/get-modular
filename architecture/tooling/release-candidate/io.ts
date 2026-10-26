@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
+import { createRequire, findPackageJSON } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { FileLeaf, JsonRecord } from "@agent-teams/release-checks";
 
 export interface SourceFile { readonly leaf: FileLeaf; readonly contents: string }
@@ -11,9 +12,11 @@ export type SourceTree = Readonly<Record<string, SourceFile>>;
 export interface EngineIdentity {
   readonly entrypoint: string;
   readonly installations: readonly string[];
+  readonly resolutions: readonly { readonly from: string; readonly dependencies: Readonly<Record<string, string>> }[];
   readonly digest: string;
   readonly version: "3.0.2";
 }
+export type FoundationIdentity = Omit<EngineIdentity, "version"> & { readonly version: "3.0.0" };
 export interface DirectoryIdentity { readonly device: string; readonly inode: string }
 export interface ExecutionCustody {
   readonly root: string;
@@ -22,6 +25,8 @@ export interface ExecutionCustody {
   readonly gitDirectoryIdentity: DirectoryIdentity;
   readonly source: string;
   readonly engine: EngineIdentity;
+  readonly producer: FoundationIdentity | null;
+  readonly buildTools: readonly Omit<EngineIdentity, "version">[];
   readonly runtime: { readonly kind: "node"; readonly version: string; readonly executable: string };
 }
 
@@ -54,13 +59,13 @@ function canonical(value: unknown): unknown {
 export function identity(value: unknown): string { return hash(JSON.stringify(canonical(value))); }
 export function execute(root: string, command: string, args: readonly string[]): string {
   return execFileSync(command, [...args], { cwd: root, encoding: "utf8", timeout: 120_000,
-    maxBuffer: 32 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: "" } });
+    maxBuffer: 32 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined } });
 }
 export function git(root: string, ...args: string[]): string {
   for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES"]) {
     assert.equal(process.env[name], undefined, `candidate.foreign-git-environment:${name}`);
   }
-  return execute(root, "git", ["-c", "core.autocrlf=false", ...args]);
+  return execute(root, "git", ["-c", "core.autocrlf=false", "-c", "core.longpaths=true", ...args]);
 }
 export function clean(root: string): void {
   assert.equal(git(root, "status", "--porcelain=v1", "--untracked-files=all"), "", "candidate.dirty-source");
@@ -87,10 +92,37 @@ export function historicalFile(root: string, revision: string, path: string): So
 export function historicalSnapshot(root: string, revision: string): SourceTree {
   assert.match(revision, /^[a-f0-9]{40}$/u, "candidate.source-identity");
   const files: Record<string, SourceFile> = Object.create(null) as Record<string, SourceFile>;
-  for (const path of git(root, "ls-tree", "-r", "--name-only", "-z", revision).split("\0").filter(Boolean)) {
-    const file = historicalFile(root, revision, path); assert(file, "candidate.missing-historical-source");
-    files[path] = file;
+  const entries = git(root, "ls-tree", "-r", "-z", revision).split("\0").filter(Boolean).map(row => {
+    const match = /^([0-7]{6}) blob ([a-f0-9]{40})\t([\s\S]+)$/u.exec(row);
+    assert(match, "candidate.historical-tree-entry");
+    return { mode: match[1]!, oid: match[2]!, path: match[3]! };
+  });
+  if (entries.length === 0) {return files;}
+  // One exact Git batch preserves binary payloads and object order. No checkout,
+  // path decoding, per-file subprocess or candidate-provided bytes are involved.
+  const bytes = execFileSync("git", ["cat-file", "--batch"], { cwd: root,
+    input: entries.map(entry => entry.oid).join("\n") + "\n", maxBuffer: 256 * 1024 * 1024 });
+  return decodeHistoricalBatch(entries, bytes);
+}
+export function decodeHistoricalBatch(entries: readonly { readonly mode: string; readonly oid: string; readonly path: string }[], bytes: Buffer): SourceTree {
+  const files: Record<string, SourceFile> = Object.create(null) as Record<string, SourceFile>;
+  let offset = 0;
+  for (const entry of entries) {
+    const newline = bytes.indexOf(10, offset); assert(newline >= offset, "candidate.historical-batch-header");
+    const header = /^([a-f0-9]{40}) blob ([0-9]+)$/u.exec(bytes.subarray(offset, newline).toString("ascii"));
+    assert(header && header[1] === entry.oid, "candidate.historical-batch-object");
+    const size = Number(header[2]); offset = newline + 1;
+    assert(Number.isSafeInteger(size) && size >= 0 && size <= bytes.length - offset - 1,
+      "candidate.historical-batch-size");
+    const end = offset + size; assert.equal(bytes[end], 10, "candidate.historical-batch-framing");
+    const body = bytes.subarray(offset, end);
+    assert.equal(createHash("sha1").update(`blob ${size}\0`).update(body).digest("hex"), entry.oid,
+      "candidate.historical-batch-content");
+    assert(!Object.hasOwn(files, entry.path), "candidate.historical-batch-duplicate-path");
+    files[entry.path] = sourceFile(body, entry.mode);
+    offset = end + 1;
   }
+  assert.equal(offset, bytes.length, "candidate.historical-batch-trailing-data");
   return files;
 }
 /** Includes ignored generation output too; installed package-manager trees have separate engine custody. */
@@ -131,15 +163,13 @@ function packageManifest(from: string, name: string): string {
   const require = createRequire(from);
   try { return realpathSync(require.resolve(`${name}/package.json`)); }
   catch {
-    let directory = dirname(realpathSync(require.resolve(name)));
-    while (dirname(directory) !== directory) {
-      try {
-        const path = join(directory, "package.json");
-        if (record(JSON.parse(readFileSync(path, "utf8")))["name"] === name) {return path;}
-      } catch (error) { if (record(error)["code"] !== "ENOENT") {throw error;} }
-      directory = dirname(directory);
-    }
-    throw new Error(`candidate.unresolved-engine-package:${name}`);
+    // The Node public resolver handles import-only packages whose exports hide
+    // package.json and have no require condition (for example node-or-bun).
+    const path = findPackageJSON(name, pathToFileURL(from));
+    assert(path !== undefined, `candidate.unresolved-engine-package:${name}`);
+    const actual = realpathSync(path);
+    assert.equal(record(JSON.parse(readFileSync(actual, "utf8")))["name"], name, "candidate.engine-package-identity");
+    return actual;
   }
 }
 function installedFiles(root: string, prefix = ""): readonly [string, string][] {
@@ -152,37 +182,76 @@ function installedFiles(root: string, prefix = ""): readonly [string, string][] 
       return [[path, hash(readFileSync(join(root, path)))]] as [string, string][];
     });
 }
-/** Binds the resolved CLI and its installed runtime dependency closure, including formatter code. */
-export function engineAt(root: string): EngineIdentity {
-  const cliManifest = packageManifest(join(root, "package.json"), "@changesets/cli");
-  const cli = record(JSON.parse(readFileSync(cliManifest, "utf8")));
-  assert.equal(cli["version"], "3.0.2", "candidate.engine-version");
-  const entrypoint = realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])["changeset"])));
+interface PackageObservation {
+  readonly manifest: Record<string, unknown>;
+  readonly files: ReturnType<typeof installedFiles>;
+  readonly filesDigest: string;
+  content?: { readonly edges: Record<string, string>; readonly dependencies: Record<string, string> };
+}
+type ToolObservation = Map<string, PackageObservation>;
+function observedPackage(path: string, observation: ToolObservation): PackageObservation {
+  let result = observation.get(path);
+  if (result === undefined) {
+    const manifest = record(JSON.parse(readFileSync(path, "utf8"))); const files = installedFiles(dirname(path));
+    result = { manifest, files, filesDigest: identity(files) }; observation.set(path, result);
+  }
+  return result;
+}
+function capturedPackage(path: string, observation: ToolObservation): PackageObservation {
+  const result = observedPackage(path, observation);
+  if (result.content !== undefined) {return result;}
+  const manifest = result.manifest; const edges: Record<string, string> = {}; const dependencies: Record<string, string> = {};
+  const optional = record(manifest["optionalDependencies"] ?? {}); const peers = record(manifest["peerDependenciesMeta"] ?? {});
+  for (const name of Object.keys({ ...record(manifest["dependencies"] ?? {}), ...record(manifest["peerDependencies"] ?? {}), ...optional }).toSorted()) {
+    let dependency;
+    try { dependency = packageManifest(path, name); }
+    catch (error) {
+      if (name in optional || record(peers[name] ?? {})["optional"] === true) {
+        edges[name] = "absent-optional"; dependencies[name] = "absent-optional"; continue;
+      }
+      throw error;
+    }
+    const target = observedPackage(dependency, observation);
+    edges[name] = `${text(target.manifest["name"])}@${text(target.manifest["version"])}:${target.filesDigest}`;
+    dependencies[name] = dependency;
+  }
+  result.content = { edges, dependencies }; return result;
+}
+/** The physical-manifest memo belongs to exactly one fresh custody observation. */
+function installedToolAt(root: string, name: string, version: string, bin: string | undefined, observation: ToolObservation): Omit<EngineIdentity, "version"> {
+  const cliManifest = packageManifest(join(root, "package.json"), name);
+  const cli = observedPackage(cliManifest, observation).manifest;
+  assert.equal(cli["name"], name, "candidate.engine-package-identity");
+  assert.equal(cli["version"], version, "candidate.engine-version");
+  const entrypoint = bin === undefined ? cliManifest : realpathSync(resolve(dirname(cliManifest), text(record(cli["bin"])[bin])));
   assert(contained(dirname(cliManifest), entrypoint), "candidate.foreign-engine-entrypoint");
   const pending = [cliManifest];
   const observed = new Map<string, unknown>();
+  const resolutions = new Map<string, Record<string, string>>();
   while (pending.length > 0) {
     const path = pending.shift(); assert(path !== undefined && path !== "");
     if (observed.has(path)) {continue;}
-    const manifest = record(JSON.parse(readFileSync(path, "utf8")));
-    const edges: Record<string, string> = {};
-    const optional = record(manifest["optionalDependencies"] ?? {});
-    const peers = record(manifest["peerDependenciesMeta"] ?? {});
-    for (const name of Object.keys({ ...record(manifest["dependencies"] ?? {}), ...record(manifest["peerDependencies"] ?? {}), ...optional }).toSorted()) {
-      let dependency;
-      try { dependency = packageManifest(path, name); }
-      catch (error) {
-        if (name in optional || record(peers[name] ?? {})["optional"] === true) { edges[name] = "absent-optional"; continue; }
-        throw error;
-      }
-      const target = record(JSON.parse(readFileSync(dependency, "utf8")));
-      edges[name] = `${text(target["name"])}@${text(target["version"])}`;
-      pending.push(dependency);
-    }
-    observed.set(path, { name: manifest["name"], version: manifest["version"], edges, files: installedFiles(dirname(path)) });
+    const item = capturedPackage(path, observation); assert(item.content);
+    pending.push(...Object.values(item.content.dependencies).filter(dependency => dependency !== "absent-optional"));
+    resolutions.set(path, item.content.dependencies);
+    observed.set(path, { name: item.manifest["name"], version: item.manifest["version"], edges: item.content.edges, files: item.files });
   }
   const content = [...observed.values()].toSorted((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : JSON.stringify(a) > JSON.stringify(b) ? 1 : 0);
-  return { version: "3.0.2", entrypoint, installations: [...observed.keys()].toSorted(), digest: identity(content) };
+  return { entrypoint, installations: [...observed.keys()].toSorted(),
+    resolutions: [...resolutions.entries()].toSorted(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+      .map(([from, dependencies]) => ({ from, dependencies })), digest: identity(content) };
+}
+export function engineAt(root: string): EngineIdentity {
+  return observedEngine(root, new Map());
+}
+export function foundationAt(root: string): FoundationIdentity {
+  return observedFoundation(root, new Map());
+}
+function observedEngine(root: string, observation: ToolObservation): EngineIdentity {
+  return { ...installedToolAt(root, "@changesets/cli", "3.0.2", "changeset", observation), version: "3.0.2" };
+}
+function observedFoundation(root: string, observation: ToolObservation): FoundationIdentity {
+  return { ...installedToolAt(root, "@agent-teams/engineering-foundation", "3.0.0", "agent-teams-foundation", observation), version: "3.0.0" };
 }
 /** Version generation uses the unchanged-source pnpm installation route, never a manager projection. */
 export function assertNodeQualification(root: string): void {
@@ -207,8 +276,11 @@ export function custody(root: string): ExecutionCustody {
     rootIdentity, "candidate.foreign-root");
   const source = git(actual, "rev-parse", "HEAD").trim();
   assert.match(source, /^[a-f0-9]{40}$/u, "candidate.source-identity");
+  const observation: ToolObservation = new Map();
+  const producer = existsSync(join(actual, "architecture/foundation/public-api-compatibility.yaml")) ? observedFoundation(actual, observation) : null;
   const gitDirectory = realpathSync(git(actual, "rev-parse", "--absolute-git-dir").trim());
-  return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: engineAt(actual),
+  return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: observedEngine(actual, observation),
+    producer, buildTools: producer === null ? [] : [installedToolAt(actual, "typescript", "7.0.2", "tsc", observation), installedToolAt(actual, "canonicalize", "4.0.0", undefined, observation)],
     runtime: { kind: "node", version: process.versions.node, executable: realpathSync(process.execPath) } };
 }
 export function assertCustody(expected: ExecutionCustody, observed: ExecutionCustody): void {

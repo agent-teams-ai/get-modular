@@ -68,6 +68,11 @@ const ASSEMBLY_COMPILER_FLOOR_REGISTRY_ENTRY = Object.freeze({
 // Each public pair after 0.1.0 is authenticated by its own accepted decision;
 // the manifest shape alone is not authority.
 export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
+  "0.7.1": Object.freeze({
+    path: "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md",
+    bytesDigest: "sha256:8f36ca78ed28153b0a7774bce2a8d5fb85d1fb51dd699e943886773ab804014f",
+    entry: Object.freeze({"id": "ADR-0042", "path": "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md", "immutableDigest": "sha256:1abf9f97ebe089f82c2183dc45a15f8528b09322184b6c19ecdc95df1dd0557f"}),
+  }),
   "0.7.0": Object.freeze({
     path: "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md",
     bytesDigest: "sha256:050543c4c4d79e87b310e96602d9ea1b19d8610d67cc86ee566fd63e1807c082",
@@ -160,6 +165,12 @@ async function validateAssemblyPackage({ readBytes, readPackageManifest, current
     assert.equal(core?.version, manifest.version, "Assembly admission requires an exact Core/Assembly pair");
     const pair = Object.hasOwn(ASSEMBLY_PAIR_DECISIONS, manifest.version)
       ? ASSEMBLY_PAIR_DECISIONS[manifest.version] : undefined;
+    if (manifest.version === "0.7.1") {
+      for (const [name, version] of [["conformance", "0.5.1"], ["resources", "0.2.1"], ["observation", "0.2.0"]]) {
+        assert.equal((await readPackageManifest(`packages/${name}/package.json`))?.version, version,
+          "Assembly metadata release requires the exact coordinated leaf profile");
+      }
+    }
     if (pair !== undefined) {
       assert.equal(digest(await readBytes(pair.path)), pair.bytesDigest,
         `Assembly admission pair ${manifest.version} requires unchanged accepted ${pair.entry.id} including approval metadata`);

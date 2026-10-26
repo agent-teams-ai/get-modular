@@ -49,6 +49,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version-file: .bun-version
+      - name: Provision the exact detached retained observation history
+        run: node architecture/tooling/runtime/retained-history.ts
       - name: Prepare the isolated Node profile when selected
         run: node architecture/tooling/runtime/ci.ts
       - name: Install the actual root with strict frozen policy
@@ -252,6 +254,8 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
+      - name: Provision the exact detached retained observation history
+        run: node architecture/tooling/runtime/retained-history.ts
       - name: Prepare isolated Node compatibility checkout
         run: node architecture/tooling/runtime/ci.ts
       - name: Build and pack libraries with the default Node 26 tooling

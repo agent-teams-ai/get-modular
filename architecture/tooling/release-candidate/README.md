@@ -57,7 +57,8 @@ existing shared publisher pin.
    engine, enumerate the whole tracked tree and generated files, including
    ignored outputs outside installed package-manager directories,
    and check all manifest observations and the complete diff. Only exact planned
-   version edits, qualified intent deletions and corresponding changelogs have
+   version edits, qualified intent deletions, corresponding changelogs and the
+   exact authenticated public-baseline outputs described below have
    permissions. Full manifest content, including scripts, exports and dependency
    fields, is protected by the leaf. An unsupported engine range rewrite rejects.
 5. Require each generated changelog's exact new version heading and unchanged
@@ -95,20 +96,43 @@ commit alone cannot hide source, config or inventory drift.
 
 The Resources patch was published by the separate owning release described in
 [the released adoption base](../npm-release/README.md#released-base-for-prepared-adoption).
-That source also includes its own qualified Core/Assembly API promotion. The
-preparation branch preserves those upstream outputs; this checked route still
-admits no `architecture/public-api/` or contract baseline change.
-[ADR-0027](../../../docs/decisions/0027-admit-the-core-and-assembly-0-2-0-correction-pair.md)
-and the existing
-[native API transition procedure](../../../docs/qualification/native-typescript-tooling.md#released-api-transition)
-retain their separate authority. A future Core/Assembly release requiring that
-promotion must qualify its concrete owning operation before it can use this
-route's complete-diff check. It currently fails closed rather than silently
-allowing arbitrary baseline edits. The native migration packet and eight-capability
-configuration are unchanged. Preparation incorporates the separate upstream tooling
-accepted migration to Bun 1.4.3, Foundation 3.0.0, FMS 0.3.0 and Stack 0.1.1. That migration preserves the immutable
-adoption identities and does not expand the release-checks-only retained-input
-exception or qualify current-source archives against previously published bytes.
+That source also includes its own qualified Core/Assembly API promotion. Historical
+baselines and accepted decisions retain their original bytes.
+
+[ADR-0042](../../../docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md)
+admits exactly the metadata patch cohort: Core/Assembly 0.7.1, Conformance 0.5.1,
+Resources 0.2.1 and Observation 0.2.0. Changesets selects versions from truthful
+intents. A future/mixed cohort requires its own authority. The feature change
+leaves public baselines unchanged.
+
+For that exact release, the Host binds the installed public Foundation 3 bin and
+its entire runtime package closure alongside Changesets and governing source.
+It checks the ordinary version candidate first, then builds in an owned private
+Git store on its actual `changeset-release/main` branch. Workspace package aliases
+resolve to that private source; producer/tool dependencies retain their captured
+installation identity. The public `public-api-promote-release` command owns
+extraction and baseline writing. No historical native-transition request is used.
+
+Before copying anything back, observe all producer output. Foundation 3 also
+retires exactly two operation leases into private execution receipts. Validate
+their closed Repository Mutation 0.4.2 schema, canonical UTF-8 JSON, stable
+bounded regular files, fresh UUID paths/tokens, actual host and CLI child PID.
+Reject active locks, transaction barriers, foreign or extra entries. Retain the
+complete observed delta and receipt bytes in execution evidence before archiving
+that exact auxiliary set outside source. No receipt crosses back to the caller;
+this adds no ignored path or general cleanup permission.
+
+Require exactly the two configured Core/Assembly baseline source outputs,
+unchanged API/extractor data and new
+0.7.1 metadata, and revalidate caller custody and every preimage. Private build
+outputs stay in that owned workspace. Every other caller output remains governed
+by the whole-tree check, ignored files included. Independent current-base PR replay
+runs the same build/public producer and compares the complete resulting diff,
+including exact baseline bytes. Copy-back is mechanical byte transport of the
+public CLI's captured outputs; it never computes, edits or approves snapshot JSON
+or fingerprints. The public CLI alone creates/promotes content in the owned
+same-repository trusted release workspace. There is no arbitrary baseline allowlist or
+handwritten version rewrite. The shared release-checks API remains 0.1.0.
 
 ## Qualification
 

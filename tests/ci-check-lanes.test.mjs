@@ -24,6 +24,9 @@ const hosts = {
   "node26-macos": "macos-15",
   "node26-windows": "windows-2025",
 };
+// Independent closed oracle: dependency keys are opaque; only every result's
+// exact success value and a nonempty collection can admit the aggregate.
+const canonicalAggregateBody = "jq -e 'to_entries | length > 0 and all(.value.result == \"success\")' <<< \"$NEEDS_JSON\"\n";
 
 // Independent oracle retains every check/precheck obligation at 0a81957c
 // and adds the explicit root peer and runtime policy gates. Never derive it
@@ -103,13 +106,14 @@ function validateLanes(value, manifest = packageJson) {
       "node-version": "${{ env.ROOT_CI_NODE_VERSION }}",
       "node-version-file": ".node-version",
     }, "runtime selection must retain the Node 26 default and explicit Node 24 override");
-    assert.equal(job.steps.length, 10, "checkout, provisioning, projection, install, peers, payload and integrity");
+    assert.equal(job.steps.length, 11, "checkout, provisioning, projection, install, peers, payload and integrity");
     assert.equal(job.steps[3].uses, "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     assert.equal(job.steps[3].with["bun-version-file"], ".bun-version");
-    assert.equal(job.steps[4].run, "node architecture/tooling/runtime/ci.ts");
-    assert.equal(job.steps[5].run, "node architecture/tooling/runtime/dev.ts install");
-    assert.equal(job.steps[6].run, "node architecture/tooling/runtime/dev.ts peers");
-    for (const step of job.steps.slice(5, 9)) {
+    assert.equal(job.steps[4].run, "node architecture/tooling/runtime/retained-history.ts");
+    assert.equal(job.steps[5].run, "node architecture/tooling/runtime/ci.ts");
+    assert.equal(job.steps[6].run, "node architecture/tooling/runtime/dev.ts install");
+    assert.equal(job.steps[7].run, "node architecture/tooling/runtime/dev.ts peers");
+    for (const step of job.steps.slice(6, 10)) {
       assert.equal(step["working-directory"], "${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}");
     }
     for (const step of job.steps.slice(0, -1)) {
@@ -189,14 +193,25 @@ function validateLanes(value, manifest = packageJson) {
     assert.equal(gate.steps.length, 1);
     assert.equal(gate.steps[0].shell, "bash");
     assert.equal(gate.steps[0].env.NEEDS_JSON, "${{ toJSON(needs) }}");
+    assert.equal(gate.steps[0].run, canonicalAggregateBody, `${host}: key-blind aggregate body drift`);
     assert.equal(gate.steps[0].if, undefined);
     assert.equal(gate.steps[0]["continue-on-error"], undefined);
   }
 }
 
-async function fixture(run) {
+async function fixture(run, cleanup = rm) {
   const cwd = await mkdtemp(join(tmpdir(), "get-modular-ci-TEST-"));
-  try { await run(cwd); } finally { await rm(cwd, { recursive: true, force: true }); }
+  let primary;
+  let failed = false;
+  try { await run(cwd); } catch (error) { primary = error; failed = true; }
+  // Each synchronous child invocation has returned before cleanup. Retry only bounded
+  // directory removal; never retry the child or hide either failure.
+  try { await cleanup(cwd, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); }
+  catch (secondary) {
+    if (failed) throw new AggregateError([primary, secondary], "CI fixture failed and owned directory cleanup also failed", { cause: primary });
+    throw secondary;
+  }
+  if (failed) throw primary;
 }
 
 function shell(command, cwd, environment) {
@@ -243,15 +258,19 @@ async function prepareLane(cwd) {
       : `#!/usr/bin/env node\n${fake}`, { mode: 0o755 });
 }
 
-function assertAggregate(step, cwd, dependency) {
-  assert.equal(shell(step.run, cwd, { NEEDS_JSON: JSON.stringify({ [dependency]: { result: "success" } }) }), 0);
+function assertAggregate(step, cwd, dependency, context = dependency) {
+  const status = (needs, phase) => {
+    try { return shell(step.run, cwd, { NEEDS_JSON: typeof needs === "string" ? needs : JSON.stringify(needs) }); }
+    catch (cause) { throw new Error(`Aggregate shell for ${context} (${phase}) failed`, { cause }); }
+  };
+  assert.equal(status({ [dependency]: { result: "success" } }, "success"), 0);
   for (const result of ["failure", "cancelled", "skipped", "unknown", null]) {
-    assert.notEqual(shell(step.run, cwd, { NEEDS_JSON: JSON.stringify({ [dependency]: { result } }) }), 0, `must reject ${result}`);
+    assert.notEqual(status({ [dependency]: { result } }, `reject ${result}`), 0, `must reject ${result}`);
   }
-  for (const needs of [{}, { [dependency]: {} }, { [dependency]: { result: "success" }, extra: { result: "skipped" } }]) {
-    assert.notEqual(shell(step.run, cwd, { NEEDS_JSON: JSON.stringify(needs) }), 0, "must reject incomplete/mixed needs");
+  for (const [index, needs] of [{}, { [dependency]: {} }, { [dependency]: { result: "success" }, extra: { result: "skipped" } }].entries()) {
+    assert.notEqual(status(needs, `reject incomplete/mixed ${index}`), 0, "must reject incomplete/mixed needs");
   }
-  assert.notEqual(shell(step.run, cwd, { NEEDS_JSON: "invalid JSON" }), 0);
+  assert.notEqual(status("invalid JSON", "reject invalid JSON"), 0);
 }
 
 test("every OS executes the independent baseline obligations with their prerequisites", () => validateLanes(workflow));
@@ -303,6 +322,39 @@ test("upstream growth diagnostic preserves source bytes with explicit Node quali
   }
 });
 
+function validateHistoryPreparation(value) {
+  let callers = 0;
+  for (const job of Object.values(value.jobs)) {
+    for (const [index, step] of (job.steps ?? []).entries()) {
+      if (step.run !== "node architecture/tooling/runtime/ci.ts") continue;
+      callers++;
+      const preparation = job.steps[index - 1];
+      assert.equal(preparation?.run, "node architecture/tooling/runtime/retained-history.ts");
+      assert.equal(preparation.if, undefined);
+      assert.equal(preparation["working-directory"], undefined);
+      assert.equal(preparation["continue-on-error"], undefined);
+    }
+  }
+  assert.equal(callers, 10, "nine runtime/OS lanes plus the installed compatibility job");
+}
+
+test("every Node projection caller provisions exact retained history before cloning", () => {
+  validateHistoryPreparation(workflow);
+  for (const [name, job] of Object.entries(workflow.jobs)) {
+    const index = (job.steps ?? []).findIndex(step => step.run === "node architecture/tooling/runtime/ci.ts");
+    if (index < 0) continue;
+    for (const mutate of [
+      steps => { steps.splice(index - 1, 1); },
+      steps => { steps[index - 1].if = "false"; },
+      steps => { steps[index - 1]["working-directory"] = "foreign"; },
+    ]) {
+      const mutant = clone(workflow);
+      mutate(mutant.jobs[name].steps);
+      assert.throws(() => validateHistoryPreparation(mutant));
+    }
+  }
+});
+
 test("the Node 24 consumer receives both observation entries from the default-runtime pack", () => {
   const job = workflow.jobs["node-24-compatibility"];
   const build = job.steps.find(step => step.name === "Build and pack libraries with the default Node 26 tooling");
@@ -339,8 +391,8 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
         .replace("governance:check assembly:build", "assembly:build governance:check");
     });
     mutate(job => { job.steps[6].if = "false"; });
-    mutate(job => { job.steps[5].run = "bun install"; });
-    mutate(job => { job.steps[6].run = "pnpm peers check"; });
+    mutate(job => { job.steps[6].run = "bun install"; });
+    mutate(job => { job.steps[7].run = "pnpm peers check"; });
     mutate(job => { job.steps.splice(6, 1); });
     mutate(job => { job.env = { ROOT_CI_NODE_VERSION: "26.9.9" }; });
     mutate(job => { job.steps[2].with["node-version"] = "26.9.9"; });
@@ -407,7 +459,20 @@ test("rejects an omitted dependency, skipped aggregate or renamed required conte
 
 test("the actual aggregate shell fails closed for failure, cancellation, skips and empty needs", async () => {
   await fixture(async cwd => {
-    for (const host of Object.keys(hosts)) assertAggregate(aggregate(workflow, host).steps[0], cwd, `lanes-${host}`);
+    // Bind every actual body to the independently stated key-blind predicate
+    // before grouping. Equality between actual bodies alone would miss an
+    // identically wrong key-dependent body on all nine hosts.
+    validateLanes(workflow);
+    // Exercise the complete exit matrix once per exact qualified body here.
+    const bodies = new Map();
+    for (const host of Object.keys(hosts)) {
+      const step = aggregate(workflow, host).steps[0];
+      if (!bodies.has(step.run)) bodies.set(step.run, { step, dependencies: [] });
+      bodies.get(step.run).dependencies.push(`lanes-${host}`);
+    }
+    for (const { step, dependencies } of bodies.values()) {
+      assertAggregate(step, cwd, dependencies[0], dependencies.join(", "));
+    }
     // Demonstrates rejection of the credible regression: treating skipped as green.
     const permissive = {
       run: aggregate(workflow, "ubuntu").steps[0].run
@@ -415,6 +480,25 @@ test("the actual aggregate shell fails closed for failure, cancellation, skips a
     };
     assert.throws(() => assertAggregate(permissive, cwd, "lanes-ubuntu"), /must reject skipped/u);
   });
+});
+
+test("all aggregate definitions reject an identically hardcoded dependency-key predicate", () => {
+  const changed = clone(workflow);
+  for (const host of Object.keys(hosts)) {
+    aggregate(changed, host).steps[0].run = "jq -e '.[\"lanes-ubuntu\"].result == \"success\"' <<< \"$NEEDS_JSON\"\n";
+  }
+  assert.throws(() => validateLanes(changed), /key-blind aggregate body drift/u);
+});
+
+test("owned fixture cleanup retains the primary failure and bounded cleanup failure", async () => {
+  const primary = new Error("original fixture failure");
+  const secondary = new Error("owned cleanup failure");
+  await assert.rejects(fixture(async () => { throw primary; }), error => error === primary);
+  await assert.rejects(fixture(async () => { throw primary; }, async (cwd, options) => {
+    await rm(cwd, options); // Close the real owned scope before injecting its diagnostic.
+    throw secondary;
+  }), error => error instanceof AggregateError && error.cause === primary
+    && error.errors.length === 2 && error.errors[0] === primary && error.errors[1] === secondary);
 });
 
 // The prior Bash payload changed Windows tar selection, coerced child exits to 1,
