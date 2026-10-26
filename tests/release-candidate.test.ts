@@ -4,14 +4,14 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { assertNodeQualification, custody, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, custody, engineAt, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,6 +40,51 @@ interface FixtureOptions {
   readonly privateVersioning?: boolean;
   readonly numericRange?: boolean;
   readonly copiedEngine?: boolean;
+}
+function resolvedEnginePackage(from: string, name: string, installations: readonly string[]): string {
+  const resolver = createRequire(from);
+  let entry: string;
+  try { entry = realpathSync(resolver.resolve(`${name}/package.json`)); }
+  catch { entry = realpathSync(resolver.resolve(name)); }
+  const owner = installations.toSorted((left, right) => right.length - left.length).find(path => {
+    const child = relative(dirname(path), entry);
+    return !isAbsolute(child) && child !== ".." && !child.startsWith(`..${sep}`);
+  });
+  assert(owner, `Fixture engine dependency has no captured owner: ${name}`);
+  return owner;
+}
+function copyEngine(root: string): string {
+  const original = engineAt(repositoryRoot);
+  const cliManifest = realpathSync(require.resolve("@changesets/cli/package.json"));
+  const copiedEngine = join(root, "node_modules", "@changesets", "cli");
+  const copies = new Map(original.installations.map((path, index) => [path,
+    path === cliManifest ? copiedEngine : join(root, "node_modules", ".captured-engine", String(index))]));
+  // Copy files independently of the manager's symlink/junction layout. Every
+  // dependency edge is rebuilt from actual source resolution, never a name guess.
+  for (const [path, target] of copies) {
+    cpSync(dirname(path), target, { recursive: true, filter: source => basename(source) !== "node_modules" });
+  }
+  for (const [path, target] of copies) {
+    const metadata = record(JSON.parse(readFileSync(path, "utf8")));
+    const optional = record(metadata["optionalDependencies"] ?? {});
+    const peers = record(metadata["peerDependenciesMeta"] ?? {});
+    const names = Object.keys({ ...record(metadata["dependencies"] ?? {}),
+      ...record(metadata["peerDependencies"] ?? {}), ...optional });
+    for (const name of names) {
+      let source: string;
+      try { source = resolvedEnginePackage(path, name, original.installations); }
+      catch (error) {
+        if (name in optional || record(peers[name] ?? {})["optional"] === true) {continue;}
+        throw error;
+      }
+      const provider = copies.get(source); assert(provider, "Fixture engine closure must be complete");
+      const alias = join(target, "node_modules", name);
+      mkdirSync(dirname(alias), { recursive: true });
+      symlinkSync(provider, alias, process.platform === "win32" ? "junction" : "dir");
+    }
+  }
+  assert.equal(engineAt(root).digest, original.digest, "Fixture engine copy must preserve the entire installed closure");
+  return copiedEngine;
 }
 function createFixture(options: FixtureOptions = {}): { root: string; dispose(): void; copiedEngine?: string } {
   const root = mkdtempSync(join(tmpdir(), "get-modular-release-fixture-"));
@@ -70,11 +115,7 @@ function createFixture(options: FixtureOptions = {}): { root: string; dispose():
   }
   let copiedEngine: string | undefined;
   if (options.copiedEngine === true) {
-    const actual = dirname(realpathSync(require.resolve("@changesets/cli/package.json")));
-    copiedEngine = join(root, "node_modules", "@changesets", "cli");
-    cpSync(actual, copiedEngine, { recursive: true });
-    rmSync(join(copiedEngine, "node_modules"), { recursive: true, force: true });
-    symlinkSync(dirname(dirname(actual)), join(copiedEngine, "node_modules"), process.platform === "win32" ? "junction" : "dir");
+    copiedEngine = copyEngine(root);
   } else {
     mkdirSync(join(root, "node_modules"));
     for (const entry of readdirSync(nodeModules)) {
