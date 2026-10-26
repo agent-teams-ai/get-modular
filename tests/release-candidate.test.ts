@@ -11,7 +11,7 @@ import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { assertNodeQualification, custody, engineAt, git, historicalFile, historicalSnapshot, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
 import { assertPromotionBranch, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
@@ -521,6 +521,7 @@ await test("real admitted metadata cohort promotes public baselines and independ
   try {
     git(repositoryRoot, "clone", "--quiet", "--shared", "--no-hardlinks", repositoryRoot, root);
     git(root, "checkout", "--detach", source);
+    git(root, "update-ref", "refs/heads/main", source);
     mkdirSync(join(root, "node_modules"));
     for (const entry of readdirSync(nodeModules)) {
       if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
@@ -565,4 +566,21 @@ await test("batched historical custody preserves every exact blob including bina
     assert.equal(captured["binary.dat"]?.leaf.digest, hash(bytes));
     assert.deepEqual(captured, snapshot(subject.root));
   } finally { subject.dispose(); }
+});
+
+await test("historical batch decoder rejects malformed or missing object responses", () => {
+  const oid = "1".repeat(40); const body = Buffer.from([0, 255, 10, 13]);
+  const entry = { mode: "100755", oid, path: "name\nwith\tseparators" };
+  const valid = Buffer.concat([Buffer.from(`${oid} blob ${body.length}\n`), body, Buffer.from("\n")]);
+  const result = decodeHistoricalBatch([entry], valid);
+  assert.equal(result[entry.path]?.leaf.digest, hash(body));
+  assert.equal(result[entry.path]?.leaf.mode, "100755");
+  assert.equal(decodeHistoricalBatch([{ ...entry, mode: "120000" }], valid)[entry.path]?.leaf.type, "symlink");
+  for (const invalid of [Buffer.alloc(0), Buffer.from(`${oid} blob 4`),
+    Buffer.from(`${"2".repeat(40)} blob 0\n\n`), Buffer.from(`${oid} missing\n`),
+    Buffer.from(`${oid} blob 9007199254740992\n\n`), valid.subarray(0, -1),
+    Buffer.concat([valid, Buffer.from("unlisted")])]) {
+    assert.throws(() => decodeHistoricalBatch([entry], invalid), /candidate.historical-batch/u);
+  }
+  assert.throws(() => decodeHistoricalBatch([{ ...entry, mode: "160000" }], valid), /unsupported-file-type/u);
 });

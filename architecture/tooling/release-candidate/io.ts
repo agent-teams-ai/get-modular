@@ -102,6 +102,10 @@ export function historicalSnapshot(root: string, revision: string): SourceTree {
   // path decoding, per-file subprocess or candidate-provided bytes are involved.
   const bytes = execFileSync("git", ["cat-file", "--batch"], { cwd: root,
     input: entries.map(entry => entry.oid).join("\n") + "\n", maxBuffer: 256 * 1024 * 1024 });
+  return decodeHistoricalBatch(entries, bytes);
+}
+export function decodeHistoricalBatch(entries: readonly { readonly mode: string; readonly oid: string; readonly path: string }[], bytes: Buffer): SourceTree {
+  const files: Record<string, SourceFile> = Object.create(null) as Record<string, SourceFile>;
   let offset = 0;
   for (const entry of entries) {
     const newline = bytes.indexOf(10, offset); assert(newline >= offset, "candidate.historical-batch-header");

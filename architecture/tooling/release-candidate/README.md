@@ -119,7 +119,10 @@ two configured Core/Assembly baselines, unchanged API/extractor data and new
 outputs stay in that owned workspace. Every other caller output remains governed
 by the whole-tree check, ignored files included. Independent current-base PR replay
 runs the same build/public producer and compares the complete resulting diff,
-including exact baseline bytes. There is no arbitrary baseline allowlist or
+including exact baseline bytes. Copy-back is mechanical byte transport of the
+public CLI's captured outputs; it never computes, edits or approves snapshot JSON
+or fingerprints. The public CLI alone creates/promotes content in the owned
+same-repository trusted release workspace. There is no arbitrary baseline allowlist or
 handwritten version rewrite. The shared release-checks API remains 0.1.0.
 
 ## Qualification
