@@ -195,15 +195,20 @@ function versionAdmissionInput() {
 test("runtime policy test roster retains every reviewed test entry", () => {
   const entries = ["tests/tooling-node-policy.test.ts", "tests/npm-release.test.ts",
     "tests/repository-runtime.test.ts", "tests/runtime-projection-custody.test.ts",
-    "tests/m3-runtime-collection.test.ts"];
-  assert.equal(packageJson.scripts["runtime:policy:test"], `node --test ${entries.join(" ")}`);
+    "tests/m3-runtime-collection.test.ts", "tests/release-candidate.test.ts"];
+  const replay = " && node architecture/tooling/release-candidate/run.ts check-pr";
+  assert.equal(packageJson.scripts["runtime:policy:test"], `node --test ${entries.join(" ")}${replay}`);
   assert.doesNotThrow(() => validate());
   for (const missing of entries) {
     const changed = clone(packageJson);
-    changed.scripts["runtime:policy:test"] = `node --test ${entries.filter(path => path !== missing).join(" ")}`;
+    changed.scripts["runtime:policy:test"] = `node --test ${entries.filter(path => path !== missing).join(" ")}${replay}`;
     assert.throws(() => validate({ packageJson: changed }),
       /runtime:policy:test must use its closed command definition/u, missing);
   }
+  const withoutReplay = clone(packageJson);
+  withoutReplay.scripts["runtime:policy:test"] = `node --test ${entries.join(" ")}`;
+  assert.throws(() => validate({ packageJson: withoutReplay }),
+    /runtime:policy:test must use its closed command definition/u);
 });
 
 // Literal counterexamples must not follow the checker or an installed package's version.

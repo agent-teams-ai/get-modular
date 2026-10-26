@@ -8,6 +8,7 @@
         "@agent-teams/docs-protocol": "0.6.6",
         "@agent-teams/engineering-foundation": "3.0.0",
         "@agent-teams/feature-module-standard": "0.3.0",
+        "@agent-teams/release-checks": "catalog:",
         "@changesets/cli": "catalog:",
         "@get-modular/assembly": "workspace:*",
         "@get-modular/conformance": "workspace:*",
@@ -78,6 +79,7 @@
     },
   },
   "catalog": {
+    "@agent-teams/release-checks": "0.1.0",
     "@changesets/cli": "3.0.2",
     "@types/node": "24.19.1",
     "ajv": "8.20.0",
@@ -102,6 +104,8 @@
     "@agent-teams/engineering-foundation": ["@agent-teams/engineering-foundation@3.0.0", "", { "dependencies": { "@agent-teams/document-authoring": "0.3.6", "@agent-teams/repository-mutation": "0.4.2", "@microsoft/api-extractor-model": "7.33.10", "@microsoft/tsdoc": "0.16.0", "ajv": "8.20.0", "ajv-formats": "3.0.1", "jsonc-parser": "3.3.1", "node-or-bun": "0.2.2", "oxc-parser": "0.142.0", "proper-lockfile": "4.1.2", "typescript": "7.0.2", "yaml": "2.9.0" }, "bin": { "agent-teams-node-test": "dist/node-test-cli.js", "agent-teams-foundation": "dist/cli.js" } }, "sha512-FQYZjlU15ZasKWw0HpNJwh+GUuGgV9PfynP+I9kIPbSx0ydmtAWOzjOnJV57jcQ5PMVspah4zu7XhqgpFJiZXA=="],
 
     "@agent-teams/feature-module-standard": ["@agent-teams/feature-module-standard@0.3.0", "", { "peerDependencies": { "@agent-teams/engineering-foundation": "^1.8.0 || ^2.0.0 || ^3.0.0" }, "optionalPeers": ["@agent-teams/engineering-foundation"] }, "sha512-F4EhgxiLEfHzMs31EaE0Bq1/f5FLi2NgqRHEFMPD++30TO3S3ZeQ0XQitjka9uZ1028DwHBBJSUEWyJ6NyyjYQ=="],
+
+    "@agent-teams/release-checks": ["@agent-teams/release-checks@0.1.0", "", {}, "sha512-bspWdQYc85GCvmR6fFn1wffHk6ZNRlY7ox288X7zN6yfzXbEE+a4WVPa3FU3TCaiZ6e2dqsiutgR3V0gZTPXjw=="],
 
     "@agent-teams/repository-mutation": ["@agent-teams/repository-mutation@0.4.2", "", {}, "sha512-gPjDKKIJU+7eNyPFRsnVpRJqQyhjg2F0XTsiGKSGYDI6w/oRfbdvRs2l7EBHFo3AGRWDk+dQVTGJ6gDr6a/BkQ=="],
 

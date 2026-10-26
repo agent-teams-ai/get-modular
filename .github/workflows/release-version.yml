@@ -1,0 +1,63 @@
+name: release version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-version-main
+  cancel-in-progress: false
+
+jobs:
+  version:
+    if: github.repository == 'agent-teams-ai/get-modular' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+        with:
+          version: 11.20.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - run: node architecture/tooling/runtime/dev.ts install-node-qualification
+      - run: node architecture/tooling/runtime/dev.ts peers
+      - run: node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit
+      - name: End cleanly when the complete official plan has no release
+        id: plan
+        run: node architecture/tooling/release-candidate/run.ts status
+      - name: Configure the existing owner commit identity
+        if: steps.plan.outputs.has-release == 'true'
+        run: |
+          git config --local user.name iliya
+          git config --local user.email iliyazelenkog@gmail.com
+      - name: Generate the version branch through the qualified checker
+        if: steps.plan.outputs.has-release == 'true'
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          setupGitUser: false
+          createGithubReleases: false
+          version: node architecture/tooling/release-candidate/run.ts version
+          title: "chore(release): version packages"
+          commit: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GIT_AUTHOR_NAME: iliya
+          GIT_AUTHOR_EMAIL: iliyazelenkog@gmail.com
+          GIT_COMMITTER_NAME: iliya
+          GIT_COMMITTER_EMAIL: iliyazelenkog@gmail.com

@@ -54,7 +54,7 @@
     "runtime:preflight": "node architecture/checks/node-version.mjs",
     "lockfile:peers:check": "node architecture/tooling/runtime/dev.ts peers",
     "runtime:policy:typecheck": "node architecture/tooling/runtime/projection-check.ts && node architecture/tooling/runtime/command.ts run tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-runtime.json --noEmit",
-    "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts tests/runtime-projection-custody.test.ts tests/m3-runtime-collection.test.ts",
+    "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts tests/runtime-projection-custody.test.ts tests/m3-runtime-collection.test.ts tests/release-candidate.test.ts && node architecture/tooling/release-candidate/run.ts check-pr",
     "sdk-growth:check": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts",
     "sdk-growth:test": "node architecture/checks/compiler-floor.ts && node --test tests/sdk-growth.test.mjs",
     "sdk-growth:admission": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node tests/qualification/sdk-growth-admission.mjs",
@@ -67,7 +67,7 @@
     "assembly:build": "node architecture/tooling/runtime/command.ts run core:build && node architecture/tooling/build-assembly.mjs",
     "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.assembly-tooling.json --noEmit",
     "assembly:test": "node --test \"tests/assembly/**/*.test.mjs\" \"packages/assembly/tests/**/*.test.mjs\" \"tests/assembly/**/*.test.ts\"",
-    "release:version": "changeset version",
+    "release:version": "node architecture/tooling/release-candidate/run.ts version",
     "lifecycle:build": "node architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
     "lifecycle:typecheck": "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit && node architecture/tooling/test-assembly-types.mjs --projects packages/lifecycle-kernel/tsconfig.types.json packages/lifecycle-kernel/tsconfig.types.bundler.json",
     "lifecycle:test": "node --test packages/lifecycle-kernel/tests/kernel.test.mjs",
@@ -100,6 +100,7 @@
     "@agent-teams/docs-protocol": "0.6.6",
     "@agent-teams/engineering-foundation": "3.0.0",
     "@agent-teams/feature-module-standard": "0.3.0",
+    "@agent-teams/release-checks": "catalog:",
     "@changesets/cli": "catalog:",
     "@get-modular/assembly": "workspace:*",
     "@get-modular/conformance": "workspace:*",
@@ -129,6 +130,7 @@
       "packages/*"
     ],
     "catalog": {
+      "@agent-teams/release-checks": "0.1.0",
       "@changesets/cli": "3.0.2",
       "@types/node": "24.19.1",
       "ajv": "8.20.0",

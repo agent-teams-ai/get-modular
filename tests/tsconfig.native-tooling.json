@@ -35,7 +35,12 @@
     "../architecture/tooling/npm-release/policy.ts",
     "../architecture/tooling/npm-release/run.ts",
     "npm-release.test.ts",
-    "../architecture/tooling/npm-release/registry.ts"
+    "../architecture/tooling/npm-release/registry.ts",
+    "../architecture/tooling/release-candidate/io.ts",
+    "../architecture/tooling/release-candidate/host.ts",
+    "../architecture/tooling/release-candidate/run.ts",
+    "qualification/support/forged-changesets-status.ts",
+    "release-candidate.test.ts"
   ],
   "include": []
 }

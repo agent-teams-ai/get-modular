@@ -16,15 +16,18 @@ keeps the common npm invariant reusable while package qualification remains loca
 
 ## Normal release
 
-1. Use the existing Changesets release branch and public API baseline promotion
-   process. `pnpm release:version` retains its existing behavior. Merge the
-   reviewed version change through the normal required CI gates. Do not raise
-   versions on every main commit or publish the private candidate.
+1. Use the Changesets version branch and the
+   [checked version route](../release-candidate/README.md). Changesets 3.0.2 is
+   the sole version and dependent propagation engine. The wrapper qualifies its
+   actual candidate before the action can commit or push. The separate existing
+   public API baseline procedure retains its owner and scope. Merge the reviewed
+   version change through the normal required CI gates. Do not raise versions
+   on every main commit or publish the private candidate.
 2. A completed `CI` run on main wakes `npm release`. Preparation requires the
    exact current main source, the actual `.github/workflows/ci.yml`, and every
    expected job from that run attempt to have succeeded. Matrix job names are
-   expanded from the checked-in workflow. Currently this is 43 jobs: 36 lanes,
-   six aggregates and one installed Node 24 compatibility job. Missing, skipped,
+   expanded from the checked-in workflow. Currently this is 64 jobs; the accepted Bun/Node runtime matrix retains all lanes,
+   nine aggregates and one installed Node 24 compatibility job. Missing, skipped,
    cancelled, duplicate or foreign-source jobs fail admission. An older
    `workflow_run` is skipped when its source differs from `github.sha` or live main.
 3. Automatic runs compare current public versions with live npm version and
@@ -91,6 +94,120 @@ mismatch and repair the version/release evidence. Never normalize, replace or
 re-upload a published version to hide a mismatch. A future retained release can
 extend this narrow binding only with its own reviewed qualification evidence.
 
+### Accepted Resources validation input successor
+
+The accepted Resources fix `ddf1e0b0053f546f12ca70190b237b4f7e78d09d`
+changes only three validation declarations in `architecture/checks/leaf-packages.mjs`:
+its required close-reentrancy test, its strict test-tooling project and its test
+command. The release policy admits only this exact whole-file successor:
+
+| Input | Git blob | SHA-256 |
+| --- | --- | --- |
+| Historical `2cd561688bb223f944425718cc093e55ff4bc20d` | `d998b031c65e7f5065e618552f429588569c094f` | `99a674571bf715046fe6867c3d0f4caefa4ef3142f73c4747fe2cbbc34800573` |
+| Accepted `ddf1e0b0053f546f12ca70190b237b4f7e78d09d` | `5c450cb84c9a077d7203313eb18e2eee8d24faf7` | `d697d331dcff6a70884e83f4d7e47303249c8b5b83dae9316b3a7e455638ff26` |
+
+The builder reads the selected row's `root` directly and derives outputs from
+`subpaths` through `leafBuildOutputs`; those fields, build commands and all executable helpers are
+unchanged. Independently stated replacements on the real historical Git bytes
+must reproduce the complete accepted file. Any further validation, row, root,
+subpath, build or helper edit fails the whole-file identity check. The relation
+applies with or without the development dependency successor below; every other
+compiler, build and dependency input retains its existing guard.
+
+This preserves `retainedSource`, the original package-tree catalog, all retained
+archives and historical qualification records. At the original preparation
+checkpoint, the changed Resources source rejected reuse at `0.2.0` and required
+its genuine Changesets patch release. The owning release below subsequently
+published that correction as `0.2.1`.
+The focused regression first failed against the previous policy with
+`release.retained-build-input-drift`. The corrected policy then passed all seven
+npm-release tests. An isolated TEST checkout installed the previously qualified
+`@agent-teams/release-checks@0.0.0` archive with its actual pnpm resolution and SRI:
+`sha256:d5e6eb3a48ea65f900ec18060dc1bfdb46fa2c3b694d2db1b239c698329318fe`.
+Strict TypeScript 7.0.2, all seven npm-release tests, all fifteen release-candidate
+tests and the complete docs protocol gate passed. The qualification owner checked
+all seventeen copied source files before and after each command; each binding
+remained exact throughout that run. This repeated an earlier run whose individual
+commands passed but whose final source-binding assertion failed; that earlier run
+is not a qualified source receipt.
+
+This is preparatory candidate evidence. Exact current-source full CI and the
+existing public registry archive/receipt/installed-consumer qualification remain
+required after the published `0.1.0` dependency is admitted. The production
+admission integrity stays null until that actual registry evidence exists.
+
+### Release checks development dependency successor
+
+The independent `@agent-teams/release-checks` adoption permits one bounded
+addition to the retained release-tooling inputs. It preserves the five source
+tree, archive and checksum records above. The complete root build commands,
+toolchain inputs and all other development dependencies remain equal to
+`2cd561688bb223f944425718cc093e55ff4bc20d`.
+
+The root development dependency must be `catalog:` and its workspace catalog
+must select exactly `0.1.0`. The lock must add exactly the matching default
+catalog record, root development importer record, package resolution and empty
+snapshot. The package resolution has only its approved SHA-512 integrity and
+exact engines. Runtime, peer and optional edges, resolution aliases, extra
+importers and unrelated graph changes reject. The checker validates these exact
+records before removing only those records for comparison of the remaining
+complete parsed workspace and lock. Git blob identities bind both supplied
+texts to the current and retained source; copied historical text cannot hide a
+different current lock.
+
+The [admission record](release-checks-adoption.json) records
+the independently qualified public version `0.1.0` integrity. Its installed-package,
+strict TypeScript 7.0.2, conformance and signature/provenance checks passed on
+2026-10-26. Retained archive admission remains bounded by its original source
+and cohort policy; current installation is pending until the owner managers
+generate the authoritative Bun and pnpm locks. Candidate `0.0.0` installation in a disposable
+TEST checkout proves the API integration only. The production lock has no
+invented package resolution, and this adoption must remain unmerged while its
+actual manager installations and final native CI are not yet qualified in this checkout.
+
+The original Resources-only preparation retained four unchanged package trees.
+Those observations remain bound to that earlier source; the released base below
+has five new versions outside the historical retained-version catalog. After
+adoption, run the existing manual current-main publication dispatch and verify
+downloaded archives and consumers; an automatic same-version skip is not
+reconciliation proof.
+
+## Released base for prepared adoption
+
+[The owning release PR #208](https://github.com/agent-teams-ai/get-modular/pull/208)
+merged as `7131d0d7a6bb5dd4c3e8906ccac065c0be0e0333`. Its exact-source
+[CI run](https://github.com/agent-teams-ai/get-modular/actions/runs/39610900906)
+and [publication run](https://github.com/agent-teams-ai/get-modular/actions/runs/39612969025)
+completed successfully. Publication executed prepare, publish, installed-consumer
+verification and promotion. Its source-bound registry evidence records all five
+uploads; independent npm reads on 2026-10-21 confirmed each exact version,
+matching integrity and intended `latest`:
+
+| Package | Published version and `latest` |
+| --- | --- |
+| Core and Assembly | `0.7.0` |
+| Resources | `0.2.1` |
+| Conformance | `0.5.0` |
+| Observation | `0.2.0` |
+
+The preparation branch incorporates this released source, including the promoted
+API baselines, accepted decisions, package versions/changelogs and Assembly
+tooling checks. Its release-checks Host permissions remain unchanged. The
+historical archive catalog, archive bytes and checksums also remain unchanged;
+this synchronization adds no retained binding for the new versions.
+
+The released tree has only `config.json` in `.changeset/`. After the real public
+leaf installation and lock/SRI qualification, collect the official current
+Changesets plan. If it still has no releases, use the existing no-release path;
+do not create an artificial intent or reproduce the already published release.
+
+This owning publication qualifies source `7131d0d7`, not the future adoption
+source. The dependency admission remains pending. Reconcile the eventual
+adopting main through the existing manual publication route: all five current
+versions use current-source packing rather than the old retained catalog. Any
+registry-byte mismatch remains a failure; do not substitute an old manifest,
+invent integrity or broaden retained archive admission to hide it.
+
 ## Artifact protocol and recovery
 
 The original artifact contains only `release.json` and the five package archives.
@@ -112,7 +229,7 @@ job or npm metadata alone is insufficient. After a main advance, use exact-sourc
 CI for that new main rather than replaying an older source.
 
 Focused development checks are `pnpm tooling:native:typecheck` and
-`node --test tests/npm-release.test.ts`. They are included in the normal runtime
+`node --test tests/npm-release.test.ts tests/release-candidate.test.ts`. They are included in the normal runtime
 policy gates and closed root script roster. `assembly:typecheck` also checks the
 public consumer fixture. The full repository gates and genuine Actions execution
 remain required delivery evidence; local fixtures alone do not prove npm OIDC.
@@ -145,3 +262,15 @@ boundary; its pin and frozen evidence are preserved. Full current-standard
 migration and external SDK authority remain pending in that owner track. This
 release workflow does not activate it or use its historical pin as current
 production guidance.
+
+## Current cohort integration
+
+The prepared Host intentionally incorporates accepted main `081ae02b` (PR #206
+and #212), preserving Bun 1.4.3, Foundation 3.0.0, FMS 0.3.0, Stack 0.1.1
+and the unchanged shared publisher `ff94f771`. The standard's current document
+is Git blob `df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, SHA-256
+`3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86`.
+Its reviewed delta from the prepared branch changes five repository verification
+commands to Bun; the owning SDK evidence migration is retained unchanged.
+The earlier review observations above remain historical. SDK activation remains
+on HOLD. This tooling integration changes no production composition boundary.

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.native-tooling.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "rootDir": "qualification/support"
+  },
+  "files": ["qualification/support/forged-changesets-status.ts"],
+  "include": []
+}

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "package": "@agent-teams/release-checks",
+  "version": "0.1.0",
+  "integrity": "sha512-bspWdQYc85GCvmR6fFn1wffHk6ZNRlY7ox288X7zN6yfzXbEE+a4WVPa3FU3TCaiZ6e2dqsiutgR3V0gZTPXjw==",
+  "engines": {
+    "node": "^24.18.0 || ^26.0.0",
+    "pnpm": ">=11.17.0 <12"
+  }
+}
