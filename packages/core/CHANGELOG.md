@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+### Patch Changes
+
+- 7a7c4c5: Coordinate Core package metadata with the exact Assembly patch release; the public API and compiler behavior are unchanged.
+
 ## 0.7.0
 
 ### Minor Changes

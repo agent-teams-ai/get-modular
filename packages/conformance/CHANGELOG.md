@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1
+
+### Patch Changes
+
+- 7a7c4c5: Advance the packaged Core and Assembly peer minimums for the coordinated patch cohort, preserving the Resources peer and conformance behavior.
+- Updated dependencies [b1866ac]
+- Updated dependencies [7a7c4c5]
+  - @get-modular/assembly@0.7.1
+  - @get-modular/core@0.7.1
+
 ## 0.5.0
 
 ### Minor Changes
