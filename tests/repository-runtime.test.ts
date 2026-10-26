@@ -464,6 +464,9 @@ test("explicit retained history survives a selected clone without a regular bran
     const initial = run(root, "git", ["rev-parse", "HEAD"]).stdout.trim();
     await put(root, "retained-only.txt", "historical observation\n");
     assert.equal(run(root, "git", ["add", "retained-only.txt"]).status, 0);
+    for (const variable of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) {
+      assert.match(run(root, "git", ["var", variable]).stdout, /^iliya <iliyazelenkog@gmail\.com> /u);
+    }
     assert.equal(run(root, "git", ["commit", "-m", "test: create detached retained observation"]).status, 0);
     const commit = run(root, "git", ["rev-parse", "HEAD"]).stdout.trim();
     const tree = run(root, "git", ["rev-parse", "HEAD^{tree}"]).stdout.trim();
@@ -473,7 +476,17 @@ test("explicit retained history survives a selected clone without a regular bran
     assert.equal(run(root, "git", ["clone", "--no-local", root, selected]).status, 0);
     assert.notEqual(run(selected, "git", ["cat-file", "-t", commit]).status, 0);
     retainHistory(root, root, pin);
-    retainHistory(selected, root, pin);
+    const foreignGit = process.env.GIT_DIR;
+    const foreignWork = process.env.GIT_WORK_TREE;
+    try {
+      process.env.GIT_DIR = join(temporary, "foreign-missing.git");
+      process.env.GIT_WORK_TREE = root;
+      retainHistory(selected, root, pin);
+      assertRetainedHistory(selected, pin);
+    } finally {
+      if (foreignGit === undefined) delete process.env.GIT_DIR; else process.env.GIT_DIR = foreignGit;
+      if (foreignWork === undefined) delete process.env.GIT_WORK_TREE; else process.env.GIT_WORK_TREE = foreignWork;
+    }
     assertRetainedHistory(selected, pin);
     assert.equal(run(selected, "git", ["show", `${commit}:retained-only.txt`]).stdout, "historical observation\n");
     assert.equal(run(selected, "git", ["for-each-ref", "--format=%(refname)", "refs/heads"]).stdout.trim(), "refs/heads/main");

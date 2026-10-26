@@ -11,7 +11,11 @@ export const retainedObservation: RetainedHistory = Object.freeze({
 });
 const origin = "https://github.com/agent-teams-ai/get-modular.git";
 function git(root: string, ...args: string[]): string {
-  return execFileSync("git", args, { cwd: root, encoding: "utf8", timeout: 60_000 }).trim();
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+  return execFileSync("git", ["--no-replace-objects", "--literal-pathspecs", "-C", root, ...args], {
+    encoding: "utf8", timeout: 60_000,
+    env: { ...env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
+  }).trim();
 }
 export function assertRetainedHistory(root: string, pin: RetainedHistory = retainedObservation): void {
   assert.equal(git(root, "cat-file", "-t", pin.commit), "commit", "runtime.history.commit");
