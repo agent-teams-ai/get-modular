@@ -304,6 +304,39 @@ test("upstream growth diagnostic preserves source bytes with explicit Node quali
   }
 });
 
+function validateHistoryPreparation(value) {
+  let callers = 0;
+  for (const job of Object.values(value.jobs)) {
+    for (const [index, step] of (job.steps ?? []).entries()) {
+      if (step.run !== "node architecture/tooling/runtime/ci.ts") continue;
+      callers++;
+      const preparation = job.steps[index - 1];
+      assert.equal(preparation?.run, "node architecture/tooling/runtime/retained-history.ts");
+      assert.equal(preparation.if, undefined);
+      assert.equal(preparation["working-directory"], undefined);
+      assert.equal(preparation["continue-on-error"], undefined);
+    }
+  }
+  assert.equal(callers, 10, "nine runtime/OS lanes plus the installed compatibility job");
+}
+
+test("every Node projection caller provisions exact retained history before cloning", () => {
+  validateHistoryPreparation(workflow);
+  for (const [name, job] of Object.entries(workflow.jobs)) {
+    const index = (job.steps ?? []).findIndex(step => step.run === "node architecture/tooling/runtime/ci.ts");
+    if (index < 0) continue;
+    for (const mutate of [
+      steps => { steps.splice(index - 1, 1); },
+      steps => { steps[index - 1].if = "false"; },
+      steps => { steps[index - 1]["working-directory"] = "foreign"; },
+    ]) {
+      const mutant = clone(workflow);
+      mutate(mutant.jobs[name].steps);
+      assert.throws(() => validateHistoryPreparation(mutant));
+    }
+  }
+});
+
 test("the Node 24 consumer receives both observation entries from the default-runtime pack", () => {
   const job = workflow.jobs["node-24-compatibility"];
   const build = job.steps.find(step => step.name === "Build and pack libraries with the default Node 26 tooling");
