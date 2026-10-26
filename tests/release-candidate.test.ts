@@ -11,7 +11,7 @@ import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { assertNodeQualification, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, array, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
 import { assertPromotionBranch, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
@@ -534,9 +534,9 @@ await test("real admitted metadata cohort promotes public baselines and independ
     assert.throws(() => produceBaselines({ ...prepared, hasRelease: false }, prepared.before, baselinePaths), /public-producer-required/u);
     const registryPath = "architecture/decisions/accepted-decisions.json";
     const registryFile = prepared.before[registryPath]; assert(registryFile);
-    const registry = record(JSON.parse(registryFile.contents)); assert(Array.isArray(registry["decisions"]));
+    const registry = record(JSON.parse(registryFile.contents)); const decisions = array(registry["decisions"]);
     assert.throws(() => plannedBaselines({ ...prepared.before, [registryPath]: { ...registryFile,
-      contents: JSON.stringify({ ...registry, decisions: registry["decisions"].filter(value => record(value)["id"] !== "ADR-0042") }) } },
+      contents: JSON.stringify({ ...registry, decisions: decisions.filter(value => record(value)["id"] !== "ADR-0042") }) } },
     prepared.expected.plan), /metadata-release-registry/u);
     const producer = prepared.execution.producer; assert(producer);
     assert.throws(() => versionPreparedRelease({ ...prepared, execution: { ...prepared.execution,
