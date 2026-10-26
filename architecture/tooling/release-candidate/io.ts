@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { FileLeaf, JsonRecord } from "@agent-teams/release-checks";
@@ -14,9 +14,12 @@ export interface EngineIdentity {
   readonly digest: string;
   readonly version: "3.0.2";
 }
+export interface DirectoryIdentity { readonly device: string; readonly inode: string }
 export interface ExecutionCustody {
   readonly root: string;
   readonly gitDirectory: string;
+  readonly rootIdentity: DirectoryIdentity;
+  readonly gitDirectoryIdentity: DirectoryIdentity;
   readonly source: string;
   readonly engine: EngineIdentity;
   readonly runtime: { readonly kind: "node"; readonly version: string; readonly executable: string };
@@ -189,13 +192,23 @@ export function assertNodeQualification(root: string): void {
   assert(existsSync(join(root, "node_modules/.pnpm")) && !existsSync(join(root, "node_modules/.bun"))
     && !existsSync(join(root, ".get-modular-node-profile.json")), "candidate.node-qualification-install-required");
 }
+function directoryIdentity(path: string): DirectoryIdentity {
+  const status = statSync(path, { bigint: true });
+  assert(status.isDirectory() && status.ino !== 0n, "candidate.directory-identity-unavailable");
+  return { device: status.dev.toString(), inode: status.ino.toString() };
+}
 export function custody(root: string): ExecutionCustody {
   assert(!("bun" in process.versions), "candidate.node-runtime-required");
   const actual = realpathSync(root);
-  assert.equal(realpathSync(git(actual, "rev-parse", "--show-toplevel").trim()), actual, "candidate.foreign-root");
+  // Git can expand a Windows short directory alias that Node preserves.
+  // Bind physical objects without weakening case-sensitive filesystem checks.
+  const rootIdentity = directoryIdentity(actual);
+  assert.deepEqual(directoryIdentity(realpathSync(git(actual, "rev-parse", "--show-toplevel").trim())),
+    rootIdentity, "candidate.foreign-root");
   const source = git(actual, "rev-parse", "HEAD").trim();
   assert.match(source, /^[a-f0-9]{40}$/u, "candidate.source-identity");
-  return { root: actual, gitDirectory: realpathSync(git(actual, "rev-parse", "--absolute-git-dir").trim()), source, engine: engineAt(actual),
+  const gitDirectory = realpathSync(git(actual, "rev-parse", "--absolute-git-dir").trim());
+  return { root: actual, gitDirectory, rootIdentity, gitDirectoryIdentity: directoryIdentity(gitDirectory), source, engine: engineAt(actual),
     runtime: { kind: "node", version: process.versions.node, executable: realpathSync(process.execPath) } };
 }
 export function assertCustody(expected: ExecutionCustody, observed: ExecutionCustody): void {

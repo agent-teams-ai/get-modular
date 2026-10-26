@@ -11,7 +11,7 @@ import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
-import { assertNodeQualification, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
+import { assertNodeQualification, custody, git, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -439,4 +439,27 @@ await test("version generation requires the unchanged-source Node qualification 
     write(subject.root, ".get-modular-node-profile.json", {});
     assert.throws(() => assertNodeQualification(subject.root), /node-qualification-install-required/u);
   } finally { subject.dispose(); }
+});
+
+await test("custody rejects nested roots and same-spelling physical replacement", () => {
+  const subject = createFixture();
+  const retained = `${subject.root}-physical-owner`;
+  try {
+    changeset(subject.root, "empty", {});
+    commit(subject.root, "fixture: physical source custody");
+    const prepared = prepareRelease(subject.root);
+    mkdirSync(join(subject.root, "nested"));
+    assert.throws(() => custody(join(subject.root, "nested")), /candidate.foreign-root/u);
+    rmSync(join(subject.root, "nested"), { recursive: true });
+    renameSync(subject.root, retained);
+    cpSync(retained, subject.root, { recursive: true });
+    assert.equal(git(subject.root, "rev-parse", "HEAD").trim(), prepared.execution.source);
+    assert.throws(() => checkGeneratedCandidate(prepared), /candidate.execution-custody-drift/u);
+  } finally {
+    if (existsSync(retained)) {
+      rmSync(subject.root, { recursive: true, force: true });
+      renameSync(retained, subject.root);
+    }
+    subject.dispose();
+  }
 });
