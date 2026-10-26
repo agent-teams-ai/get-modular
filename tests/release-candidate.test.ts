@@ -24,7 +24,12 @@ function write(root: string, path: string, contents: string | object): void {
 function read(root: string, path: string): string { return readFileSync(join(root, path), "utf8"); }
 function commit(root: string, message: string): string {
   git(root, "add", "--all");
-  git(root, "-c", "user.name=Release Fixture", "-c", "user.email=release-fixture@example.invalid", "commit", "--quiet", "-m", message);
+  const identity = ["-c", "user.name=iliya", "-c", "user.email=iliyazelenkog@gmail.com"];
+  for (const role of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) {
+    assert.match(git(root, ...identity, "var", role), /^iliya <iliyazelenkog@gmail\.com> \d+ [+-]\d{4}\n$/u,
+      `Fixture ${role} must retain the canonical owner identity`);
+  }
+  git(root, ...identity, "commit", "--quiet", "-m", message);
   return git(root, "rev-parse", "HEAD").trim();
 }
 function changeset(root: string, id: string, requests: Record<string, string>, summary = "Exercise the accepted release fixture."): void {
