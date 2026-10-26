@@ -168,7 +168,7 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     const invocation = spawnSync(process.execPath, [producer.entrypoint, "public-api-promote-release", "--consumer", work, "--json"],
       { cwd: work, encoding: "utf8", timeout: 120_000, maxBuffer: 32 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: "",
         // The public CLI starts its own workers; it is not the parent test runner's child.
-        NODE_TEST_CONTEXT: process.env["NODE_TEST_CONTEXT"] === "child-v8" ? undefined : process.env["NODE_TEST_CONTEXT"] } });
+        NODE_TEST_CONTEXT: undefined } });
     assert.ifError(invocation.error);
     assert.equal(invocation.status, 0, `candidate.public-producer-failed:${invocation.stderr}`);
     assertBuildTools(prepared, work);

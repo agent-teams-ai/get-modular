@@ -59,7 +59,7 @@ function canonical(value: unknown): unknown {
 export function identity(value: unknown): string { return hash(JSON.stringify(canonical(value))); }
 export function execute(root: string, command: string, args: readonly string[]): string {
   return execFileSync(command, [...args], { cwd: root, encoding: "utf8", timeout: 120_000,
-    maxBuffer: 32 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: "" } });
+    maxBuffer: 32 * 1024 * 1024, env: { ...process.env, NODE_OPTIONS: "", NODE_TEST_CONTEXT: undefined } });
 }
 export function git(root: string, ...args: string[]): string {
   for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES"]) {
