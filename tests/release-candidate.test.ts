@@ -155,6 +155,9 @@ for (const hasRelease of [true, false]) {
       const contents = "# Local release documentation\n\nPreserve these instructions.\n";
       for (const path of documents) {write(subject.root, path, contents);}
       if (hasRelease) {changeset(subject.root, "release", { "@get-modular/resources": "patch" });}
+      // The subject intentionally owns these files even if a user's global
+      // excludesfile ignores agent documentation such as CLAUDE.md.
+      git(subject.root, "add", "--force", "--", ...documents);
       commit(subject.root, "fixture: accepted reader documentation");
       const prepared = prepareRelease(subject.root);
       assert.equal(prepared.hasRelease, hasRelease);
