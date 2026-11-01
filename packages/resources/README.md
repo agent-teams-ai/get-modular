@@ -96,6 +96,8 @@ cleanup. Neither abort nor unsubscribe proves completion of earlier async work.
 
 ## Optional event source adapters
 
+<!-- cspell:words Wonka -->
+
 Get Modular does not require a particular publisher or stream library. A consumer
 can declare a read-only event-source capability, and the Host can bind either a
 custom implementation or an optional adapter. Keep operators in the consuming
