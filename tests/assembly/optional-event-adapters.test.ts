@@ -120,9 +120,11 @@ test("Host selects interchangeable event adapters without an event runtime depen
     throw new Error("preparation failed");
   }
 
-  // Two candidates need an explicit binding; the compiler never guesses one.
+  // Both providers are explicit roots when deliberately installed together, so neither is unreachable.
+  // Two candidates for the subscriber still need a binding; the compiler never guesses.
   const ambiguous = await assemblyFor<EventCapabilities>().prepare({
-    profileId: "demo/ambiguous", modules: allModules, roots: { inbox: inboxModule },
+    profileId: "demo/ambiguous", modules: allModules,
+    roots: { inbox: inboxModule, library: libraryModule, native: nativeModule },
   });
   assert.equal(ambiguous.status, "failed");
   if (ambiguous.status === "failed") assert.equal(ambiguous.error.code, "assembly.prepare.unresolved-binding");
@@ -135,12 +137,11 @@ test("Host selects interchangeable event adapters without an event runtime depen
       consumerImplementationId: inboxDeclaration.implementationId, slotId: "events",
       providerImplementationIds: [libraryDeclaration.implementationId],
     }],
-    roots: { inbox: inboxModule },
+    roots: { inbox: inboxModule, library: libraryModule, native: nativeModule },
   });
   assert.equal(bound.status, "prepared");
   assert.equal(libraryCreations, 0);
   assert.equal(nativeCreations, 0);
-
 
   const host = createScope({ name: "event-host" });
   try {
