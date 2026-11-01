@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1
+
+### Patch Changes
+
+- b1866ac: Update the packaged README to explain complete descriptor unions and separate
+  CapabilitiesOf bases, including early conflict checks. This is a documentation-only
+  package update.
+- Updated dependencies [7a7c4c5]
+  - @get-modular/core@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes
