@@ -3,7 +3,8 @@
   "files": [
     "assembly/format-failure.test.ts",
     "assembly/descriptor-aggregate.test.ts",
-    "assembly/consumer-standard-examples.test.ts"
+    "assembly/consumer-standard-examples.test.ts",
+    "assembly/optional-event-adapters.test.ts"
   ],
   "include": []
 }

@@ -94,6 +94,28 @@ a handle must undo its own partial acquisition. A guarded synchronous listener
 can suppress new effects after abort, while unsubscribe remains registered
 cleanup. Neither abort nor unsubscribe proves completion of earlier async work.
 
+## Optional event source adapters
+
+Get Modular does not require a particular publisher or stream library. A consumer
+can declare a read-only event-source capability, and the Host can bind either a
+custom implementation or an optional adapter. Keep operators in the consuming
+adapter; do not expose an untyped global topic bus or give subscribers authority
+to close the shared publisher.
+
+The [executable two-provider example](../../tests/assembly/optional-event-adapters.test.ts)
+uses the **same module** with a custom `subscribe(next)` source returning an
+`unsubscribe()` handle (an RxJS-style contract), or with native `EventTarget`.
+The Host selects the provider through ordinary Assembly bindings. It also tests
+that ambiguous providers are rejected, duplicate occurrences are not coalesced,
+and closing one subscriber does not affect another. This example adds no runtime
+or peer dependency to Get Modular, and does not claim to qualify RxJS itself.
+
+Other libraries, including Wonka and Effect, may use different cancellation and
+error semantics. Adapt their actual contracts explicitly; never discard required
+error, completion or delivery guarantees. `resources.setup` owns the returned
+unsubscribe, **not** any async work started by a listener. The work owner must
+settle such work before releasing its dependencies.
+
 ## Closing
 
 `close({ escalate, abandon })` never rejects. Invalid options throw a coded
