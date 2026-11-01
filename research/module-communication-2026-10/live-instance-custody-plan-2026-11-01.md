@@ -1,5 +1,7 @@
 # Qualification plan: 1024 live scoped module instances
 
+<!-- cspell:words Modulith -->
+
 **Date:** 2026-11-01
 **Status:** proposed E2E qualification; no public API change or new runtime.
 **Starting source:** Get Modular `main` at
@@ -7,7 +9,7 @@
 
 ## Why this is the highest-value narrow change
 
-Get Modular already typechecks hundreds of distinct module entries and
+Get Modular already type-checks hundreds of distinct module entries and
 probes 1000 type-level fragments. Assembly also qualifies 64 concurrent
 input-bearing runs, while PR #213 qualifies a small number of
 resource-scoped external event subscribers. None of these alone demonstrates
@@ -39,7 +41,7 @@ claim against other frameworks.
 | Option | Benefit | Critical concern | Decision |
 | --- | --- | --- | --- |
 | **1. Single prepared template and per-run Resources, measured by an E2E correctness test** | Exercises existing explicit composition and cleanup, no new production code | Proves correctness of a fixed test workload, not resource envelope or unlimited production capacity | **Implement** |
-| 2. Create an optional general `createEvent/emit/subscribe` leaf first | Could give consumers one standard emitter | The first real consumer has not qualified its fanout, error, ordering or overload contract | Defer to a separate decision |
+| 2. Create an optional general `createEvent/emit/subscribe` leaf first | Could give consumers one standard emitter | The first real consumer has not qualified its broadcast, error, ordering or overload contract | Defer to a separate decision |
 | 3. Import Effect/RxJS or build a scheduler into Assembly | Rich operators and execution | Adds mandatory dependency and another execution authority; operator composition is not resource custody | Reject for this scope |
 
 Industry lessons: VS Code's typed event surface separates publication from
@@ -106,7 +108,7 @@ GitHub reviewer for the actual diff.
   exact listener counts, close reports and distinct sources. Use try/finally
   to close every scope even on assertion failure. Do not rely on timers,
   sleeps or an approximate event count.
-- **Maintainability/performance critic:** An arbitrary 1024 fanout test can
+- **Maintainability/performance critic:** An arbitrary 1024 receiver test can
   inflate CI and be mistaken for a benchmark. Use three small synchronous
   occurrences per source and bounded arrays; do not assert wall-clock or
   allocate a new generic queue. Report the exact fixed cohort only.
