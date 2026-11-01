@@ -238,6 +238,7 @@ for the unused library.
    not a tested property.
 
 **Three different proofs:**
+
 - *Composition:* unselected factory is not constructed. Already tested in
   [PR #213](../../tests/assembly/optional-event-adapters.test.ts).
 - *Package:* installed and cold-imported ordinary consumer succeeds with
