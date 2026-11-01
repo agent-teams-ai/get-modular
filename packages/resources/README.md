@@ -70,6 +70,9 @@ paths that Hosts alert on.
   takes its release slot when the setup fulfils. `signal` stops acquisition: it
   aborts when the scope or an ancestor starts closing, or when the run that
   constructs the module is cancelled.
+  Use it for synchronous acquisition that can call user code too, such as
+  subscribing to an external event source. Check `signal` before acquiring;
+  cancellation can abort it while registration is still open.
 - `use(value, name)` registers a value already in hand that implements
   `Symbol.asyncDispose` or `Symbol.dispose`. Its `then` method is never read,
   and the result of a synchronous `Symbol.dispose` is not awaited.
@@ -82,6 +85,43 @@ paths that Hosts alert on.
   `child` throws. Acquire asynchronously only inside `setup`.
 - Close waits for started setups, then releases. A failed cleanup is recorded
   as a debt with its original cause and release continues.
+
+The [external subscription recipe](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/module-authoring.md#9-resources)
+acquires through `setup` before `subscribe` can close the scope during acquisition.
+Do not acquire inline inside `use`: if registration is refused after acquisition,
+the caller still has to release that value. A setup that throws before returning
+a handle must undo its own partial acquisition. A guarded synchronous listener
+can suppress new effects after abort, while unsubscribe remains registered
+cleanup. Neither abort nor unsubscribe proves completion of earlier async work.
+
+## Optional event source adapters
+
+<!-- cspell:words Wonka -->
+
+Get Modular does not require a particular publisher or stream library. A consumer
+can declare a read-only event-source capability, and the Host can bind either a
+custom implementation or an optional adapter. Keep operators in the consuming
+adapter; do not expose an untyped global topic bus or give subscribers authority
+to close the shared publisher.
+
+The [executable two-provider example](../../tests/assembly/optional-event-adapters.test.ts)
+uses the **same module** with a custom `subscribe(next)` source returning an
+`unsubscribe()` handle (an RxJS-style contract), or with native `EventTarget`.
+The Host creates separate compositions containing **only the selected
+provider**. These tests prove that unselected provider factories do not run;
+they do not by themselves prove that an unselected library was never imported,
+installed or bundled. Consumers can keep such packages optional through their
+own dependency and import boundaries. When both providers are deliberately
+present, a binding selects one, and omission is rejected before construction.
+The test also checks that duplicate occurrences are not coalesced and
+subscriber scopes close independently. This example adds no runtime or peer
+dependency to Get Modular and does not qualify RxJS itself.
+
+Other libraries, including Wonka and Effect, may use different cancellation and
+error semantics. Adapt their actual contracts explicitly; never discard required
+error, completion or delivery guarantees. `resources.setup` owns the returned
+unsubscribe, **not** any async work started by a listener. The work owner must
+settle such work before releasing its dependencies.
 
 ## Closing
 

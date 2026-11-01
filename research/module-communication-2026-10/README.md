@@ -6,6 +6,15 @@ The original contents are research and design evidence. The production follow-th
 [implementation-port.md](implementation-port.md), with current status in [HANDOFF.md](HANDOFF.md).
 The research prototypes remain separate from the implemented package; historical results are not refreshed.
 
+The [2026-10-25 delivery responsibility review](delivery-review-2026-10-25.md)
+compares existing stream mechanisms with the payments consumer, retains three
+independent research and three critique reports for all six proposed concerns,
+and selects a narrow subscription-recipe correction instead of a new runtime.
+
+The [2026-11-01 decision-coverage audit](decision-coverage-2026-11-01.md)
+separates completed behavior from deferred event API, third-party adapter,
+platform parity and high-concurrency claims, and records consumer-owned follow-ups.
+
 ## What this directory is
 
 A study of how modules in Get Modular communicate:

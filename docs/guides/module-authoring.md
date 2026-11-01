@@ -22,7 +22,7 @@ modules. The [Consumer Module Standard](../architecture/common-assembly.md#consu
 only as a one-line summary with a link. Pin both at the same commit. Where they
 differ, the CMS wins and the guide has a bug.
 
-Every complete example below is compiled by `tests/assembly/consumer-standard-examples.test.mjs`
+Every complete example below is compiled by `tests/assembly/consumer-standard-examples.test.ts`
 on both supported compilers and both module resolutions, so the code is what you
 should copy. The example project has the features `infra`, `orders` and `billing`;
 `orders` has the sub-feature `discounts`. `orders` `checkout` uses `Discounts`
@@ -877,8 +877,9 @@ features/orders/                         features/orders/
 ## 9. Resources
 
 Subscriptions use the receiving module's scope and bind to its signal. Prefer
-`watch` or `load` for observed state; wrap a returned disposer only for a
-provider that uses that older shape. See [module communication](#21-module-communication)
+`watch` or `load` for observed state. Acquire an external subscription inside
+`resources.setup`, including when `subscribe` returns synchronously: it can call
+user code before returning. See [module communication](#21-module-communication)
 and [CMS resource rule 5](../architecture/common-assembly.md#module-resource-scopes).
 
 A module owns something to release when it acquires it: a connection, a timer, a
@@ -894,14 +895,15 @@ it before closing, or make each operation a `child()`). The thirteen rules are t
 If `resources` is missing from the context, TypeScript reports TS2339 "Property
 'resources' does not exist on type 'FactoryContext'": the adapter is missing.
 
-A module that opens a client with `resources.setup` and registers a subscription
-disposer:
+A module that opens a client and acquires a subscription with `resources.setup`:
 
 <!-- module-authoring-example: resources -->
 
 ```ts
 // src/features/infra/contracts/events.ts
-export type EventsPort = { readonly subscribe: (listener: (orderId: string) => void) => () => void };
+// A live, synchronous notification source. No replay, async work or durable delivery.
+// If subscribe throws, the provider rolls back its own partial subscription.
+export type EventsPort = { readonly subscribe: (listener: (orderId: string) => undefined) => () => void };
 ```
 
 ```ts
@@ -964,13 +966,42 @@ export const orderStoreModule = implement<OrdersCapabilities>()(orderStoreDeclar
       setup: ({ signal }) => PgOrders.create("postgres://orders", signal),
       cleanup: (client) => client.close(),
     });
-    // The subscription lives in this module's scope: its disposer runs before the client closes.
-    resources.use({ [Symbol.dispose]: deps.events.subscribe(pg.forget) }, "events");
+    // Reserve acquisition custody before subscribe can call user code or start scope closure.
+    await resources.setup({
+      name: "events",
+      setup: ({ signal }) => {
+        signal.throwIfAborted();
+        return deps.events.subscribe((orderId) => {
+          if (!signal.aborted) pg.forget(orderId);
+        });
+      },
+      cleanup: (unsubscribe) => unsubscribe(),
+    });
     // Never pass the client as the port: expose only the port members so `close` stays with the owner.
     const port: OrderStorePort = { find: pg.find };
     return { instance: port, capabilities: { "acme/orders/order-store": port } };
   }, scoped);
 ```
+
+`setup` retains the returned disposer even if subscription acquisition starts
+closing the scope. An already-held disposable can still be transferred with
+`use`; if that registration throws, its caller still owns the value. Do not
+acquire inline inside `use`, where a reentrant close can leave the new resource
+unregistered.
+
+The signal check suppresses new listener effects as soon as cancellation is
+requested. It does not itself detach the source; registered cleanup does that.
+If unsubscribe fails while the subscription remains attached, the scope reports
+cleanup debt and the Host can retry. A provider that attaches and then throws
+before returning a disposer must undo its own partial acquisition: no scope can
+release a handle it never received.
+
+This listener is synchronous. Its `undefined` return type rejects an `async`
+function at the typed boundary, but cannot prevent code from starting detached
+work. The source owns its listener-error and reentrant-delivery policy; this
+example does not add error isolation or a queue. If a handler starts asynchronous
+work, its owner must separately stop admission and await physical completion
+before releasing dependencies. Unsubscribe and abort are not that completion.
 
 ## 10. A stateful adapter as a class
 
@@ -1759,13 +1790,62 @@ another owner's state, run work after its scope closes or decide Host readiness.
 | Should a module converge to the newest value when changes arrive? | `ReadonlyStore<Slice>` with `watch` | The subscriber's resource scope owns the subscription |
 | Must async work follow the newest value? | The same facet with `load` and a typed query port | The query promise owns physical completion and cleanup |
 | Is the request allowed to be rejected, or must its caller know the result? | A command port with a typed result | The owner validates the request and commits its state |
-| Must every occurrence be delivered, including two identical occurrences? | An explicit Host/domain delivery contract | The owner specifies acknowledgement, ordering and durability |
+| Must currently subscribed modules receive distinct live occurrences, including two identical values? | A typed, read-only event source through a declared slot | The subscriber owns its subscription; the source states delivery, ordering and error semantics |
+| Must asynchronous work be admitted and processed under load? | A work-delivery port with an explicit capacity policy | Its owner specifies accepted versus processed, concurrency, buffering and overload behavior |
+| Must a delivery obligation survive a process restart? | An explicit durable Host/domain delivery contract | Its owner specifies storage, acknowledgement, retry and recovery |
 
-Use the last question as a concrete test: two payments must not become one
+Use distinct occurrences as a concrete test: two payments must not become one
 payment because delivery was coalesced. Such occurrences are not store state.
 Observation 0.1.0 adds no `emit`, event bus, durable log, replay or retry protocol.
 A payment's latest status can still be observed through a store. Its command
 result and its status projection have different jobs.
+
+#### In-process events and stream composition
+
+<!-- cspell:words Wonka -->
+
+Modules in one process can exchange ordinary function calls and typed values.
+They do not need serialization, a broker or a wire protocol merely because they
+are separate modules. A live notification can use the subscription recipe in
+[section 9](#9-resources). A stream is useful when the receiving adapter needs to
+filter, map, combine or otherwise transform a sequence; composition does not
+by itself require a queue or durable acknowledgement.
+
+The consuming module declares a source slot; the Host selects and binds its
+provider. Optional source adaptation and stream operators stay at the consuming
+composition or adapter boundary; domain code receives the narrow contract it
+needs. Keep publication authority
+with the source owner. A global string-topic bus hides these dependency edges.
+
+| Choice | Useful when | Qualification needed at the consumer |
+| --- | --- | --- |
+| Typed callback source | Notifications perform short synchronous work | Error and reentrant-delivery policy, safe acquisition and unsubscribe |
+| Native `AsyncIterable` or Web Streams | A pipeline can respect consumer demand | Actual source buffering, cancellation and whether there is one reader or several |
+| Wonka | A consumer needs a small push/pull operator model | Its hot sources can push without waiting for demand; define errors and work ownership |
+| RxJS | A consumer needs its broader operator model | Match the selected version, subscription teardown, pending buffers and physical async work |
+| Effect Stream/Queue/PubSub | The Host already selects Effect or needs its execution model | Bridge its lifetime once; specify queue versus broadcast, producer admission and foreign work completion |
+
+These are integration choices, not Get Modular dependencies or interchangeable
+delivery guarantees. No package is selected here and no bundle-size claim is
+made. The [reviewed source comparison](../../research/module-communication-2026-10/delivery-review-2026-10-25.md)
+records exact versions, the payments consumer and the reasons for keeping the
+current production API.
+
+A sequential consumer can still accumulate pending input from a push source.
+Awaiting a direct call bounds one sequential caller, not all concurrent callers
+in a Host; shared admission limits belong to the operation's owner when needed.
+For example, RxJS 7.8.2's [concatMap contract](https://github.com/ReactiveX/rxjs/blob/e5351d02e225e275ac0e497c7b66eaa5f0c88791/src/internal/operators/concatMap.ts#L24-L40)
+warns about an unbounded waiting buffer. When buffering is needed, specify queued
+items, active physical operations and waiting producers separately; an item
+count also needs a payload-size assumption to bound memory. For replaceable
+state, prefer the existing latest-only `load` contract. For indispensable work,
+choose explicit rejection, producer waiting or durable admission with its owner.
+
+Keep an optional integration package separate only when a real repeated contract
+justifies it. A monorepo location does not give that package authority over
+routing, retries, domain completion or Host shutdown. Do not build an operator
+library, scheduler or persistent transport merely to make module communication
+look uniform.
 
 ### 21.2 Own the store and publish area contracts
 

@@ -23,9 +23,9 @@ export const growthSourceAuthority = Object.freeze({
   ...sourceProfile.authority,
   reviewedCms: Object.freeze({
     repository: "agent-teams-ai/get-modular", path: "docs/architecture/common-assembly.md",
-    anchor: "consumer-module-standard", commit: "b2fec1fa15fe3998f51449d7df249f302645973f",
-    gitBlob: "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
-    sha256: "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86",
+    anchor: "consumer-module-standard", commit: "3c00edc5bd767b586344f729e06da9d314e9680c",
+    gitBlob: "c158d772f7751f72c704beb6dc644fb3c1596d3d",
+    sha256: "66daf434d4408d9b6229345932b415b1225ce96f3f4c1a21efd05b3f95e70e48",
     scope: "selected flat growth source predicates; production adoption unchanged",
   }),
 });
