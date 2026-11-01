@@ -95,42 +95,61 @@ function makeLibrarySource() {
 test("Host selects interchangeable event adapters without an event runtime dependency", async () => {
   const library = makeLibrarySource();
   const native = new EventTarget();
-  const libraryModule = implement<EventCapabilities>()(libraryDeclaration, async () => ({
-    instance: {}, capabilities: { "demo/events": fromSubscribable(library.source) },
-  }));
-  const nativeModule = implement<EventCapabilities>()(nativeDeclaration, async () => ({
-    instance: {}, capabilities: { "demo/events": fromEventTarget(native) },
-  }));
-  const modules = [libraryModule, nativeModule, inboxModule] as const;
-  const prepare = async (provider: string) => {
-    const prepared = await assemblyFor<EventCapabilities>().prepare({
-      profileId: "demo/with-" + (provider === libraryDeclaration.implementationId ? "library" : "native"),
-      modules,
-      bindings: [{
-        consumerImplementationId: inboxDeclaration.implementationId,
-        slotId: "events", providerImplementationIds: [provider],
-      }],
-      roots: { inbox: inboxModule },
-    });
-    assert.equal(prepared.status, "prepared", JSON.stringify(prepared));
-    if (prepared.status !== "prepared") throw new Error("preparation failed");
-    return prepared.prepared;
-  };
+  let libraryCreations = 0, nativeCreations = 0;
+  const libraryModule = implement<EventCapabilities>()(libraryDeclaration, async () => {
+    libraryCreations += 1;
+    return { instance: {}, capabilities: { "demo/events": fromSubscribable(library.source) } };
+  });
+  const nativeModule = implement<EventCapabilities>()(nativeDeclaration, async () => {
+    nativeCreations += 1;
+    return { instance: {}, capabilities: { "demo/events": fromEventTarget(native) } };
+  });
+  const allModules = [libraryModule, nativeModule, inboxModule] as const;
+  // Each selected root includes only its chosen provider; an unused library need not be installed or imported.
+  const libraryPreparation = await assemblyFor<EventCapabilities>().prepare({
+    profileId: "demo/library", modules: [libraryModule, inboxModule] as const,
+    roots: { inbox: inboxModule },
+  });
+  const nativePreparation = await assemblyFor<EventCapabilities>().prepare({
+    profileId: "demo/native", modules: [nativeModule, inboxModule] as const,
+    roots: { inbox: inboxModule },
+  });
+  assert.equal(libraryPreparation.status, "prepared");
+  assert.equal(nativePreparation.status, "prepared");
+  if (libraryPreparation.status !== "prepared" || nativePreparation.status !== "prepared") {
+    throw new Error("preparation failed");
+  }
 
   // Two candidates need an explicit binding; the compiler never guesses one.
   const ambiguous = await assemblyFor<EventCapabilities>().prepare({
-    profileId: "demo/ambiguous", modules, roots: { inbox: inboxModule },
+    profileId: "demo/ambiguous", modules: allModules, roots: { inbox: inboxModule },
   });
   assert.equal(ambiguous.status, "failed");
   if (ambiguous.status === "failed") assert.equal(ambiguous.error.code, "assembly.prepare.unresolved-binding");
   assert.equal(library.live(), 0);
 
+  // When several providers are deliberately installed, the Host must choose one explicitly.
+  const bound = await assemblyFor<EventCapabilities>().prepare({
+    profileId: "demo/explicit", modules: allModules,
+    bindings: [{
+      consumerImplementationId: inboxDeclaration.implementationId, slotId: "events",
+      providerImplementationIds: [libraryDeclaration.implementationId],
+    }],
+    roots: { inbox: inboxModule },
+  });
+  assert.equal(bound.status, "prepared");
+  assert.equal(libraryCreations, 0);
+  assert.equal(nativeCreations, 0);
+
+
   const host = createScope({ name: "event-host" });
   try {
     const libraryRun = host.resources.child({ name: "library-run" });
     const nativeRun = host.resources.child({ name: "native-run" });
-    const first = await (await prepare(libraryDeclaration.implementationId)).run({ scope: libraryRun.resources });
-    const second = await (await prepare(nativeDeclaration.implementationId)).run({ scope: nativeRun.resources });
+    const first = await libraryPreparation.prepared.run({ scope: libraryRun.resources });
+    const second = await nativePreparation.prepared.run({ scope: nativeRun.resources });
+    assert.equal(libraryCreations, 1);
+    assert.equal(nativeCreations, 1);
     assert.equal(first.status, "succeeded");
     assert.equal(second.status, "succeeded");
     if (first.status !== "succeeded" || second.status !== "succeeded") throw new Error("run failed");

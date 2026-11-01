@@ -107,10 +107,12 @@ to close the shared publisher.
 The [executable two-provider example](../../tests/assembly/optional-event-adapters.test.ts)
 uses the **same module** with a custom `subscribe(next)` source returning an
 `unsubscribe()` handle (an RxJS-style contract), or with native `EventTarget`.
-The Host selects the provider through ordinary Assembly bindings. It also tests
-that ambiguous providers are rejected, duplicate occurrences are not coalesced,
-and closing one subscriber does not affect another. This example adds no runtime
-or peer dependency to Get Modular, and does not claim to qualify RxJS itself.
+The Host creates separate compositions containing **only the selected
+provider**; unused implementations need not be loaded or installed. When both
+providers are deliberately present, a binding selects one, and omission is
+rejected before construction. The test also checks that duplicate occurrences
+are not coalesced and subscriber scopes close independently. This example adds
+no runtime or peer dependency to Get Modular and does not qualify RxJS itself.
 
 Other libraries, including Wonka and Effect, may use different cancellation and
 error semantics. Adapt their actual contracts explicitly; never discard required
