@@ -108,11 +108,14 @@ The [executable two-provider example](../../tests/assembly/optional-event-adapte
 uses the **same module** with a custom `subscribe(next)` source returning an
 `unsubscribe()` handle (an RxJS-style contract), or with native `EventTarget`.
 The Host creates separate compositions containing **only the selected
-provider**; unused implementations need not be loaded or installed. When both
-providers are deliberately present, a binding selects one, and omission is
-rejected before construction. The test also checks that duplicate occurrences
-are not coalesced and subscriber scopes close independently. This example adds
-no runtime or peer dependency to Get Modular and does not qualify RxJS itself.
+provider**. These tests prove that unselected provider factories do not run;
+they do not by themselves prove that an unselected library was never imported,
+installed or bundled. Consumers can keep such packages optional through their
+own dependency and import boundaries. When both providers are deliberately
+present, a binding selects one, and omission is rejected before construction.
+The test also checks that duplicate occurrences are not coalesced and
+subscriber scopes close independently. This example adds no runtime or peer
+dependency to Get Modular and does not qualify RxJS itself.
 
 Other libraries, including Wonka and Effect, may use different cancellation and
 error semantics. Adapt their actual contracts explicitly; never discard required
