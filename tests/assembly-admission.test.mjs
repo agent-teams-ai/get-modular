@@ -92,7 +92,7 @@ test("Assembly admission subtracts only independently admitted paths from Core",
   }
 });
 
-test("leaf packages remain optional when their packages and exact tooling edges are absent", async () => {
+test("pre-metadata 0.7.0 pair admits absent optional leaves and their exact tooling edges", async () => {
   const rootManifest = JSON.parse(read("package.json"));
   const lock = parse(currentLock.toString("utf8"));
   for (const leaf of LEAF_PACKAGES) {
@@ -107,7 +107,10 @@ test("leaf packages remain optional when their packages and exact tooling edges 
   assert.deepEqual(await admit({ readBytes,
     readPackageManifest: async path => {
       if (leafManifests.has(path)) throw Error("leaf package absent");
-      return JSON.parse(read(path));
+      const manifest = JSON.parse(read(path));
+      // ADR-0042 requires its coordinated leaves; optional absence belongs to the earlier pair.
+      return [ASSEMBLY_MANIFEST_PATH, "packages/core/package.json"].includes(path)
+        ? { ...manifest, version: "0.7.0" } : manifest;
     },
   }), artifacts.slice(2));
 });
@@ -130,7 +133,8 @@ test("Assembly admission rejects malformed manifests, dependencies and package r
     { scripts: null }, { scripts: { install: "node install.mjs" } },
   ]) {
     await assert.rejects(admit({
-      readPackageManifest: async () => ({ ...manifest, ...mutation }),
+      readPackageManifest: async path => path === ASSEMBLY_MANIFEST_PATH
+        ? { ...manifest, ...mutation } : inputs.readPackageManifest(path),
     }), /Assembly admission/u);
   }
   for (const productionArtifacts of [
@@ -262,9 +266,13 @@ for (const leaf of LEAF_PACKAGES) {
       { scripts: { postinstall: "node install.mjs" } },
       { exports: { "./internal": "./dist/internal.js" } },
     ]) {
-      await assert.rejects(admit({ readPackageManifest: async path =>
-        path === manifestPath
-          ? { ...manifest, ...mutation } : inputs.readPackageManifest(path) }),
+      // Check the leaf boundary directly: whole-pair admission may reject a version
+      // earlier under ADR-0042, masking the leaf carrier rule this mutation proves.
+      await assert.rejects(validateLeafPackageWorkspaceAdmission({
+        ...inputs, productionArtifacts: [...artifacts, ...candidateArtifacts],
+        readPackageManifest: async path => path === manifestPath
+          ? { ...manifest, ...mutation } : inputs.readPackageManifest(path),
+      }),
       leafAdmission, JSON.stringify(mutation));
     }
     for (const productionArtifacts of [
@@ -778,13 +786,29 @@ test(`${version} pair requires the exact accepted ${decision} and retains earlie
 
 }
 
-test("metadata pair rejects a different coordinated leaf profile", async () => {
+test("metadata pair requires every exact coordinated leaf manifest", async () => {
+  const versions = new Map([
+    [ASSEMBLY_MANIFEST_PATH, "0.7.1"], ["packages/core/package.json", "0.7.1"],
+    ["packages/conformance/package.json", "0.5.1"],
+    ["packages/resources/package.json", "0.2.1"],
+    ["packages/observation/package.json", "0.2.0"],
+  ]);
+  const readPackageManifest = async path => {
+    const manifest = JSON.parse(read(path));
+    return { ...manifest, version: versions.get(path) ?? manifest.version };
+  };
+  assert.deepEqual(await admit({ readPackageManifest }), artifacts.slice(2));
   for (const leaf of ["conformance", "resources", "observation"]) {
+    const manifestPath = `packages/${leaf}/package.json`;
+    await assert.rejects(admit({ readPackageManifest: async path => ({
+      ...await readPackageManifest(path), ...(path === manifestPath ? { version: "0.9.0" } : {}),
+    }) }), /exact coordinated leaf profile/u);
+    await assert.rejects(admit({ readPackageManifest: async path => path === manifestPath
+      ? undefined : readPackageManifest(path) }), /exact coordinated leaf profile/u);
+    const missing = Error(`${leaf} package absent`);
     await assert.rejects(admit({ readPackageManifest: async path => {
-      const manifest = JSON.parse(read(path));
-      if ([ASSEMBLY_MANIFEST_PATH, "packages/core/package.json"].includes(path)) {return { ...manifest, version: "0.7.1" };}
-      if (path === `packages/${leaf}/package.json`) {return { ...manifest, version: "0.9.0" };}
-      return path === "packages/conformance/package.json" ? { ...manifest, version: "0.5.1" } : manifest;
-    } }), /exact coordinated leaf profile/u);
+      if (path === manifestPath) throw missing;
+      return readPackageManifest(path);
+    } }), error => error === missing);
   }
 });
