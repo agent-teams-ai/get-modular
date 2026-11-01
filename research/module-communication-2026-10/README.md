@@ -6,6 +6,13 @@ The original contents are research and design evidence. The production follow-th
 [implementation-port.md](implementation-port.md), with current status in [HANDOFF.md](HANDOFF.md).
 The research prototypes remain separate from the implemented package; historical results are not refreshed.
 
+The [2026-11-01 industry evidence update](industry-evidence-and-negative-patterns-2026-11-01.md)
+adds new first-party sources and failure-focused counterexamples without copying
+the existing practice catalog. The [adversarial scope review](adversarial-recheck-2026-11-01.md)
+ranks three possible approaches per decision, records rejected shortcuts and
+defines conditions for revisiting deferred work. Both are research records,
+not accepted architecture changes or new runtime requirements.
+
 ## What this directory is
 
 A study of how modules in Get Modular communicate:

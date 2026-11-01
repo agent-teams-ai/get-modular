@@ -17,6 +17,7 @@ For admission, graph or diagnostic work, also read the [compiler engineer handbo
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
 For module authoring, read docs/guides/module-authoring.md.
+For a new event or stream link between modules, consult the [industry failure cases](research/module-communication-2026-10/industry-evidence-and-negative-patterns-2026-11-01.md) and [adversarial scope review](research/module-communication-2026-10/adversarial-recheck-2026-11-01.md). These are research evidence only: the accepted Consumer Module Standard retains authority, and no event runtime is required without a demonstrated consumer and a separate decision.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
 Use `bun run check:changed` while editing, `bun run check:fast` before handoff, and
