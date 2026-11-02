@@ -1,0 +1,77 @@
+name: One-shot canonicalize PR223 owned source commits
+
+on:
+  push:
+    branches: [ci/canonicalize-223-workflow-20261102]
+
+permissions:
+  contents: read
+
+jobs:
+  stage-owner-commits:
+    if: >-
+      github.repository == 'agent-teams-ai/get-modular' &&
+      github.actor == '777genius' &&
+      github.ref == 'refs/heads/ci/canonicalize-223-workflow-20261102'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Reconstruct only approved four source commits with canonical raw metadata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SOURCE: bae4435e164c24fe72860be6a4345121e3d84d3d
+          EXPECTED_BASE: d4e361819dc744bf805286bffb6403ca2db77e15
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_SOURCE"
+          source_commits=(
+            0d820f4d16f001d353ce0bbb9860226547a9c7f7
+            3fddbef8f813e824b17c91a37dc5875b01a18754
+            75fd95eea9e50f2cfdd7a098bc21804cccc13d99
+            bae4435e164c24fe72860be6a4345121e3d84d3d
+          )
+          test "${source_commits[3]}" = "$EXPECTED_SOURCE"
+          original_parent="$EXPECTED_BASE"
+          for original in "${source_commits[@]}"; do
+            test "$(git rev-parse "$original^")" = "$original_parent"
+            test "$(git show -s --format='%an|%ae|%cn|%ce' "$original")" = "Илия|iliyazelenkog@gmail.com|Илия|iliyazelenkog@gmail.com"
+            original_parent="$original"
+          done
+          export GIT_AUTHOR_NAME=iliya
+          export GIT_AUTHOR_EMAIL=iliyazelenkog@gmail.com
+          export GIT_COMMITTER_NAME=iliya
+          export GIT_COMMITTER_EMAIL=iliyazelenkog@gmail.com
+          parent="$EXPECTED_BASE"
+          for original in "${source_commits[@]}"; do
+            original_tree="$(git rev-parse "$original^{tree}")"
+            git log -1 --format=%B "$original" > "$RUNNER_TEMP/message"
+            canonical="$(git commit-tree "$original_tree" -p "$parent" -F "$RUNNER_TEMP/message")"
+            test "$(git rev-parse "$canonical^{tree}")" = "$original_tree"
+            test "$(git rev-parse "$canonical^")" = "$parent"
+            test "$(git show -s --format='%an|%ae|%cn|%ce' "$canonical")" = "iliya|iliyazelenkog@gmail.com|iliya|iliyazelenkog@gmail.com"
+            test "$(git log -1 --format=%B "$canonical")" = "$(git log -1 --format=%B "$original")"
+            echo "$original => $canonical" >> "$GITHUB_STEP_SUMMARY"
+            parent="$canonical"
+          done
+          # Never modify the real PR. Publish a disposable isolated ref for
+          # independent GitHub API validation and a leased source-head update.
+          cat > "$RUNNER_TEMP/askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token;;
+            *Password*) printf '%s\n' "$GH_TOKEN";;
+            *) exit 1;;
+          esac
+          SH
+          chmod 700 "$RUNNER_TEMP/askpass"
+          GIT_ASKPASS="$RUNNER_TEMP/askpass" git -c credential.helper= \
+            push https://github.com/agent-teams-ai/get-modular.git \
+            "$parent:refs/heads/ci/owner-identity-223-staging-20261102"
+          echo "Candidate new head: $parent" >> "$GITHUB_STEP_SUMMARY"
