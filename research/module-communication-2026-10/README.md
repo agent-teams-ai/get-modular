@@ -6,6 +6,10 @@ The original contents are research and design evidence. The production follow-th
 [implementation-port.md](implementation-port.md), with current status in [HANDOFF.md](HANDOFF.md).
 The research prototypes remain separate from the implemented package; historical results are not refreshed.
 
+The [live instance custody E2E plan](live-instance-custody-plan-2026-11-01.md)
+qualifies 1024 independently scoped runs over two borrowed event sources;
+this is a targeted correctness gap, not a benchmark or a new events package.
+
 ## What this directory is
 
 A study of how modules in Get Modular communicate:
