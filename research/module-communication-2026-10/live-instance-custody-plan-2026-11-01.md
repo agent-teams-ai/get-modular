@@ -50,6 +50,7 @@ separates queues and multicast. Do not copy unrelated framework facilities
 to satisfy one missing proof.
 
 Read:
+
 - [Existing 1000-type cost tests](../../tests/assembly/type-scale.test.mjs)
 - [Existing concurrent inputs tests](../../tests/assembly/inputs.test.mjs)
 - [Accepted Resources boundary](../../packages/resources/README.md)
