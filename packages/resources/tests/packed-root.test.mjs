@@ -11,7 +11,10 @@ import test from "node:test";
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8" });
+  const env = { ...process.env };
+  // A nested Node test runner must execute its test files, independently of the outer runner's IPC mode.
+  if (command === process.execPath && args.includes("--test")) delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(command, args, { cwd, encoding: "utf8", env });
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, `${command}: ${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();
@@ -56,7 +59,15 @@ test("the public archive installs one root-only ESM package with the full scope 
       test('packed scope semantics', async (context) => { await runSemanticSuite(resources, context); });
       test('packed scope close reentrancy', async (context) => { await runCloseReentrancySuite(resources, context); });
     `);
-    run(process.execPath, ["--test", "semantic-packed.test.mjs"], consumer);
+    const semanticOutput = run(process.execPath, ["--test", "--test-reporter=tap", "semantic-packed.test.mjs"], consumer);
+    for (const name of [
+      "deep close preserves sealing, pending debt, escalation and failed cleanup retry",
+      "deep construction cancellation finishes native listeners before a reentrant ancestor cleanup",
+      "a cleanup can start a sibling close without duplicating either flight",
+    ]) assert.ok(semanticOutput.includes(`- ${name}\n`), `packed test did not execute: ${name}`);
+    for (const summary of ["# tests 29", "# fail 0", "# cancelled 0", "# skipped 0", "# todo 0"]) {
+      assert.ok(semanticOutput.split(/\r?\n/u).includes(summary), `packed test result lacks ${summary}`);
+    }
     await writeFile(join(consumer, "check.mjs"), `
       import * as resources from '@get-modular/resources';
       const names = Object.keys(resources).sort().join(',');

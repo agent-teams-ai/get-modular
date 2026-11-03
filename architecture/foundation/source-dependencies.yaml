@@ -484,6 +484,11 @@ boundaries:
       - packages/resources/tests
     entrypoints:
       - packages/resources/tests/scope.test.mjs
+      - packages/resources/tests/close-reentrancy.test.ts
+      - packages/resources/tests/close-reentrancy-suite.ts
+      - packages/resources/tests/deep-scope-suite.ts
+      - packages/resources/tests/closed-child-retention.test.ts
+      - packages/resources/tests/closed-child-retention-probe.ts
       - packages/resources/tests/packed-root.test.mjs
       - packages/resources/tests/semantic-suite.mjs
       - packages/resources/tests/gc-probe.mjs
@@ -508,6 +513,7 @@ boundaries:
         - node:os
         - node:path
         - node:test
+        - node:timers/promises
         - node:url
       runtimeReferences: []
   # ADR-0033 admits one optional public conformance package. Its only packages
@@ -817,6 +823,7 @@ boundaries:
     entrypoints:
       - packages/observation/tests/close-reporting.test.ts
       - packages/observation/tests/compiler-metadata-probe.ts
+      - packages/observation/tests/deep-values.test.ts
       - packages/observation/tests/env-probe.mjs
       - packages/observation/tests/env-setup-fake-before.mjs
       - packages/observation/tests/env-setup-fake-clock-before.mjs
@@ -939,6 +946,7 @@ boundaries:
       - packages/assembly/tests
     entrypoints:
       - packages/assembly/tests/bounds.test.mjs
+      - packages/assembly/tests/profile-completion-bounds.test.ts
     allow:
       boundaries:
         - assembly-composition

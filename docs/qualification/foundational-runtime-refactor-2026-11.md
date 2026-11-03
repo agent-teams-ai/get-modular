@@ -222,6 +222,37 @@ reason to unify them.
 - Initial plan critique: preserve capability-ID-only completion, atomic
   validation-before-freeze, synchronous subtree sealing and the abort-listener
   barrier. No evidence justified a production Core rewrite.
-- Implementation, compiled regressions, final review rounds and CI results:
-  pending. Update this section with actual commands, source revisions and
-  unresolved limitations; do not infer success from the plan.
+- Implementation covers all six selected defects in four existing source files.
+  Compiled baseline controls reject the new Assembly ownership, overflow and
+  candidate-sharing evidence; the 5,000-level Resources cases fail and all 24
+  retained closed children keep their parent payloads alive; all three deep
+  Observation cases fail. These controls ran against the unchanged built base.
+- Focused implementation evidence: 43 Assembly cases pass with strict source
+  and tooling checks; complete Resources checks pass with 39 local/integration
+  cases; Observation build, typecheck and 31 focused cases pass. Resources and
+  Observation installed-archive consumers pass, including their new deep cases.
+  The Assembly installed consumer passes with the public ownership regression.
+- Packed qualification exposed an additional verification defect: inherited
+  `NODE_TEST_CONTEXT` made nested Node test commands skip their files while
+  returning success. A disposable failing control demonstrated the false pass.
+  The existing Assembly and Resources helpers now clear this variable for test
+  invocations. The new packed suites assert executed/pass counts and zero
+  failures, cancellations, skips or todos. Observation already sanitized the
+  environment and now has the same explicit receipt for its new suite.
+- Local edits to existing JavaScript harnesses and profile tables remain small;
+  a full harness migration would broaden this runtime repair. All new maintained
+  tests and helpers are TypeScript in existing strict projects and normal gates.
+- Two independent cross-review rounds found no remaining runtime defect. Review
+  improvements removed the temporary borrowed composition cast, compared all
+  2,048 expected diagnostic rows, strengthened packed receipts, removed a stale
+  test registration/copy and included Core's coordinated patch metadata. Core's
+  runtime is unchanged; the exact Core/Assembly version pair must remain intact.
+- Concurrent peer cleanups have no relative-start-order guarantee. The internal
+  queue preserves synchronous sealing, the abort-listener barrier, sequential
+  child waiting and ordinary first-cleanup startup; no claim is made about every
+  incidental nested callback ordering.
+- Repository-wide gates, final source revision and exact-head CI results remain
+  pending integration. The first plan-only GitHub check confirms that the old
+  pinned identity verifier rejects the plugin's owner-name alias despite the
+  current central policy. PR #221 owns that separate immutable-pin migration;
+  this delivery does not change identity enforcement or claim a passing check.

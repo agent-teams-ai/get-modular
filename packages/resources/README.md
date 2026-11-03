@@ -109,6 +109,12 @@ paths that Hosts alert on.
   report when it is not complete.
 - A cleanup that awaits `close()` of its own or an ancestor scope deadlocks.
 
+Closing and reporting walk nested scopes without recursive call-stack growth.
+A completely released child detaches from its parent in both directions, so
+keeping the closed child does not keep the parent's other resources alive.
+Pending and failed children retain their parent relationship until cleanup
+completes; they remain visible in reports and can still be escalated or retried.
+
 ## Errors
 
 Compare `code`, never classes or messages:

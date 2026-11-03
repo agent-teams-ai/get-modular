@@ -8,6 +8,9 @@
     "skipLibCheck": false,
     "noEmit": true
   },
-  "files": ["tests/close-reentrancy.test.ts", "tests/close-reentrancy-suite.ts"],
+  "files": [
+    "tests/close-reentrancy.test.ts", "tests/close-reentrancy-suite.ts", "tests/deep-scope-suite.ts",
+    "tests/closed-child-retention.test.ts", "tests/closed-child-retention-probe.ts"
+  ],
   "include": []
 }

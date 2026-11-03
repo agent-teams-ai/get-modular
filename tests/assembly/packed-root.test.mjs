@@ -59,9 +59,11 @@ async function packageManagerCli(name) {
 }
 
 function command(executable, args, cwd, environment = {}) {
+  const env = { ...process.env, ...environment, NODE_PATH: "", NODE_OPTIONS: "", npm_config_ignore_scripts: "true" };
+  if (args.includes("--test")) delete env.NODE_TEST_CONTEXT;
   const result = spawnSync(executable, args, {
     cwd, encoding: "utf8", timeout: 180000, maxBuffer: 16 * 1024 * 1024,
-    env: { ...process.env, ...environment, NODE_PATH: "", NODE_OPTIONS: "", npm_config_ignore_scripts: "true" },
+    env,
   });
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${executable} ${args.join(" ")}\n${result.stdout}\n${result.stderr}`);
@@ -187,7 +189,7 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     for (const manifest of [core, assembly]) {
       for (const field of ["optionalDependencies", "peerDependencies"]) assert.deepEqual(manifest[field] ?? {}, {});
     }
-    for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs", "builder.test.mjs", "packed-consumer.mjs"]) {
+    for (const file of ["fixture.mjs", "runtime.test.mjs", "preparation.test.mjs", "preparation-ownership.test.ts", "inputs.test.mjs", "builder.test.mjs", "packed-consumer.mjs"]) {
       await writeFile(join(consumer, file), await readFile(join(fixtures, file)));
     }
     const secondConsumer = join(temporary, "consumer-copy");
@@ -210,6 +212,12 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     command(process.execPath, ["packed-consumer.mjs"], consumer);
     command(process.execPath, ["--conditions=browser", "--conditions=development", "packed-consumer.mjs"], consumer);
     command(process.execPath, ["--test", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs", "builder.test.mjs"], consumer);
+    if (!historical) {
+      const ownership = command(process.execPath, ["--test", "--test-reporter=tap", "preparation-ownership.test.ts"], consumer);
+      for (const receipt of ["tests 1", "pass 1", "fail 0", "cancelled 0", "skipped 0", "todo 0"]) {
+        assert.ok(ownership.includes(`# ${receipt}\n`), ownership);
+      }
+    }
     await mkdir(join(consumer, "tests"));
     for (const file of ["types.ts", "types-positive.ts", "mixed-graph.ts", "builder-types.ts"]) await writeFile(join(consumer, "tests", file), await readFile(join(fixtures, file)));
     await writeFile(join(consumer, "tests/type-scale.ts"), largeLiteralSource());

@@ -67,6 +67,7 @@ export const LEAF_PACKAGES = Object.freeze([
     requiredTests: Object.freeze([
       "packages/resources/tests/scope.test.mjs",
       "packages/resources/tests/close-reentrancy.test.ts",
+      "packages/resources/tests/closed-child-retention.test.ts",
       "packages/resources/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
@@ -75,7 +76,7 @@ export const LEAF_PACKAGES = Object.freeze([
         "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/resources/tsconfig.types.json"
         + " packages/resources/tsconfig.types.bundler.json packages/resources/tsconfig.test-tooling.json",
-      "resources:test": "node --test packages/resources/tests/scope.test.mjs packages/resources/tests/close-reentrancy.test.ts tests/resources/assembly-scope.test.mjs",
+      "resources:test": "node --test packages/resources/tests/scope.test.mjs packages/resources/tests/close-reentrancy.test.ts packages/resources/tests/closed-child-retention.test.ts tests/resources/assembly-scope.test.mjs",
       "resources:pack": "node --test packages/resources/tests/packed-root.test.mjs",
       "resources:check":
         "node architecture/tooling/runtime/command.ts run resources:build && node architecture/tooling/runtime/command.ts run resources:typecheck && node architecture/tooling/runtime/command.ts run resources:test && node architecture/tooling/runtime/command.ts run resources:pack",
@@ -139,6 +140,7 @@ export const LEAF_PACKAGES = Object.freeze([
     }),
     requiredTests: Object.freeze([
       "packages/observation/tests/store.test.mjs",
+      "packages/observation/tests/deep-values.test.ts",
       "packages/observation/tests/guards.test.mjs",
       "packages/observation/tests/mutations.test.mjs",
       "packages/observation/tests/writer-gate.test.ts",
@@ -155,6 +157,7 @@ export const LEAF_PACKAGES = Object.freeze([
         + " packages/observation/tests/testing-entry.test.mjs packages/observation/tests/processes.test.mjs"
         + " packages/observation/tests/type-controls.test.ts packages/observation/tests/close-reporting.test.ts"
         + " packages/observation/tests/review-regressions.test.ts"
+        + " packages/observation/tests/deep-values.test.ts"
         + " tests/observation/assembly-integration.test.mjs"
         + " tests/observation/readme-examples.test.mjs",
       "observation:evidence":

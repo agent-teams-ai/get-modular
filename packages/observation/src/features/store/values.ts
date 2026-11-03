@@ -17,22 +17,44 @@ function inspect<T>(path: string, operation: () => T): T {
 function rejectProxy(value: object, path: string): void {
   if (isProxy(value)) {throw notPlain(path);}
 }
-export function collectPlain(value: unknown, path: string, nodes: Set<object>): void {
+type PlainFrame = {
+  readonly value: object;
+  readonly path: string;
+  readonly array: boolean;
+  readonly keys: readonly PropertyKey[];
+  next: number;
+};
+function plainFrame(value: unknown, path: string, nodes: Set<object>): PlainFrame | undefined {
   if (typeof value === "function" || typeof value === "symbol") {throw notPlain(path);}
-  if (value === null || typeof value !== "object") {return;}
+  if (value === null || typeof value !== "object") {return undefined;}
   rejectProxy(value, path);
-  if (nodes.has(value) || frozenNodes.has(value)) {return;}
+  if (nodes.has(value) || frozenNodes.has(value)) {return undefined;}
   const prototype: unknown = inspect(path, (): unknown => Object.getPrototypeOf(value));
   const array = inspect(path, () => Array.isArray(value));
   if (array ? prototype !== arrayPrototype : prototype !== objectPrototype && prototype !== null) {
     throw notPlain(path);
   }
   nodes.add(value);
-  for (const key of inspect(path, () => Reflect.ownKeys(value))) {
-    if (array && key === "length") {continue;}
-    const descriptor = inspect(path, () => Reflect.getOwnPropertyDescriptor(value, key));
-    if (typeof key === "symbol" || descriptor === undefined || !("value" in descriptor)) {throw notPlain(`${path}.${String(key)}`);}
-    collectPlain(descriptor.value, `${path}.${key}`, nodes);
+  return { value, path, array, keys: inspect(path, () => Reflect.ownKeys(value)), next: 0 };
+}
+export function collectPlain(value: unknown, path: string, nodes: Set<object>): void {
+  const root = plainFrame(value, path, nodes);
+  if (root === undefined) {return;}
+  const frames: PlainFrame[] = [root];
+  for (;;) {
+    const frame = frames.at(-1);
+    if (frame === undefined) {return;}
+    const key = frame.keys[frame.next++];
+    if (key === undefined) {frames.pop(); continue;}
+    if (frame.array && key === "length") {continue;}
+    const descriptor = inspect(frame.path, () => Reflect.getOwnPropertyDescriptor(frame.value, key));
+    if (typeof key === "symbol" || descriptor === undefined || !("value" in descriptor)) {
+      throw notPlain(`${frame.path}.${String(key)}`);
+    }
+    // Keep the parent's cursor while visiting this child, so the first error
+    // follows the same descriptor order without using the JavaScript stack.
+    const child = plainFrame(descriptor.value, `${frame.path}.${key}`, nodes);
+    if (child !== undefined) {frames.push(child);}
   }
 }
 export function freezeNodes(nodes: Set<object>): void {

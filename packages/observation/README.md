@@ -287,6 +287,8 @@ Ownership. Values are plain data: supported primitives, ordinary local objects a
 Proxy wrappers at any level. This also applies to the initial and patch records. `createStore` and `set` validate
 the graph and all commit guards before taking ownership and freezing objects in place. For this supported
 ordinary-data domain, a rejected call freezes nothing. Previously admitted frozen objects are not walked again.
+Validation handles deeply nested graphs without recursive call-stack growth,
+preserving shared references and cycles. No value is cloned during transfer.
 Copy objects that belong to another module before passing them; materialize an owned plain value from a reactive
 draft or wrapper in the owning module.
 

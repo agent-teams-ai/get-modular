@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import type { TestContext } from "node:test";
 import type * as ResourcesApi from "../dist/index.js";
+import { runDeepScopeSuite } from "./deep-scope-suite.ts";
 
 export async function runCloseReentrancySuite(api: typeof ResourcesApi, context: TestContext): Promise<void> {
+  await runDeepScopeSuite(api, context);
   await context.test("a reentrant close joins the pre-escalated flight before the first cleanup", async () => {
     const scope = api.createScope({ name: "host" });
     const reason = new Error("shutdown budget exhausted");

@@ -88,6 +88,10 @@ names from `modules` down to the consumer. An `optional` slot always needs a row
 `roots` or `inputs`, and it runs once in `prepare`. A `"prepared"` result also
 carries the compiled `composition`.
 
+Completion counts explicit and inferred rows together before compiling. Repeated
+unresolved slots reuse immutable candidate lists; every slot and candidate is
+still reported, with the same capability and revision rules.
+
 A Host that compiles a profile itself, such as from bytes or a desired profile,
 compiles with public Core and calls
 `prepare({ composition, modules, roots: { app: appEntry }, inputs })`; give
@@ -106,7 +110,10 @@ signal for that attempt. Invalid inputs fail with phase `"inputs"` and code
 `assembly.run.invalid-inputs` before any factory runs; inputs are borrowed and
 never appear in `created`. One prepared assembly serves many concurrent runs.
 Preparation failures have `status: "failed"`, a stable `error.code`, an opaque
-cause, and separate Core `diagnostics`.
+cause, and separate Core `diagnostics`. The returned `composition` is the owned,
+validated result for the prepared program. Changing a caller-supplied composition
+after calling `prepare` cannot change either that result or execution, and
+preparation does not freeze the caller's original object.
 
 Run outcomes have status `"succeeded"`, `"failed"` or `"cancelled"`. Successful
 `roots.app` has the instance type inferred from `appEntry`. Every outcome has
