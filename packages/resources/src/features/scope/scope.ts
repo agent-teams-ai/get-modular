@@ -169,7 +169,7 @@ class ScopeNode {
     const cursors: Iterator<ScopeNode>[] = [[this].values()];
     for (let cursor = cursors.at(-1); cursor; cursor = cursors.at(-1)) {
       const next = cursor.next();
-      if (next.done) {
+      if (next.done === true) {
         cursors.pop();
       } else if (visit(next.value)) {
         cursors.push(next.value.#children.values());
@@ -453,7 +453,7 @@ class ScopeNode {
     const cursors: Iterator<ScopeNode | Debt>[] = [this.#debtItems()];
     for (let cursor = cursors.at(-1); cursor; cursor = cursors.at(-1)) {
       const next = cursor.next();
-      if (next.done) {
+      if (next.done === true) {
         cursors.pop();
       } else if (next.value instanceof ScopeNode) {
         cursors.push(next.value.#debtItems());
