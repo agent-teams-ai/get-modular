@@ -247,6 +247,11 @@ reason to unify them.
   2,048 expected diagnostic rows, strengthened packed receipts, removed a stale
   test registration/copy and included Core's coordinated patch metadata. Core's
   runtime is unchanged; the exact Core/Assembly version pair must remain intact.
+- CI integration review found two additional registration errors: a package-local
+  Assembly test used a package-name self import that the existing source policy
+  could not resolve, and two legacy admission assertions still expected the old
+  test-file lists. The test now uses its owner's existing public build entry;
+  the exact assertions include the new suites. No policy boundary was widened.
 - Concurrent peer cleanups have no relative-start-order guarantee. The internal
   queue preserves synchronous sealing, the abort-listener barrier, sequential
   child waiting and ordinary first-cleanup startup; no claim is made about every

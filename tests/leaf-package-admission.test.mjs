@@ -245,6 +245,7 @@ test("the resources row keeps its reviewed public class, tests and command chain
   assert.deepEqual(resources.requiredTests, [
     "packages/resources/tests/scope.test.mjs",
     "packages/resources/tests/close-reentrancy.test.ts",
+    "packages/resources/tests/closed-child-retention.test.ts",
     "packages/resources/tests/packed-root.test.mjs",
   ]);
   assert.deepEqual(Object.keys(resources.commands),
@@ -300,7 +301,8 @@ test("the observation row binds the reviewed peer, two entries and complete gate
   assert.deepEqual(LEAF_PACKAGES.filter(leaf => leaf.subpaths !== undefined).map(leaf => leaf.id), ["observation"]);
   assert.deepEqual(expectedLeafExports(observation), twoEntryExports());
   assert.deepEqual(observation.requiredTests, [
-    "packages/observation/tests/store.test.mjs", "packages/observation/tests/guards.test.mjs",
+    "packages/observation/tests/store.test.mjs", "packages/observation/tests/deep-values.test.ts",
+    "packages/observation/tests/guards.test.mjs",
     "packages/observation/tests/mutations.test.mjs", "packages/observation/tests/writer-gate.test.ts",
     "packages/observation/tests/packed-root.test.mjs",
   ]);
