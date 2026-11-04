@@ -1053,6 +1053,16 @@ test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs 
   });
 });
 
+test("L1 adjacency keeps a large collected stream of type and value edges without altering ownership", () => {
+  const root = "src/composition/app.root.ts";
+  const descriptor = "src/composition/shared.contracts.ts";
+  const repeated = Array.from({ length: 2048 }, (_, index) =>
+    edge(descriptor, index % 2 === 0 ? "type" : "value"));
+  const rows = testShapedTree().map(row => row.path === root
+    ? layoutFile(row.path, [...row.imports, ...repeated], row.useCaseExports) : row);
+  assert.deepEqual(checkModuleLayout(layoutRecords(rows)).violations, []);
+});
+
 test("L1b a root may import its root module and the group of that module without owning it", () => {
   const o = `${orders}/composition`;
   const rows = testShapedTree().map(row => row.path === "src/composition/app.root.ts"

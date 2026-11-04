@@ -171,3 +171,33 @@ test("candidate snapshots exclude only the consumer, share repeated exclusions, 
     assert.ok(Object.isFrozen(result.unresolved[index]!.candidates));
   }
 });
+
+test("profile identity sorting preserves Unicode code point order and the original explicit row", () => {
+  // This unit-level profile input deliberately bypasses Core's stricter identifier grammar.
+  // The private ordering function must retain its previous code point semantics.
+  const bmp = "completion/\uE000";
+  const astral = "completion/\u{10000}";
+  const consumerId = "completion/consumer";
+  const byId = new Map<string, Metadata>([
+    [astral, metadata(astral, [Value.provide()], [])],
+    [bmp, metadata(bmp, [Value.provide()], [])],
+    [consumerId, metadata(consumerId, [], [Value.slot("value", required())])],
+  ]);
+  const explicit: Row = {
+    consumerImplementationId: consumerId,
+    slotId: "value",
+    providerImplementationIds: [astral],
+  };
+  const result = deriveProfile({
+    profileId: "completion/codepoints",
+    bindings: [explicit],
+    byId,
+    groupPaths: new Map(),
+    rootModuleIds: [astral, bmp],
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error("explicitly completed profile rejected");
+  assert.deepEqual(result.profile.roots, [bmp, astral]);
+  assert.deepEqual(result.profile.selections.map(({ implementationId }) => implementationId), [consumerId, bmp, astral]);
+  assert.deepEqual(result.profile.bindings, [explicit]);
+});

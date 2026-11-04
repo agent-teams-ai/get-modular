@@ -144,9 +144,14 @@ function buildContext(records: ModuleLayoutRecords): LayoutContext {
   const outgoing = new Map<string, LayoutImport[]>();
   const importers = new Map<string, LayoutImport[]>();
   for (const edge of imports) {
-    outgoing.set(edge.from, [...outgoing.get(edge.from) ?? [], edge]);
+    // Append in collector order. Repeated array spreads made high-degree source/target files quadratic.
+    const from = outgoing.get(edge.from);
+    if (from === undefined) { outgoing.set(edge.from, [edge]); }
+    else { from.push(edge); }
     if (edge.mode === "value") {
-      importers.set(edge.to, [...importers.get(edge.to) ?? [], edge]);
+      const to = importers.get(edge.to);
+      if (to === undefined) { importers.set(edge.to, [edge]); }
+      else { to.push(edge); }
     }
   }
   const sites = new Map([...files].map(path => [path, siteOf(path)] as const));
