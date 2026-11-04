@@ -238,6 +238,7 @@ function check(prepared: PreparedRelease, after: SourceTree, execution: Executio
   return { report, observed };
 }
 export function checkGeneratedCandidate(prepared: PreparedRelease): CheckedCandidate {
+  assert.equal(prepared.pendingAdmission, false, "candidate.pending-release-admission");
   const actual = custody(prepared.execution.root);
   assertCustody(prepared.execution, actual);
   const after = snapshot(actual.root);

@@ -530,6 +530,7 @@ await test("unadmitted current-source release is reported but cannot version or 
     assert.equal(pendingMetadataCohort(prepared.before, prepared.expected.plan), true);
     assert(!prepared.expected.permittedChanges.some(item => baselinePaths.includes(item.path as typeof baselinePaths[number])));
     assert.throws(() => versionPreparedRelease(prepared), /candidate.pending-release-admission/u);
+    assert.throws(() => checkGeneratedCandidate(prepared), /candidate.pending-release-admission/u);
     assert.equal(git(root, "rev-parse", "HEAD").trim(), source);
     assert.equal(git(root, "status", "--porcelain=v1", "--untracked-files=all"), "");
   } finally {
