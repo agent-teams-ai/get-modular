@@ -38,11 +38,12 @@ export function plannedBaselines(tree: SourceTree, plan: ExpectedInputs["plan"])
   const pair = plan.releases.filter(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
     && item.oldVersion !== item.newVersion);
   if (pair.length === 0) {return [];}
-  assert.equal(pendingMetadataCohort(tree, plan), false, "candidate.metadata-release-cohort");
+  assertMetadataAuthority(tree[metadataDecision]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
   for (const [name, version] of [["resources", "0.2.1"], ["observation", "0.2.0"]]) {
     assert.equal(record(JSON.parse(tree[`packages/${name}/package.json`]?.contents ?? "{}"))["version"], version,
       "candidate.metadata-release-unchanged-leaves");
   }
+  assert.deepEqual(releaseRows(plan), admittedMetadataCohort, "candidate.metadata-release-cohort");
   const policy = record(parse(tree[configPath].contents));
   assert(Array.isArray(policy["packages"]), "candidate.public-baseline-policy");
   assert.deepEqual(policy["packages"].map(value => {

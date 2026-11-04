@@ -460,7 +460,9 @@ await test("the version-only action and CI lane preserve publisher separation an
   assert(!steps.map(record).some(step => String(step.run).startsWith("pnpm install")));
   assert.equal(record(action.with).publish, undefined);
   assert.equal(record(action.with).createGithubReleases, false);
-  assert.equal(action.if, "steps.plan.outputs.has-release == 'true'");
+  assert.equal(action.if, "steps.plan.outputs.version-ready == 'true'");
+  const identity = steps.map(record).find(step => step.name === "Configure the existing owner commit identity");
+  assert.equal(identity?.if, "steps.plan.outputs.version-ready == 'true'");
   assert(!read(repositoryRoot, ".github/workflows/npm-release.yml").includes("changesets/action"));
   const manifest = record(JSON.parse(read(repositoryRoot, "package.json")));
   assert.equal(record(manifest.scripts)["release:version"], "node architecture/tooling/release-candidate/run.ts version");
@@ -518,6 +520,7 @@ await test("unadmitted current-source release is reported but cannot version or 
   try {
     git(repositoryRoot, "clone", "--quiet", "--shared", "--no-hardlinks", repositoryRoot, root);
     git(root, "checkout", "--detach", source);
+    git(root, "update-ref", "refs/heads/main", source);
     mkdirSync(join(root, "node_modules"));
     for (const entry of readdirSync(nodeModules)) {
       if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
