@@ -222,18 +222,18 @@ function preparationMode(supplied: Supplied): { readonly withComposition: boolea
   if (withComposition && given("bindings")) {refuse("assembly.prepare.invalid-input");}
   return { withComposition, given };
 }
-function explicitComposition(supplied: Supplied): { readonly composition: Record<string, unknown>; readonly header: Readonly<Record<string, unknown>>; readonly census: ReturnType<typeof inspectPlan> } {
+function explicitComposition(supplied: Supplied): { readonly header: Readonly<Record<string, unknown>>; readonly census: ReturnType<typeof inspectPlan> } {
   const composition = dataObject(data(supplied, "composition"));
-  return { composition, header: envelope(composition), census: inspectPlan(data(composition, "plan")) };
+  return { header: envelope(composition), census: inspectPlan(data(composition, "plan")) };
 }
 async function verifyExplicit(compile: ConstructionPorts["compileComposition"], declarations: readonly ModuleDeclaration[],
-  plan: CompositionPlan, explicit: ReturnType<typeof explicitComposition>): Promise<AssemblyPreparationResult<never> | undefined> {
+  plan: CompositionPlan, explicit: ReturnType<typeof explicitComposition>): Promise<AssemblyPreparationResult<never> | SuccessfulComposition> {
   const checked = await compile({ declarations, profile: profileFrom(plan) });
   if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
   if (!sameEnvelope(explicit.header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
     return refuse("assembly.prepare.plan-mismatch");
   }
-  return undefined;
+  return checked;
 }
 export async function prepareConstruction<C, R extends RootEntries<C>, N extends InputEntries<C>,
   M extends readonly ModuleItem<C>[]>(
@@ -253,21 +253,21 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
     const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
     const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
     const resolved = explicit
-      ? { plan: copyPlan(explicit.census), composition: explicit.composition as SuccessfulComposition }
+      ? { plan: copyPlan(explicit.census), supplied: explicit }
       : await completeProfile(compile, declarations, {
         profileId: data(supplied, "profileId"),
         bindings: given("bindings") ? data(supplied, "bindings") : undefined,
         byId, groupPaths, rootModuleIds: rootModuleIds(aliases, byEntry),
       });
     if ("status" in resolved) {return resolved;}
-    const { plan, composition } = resolved;
+    const { plan } = resolved;
     validateSelections(plan, byId);
     const roots = bindRoots(aliases, plan, byEntry);
     const inputs = bindInputs(inputAliases.keys, inputEntries, byEntry);
-    if (explicit) {
-      const failed = await verifyExplicit(compile, declarations, plan, explicit);
-      if (failed) {return failed;}
-    }
+    // Both preparation modes expose the verified Core result after the same handle/root checks.
+    const composition = "supplied" in resolved
+      ? await verifyExplicit(compile, declarations, plan, resolved.supplied) : resolved.composition;
+    if ("status" in composition) {return composition;}
     const program = createProgram(plan, roots, inputs, byId);
     // Run options are checked at run time; the declared shape exists only for callers.
     const prepared = Object.freeze({

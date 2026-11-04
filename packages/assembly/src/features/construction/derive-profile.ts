@@ -28,7 +28,7 @@ function compareRows(a: { readonly consumerImplementationId: string; readonly sl
   b: { readonly consumerImplementationId: string; readonly slotId: string }): number {
   return compareCodePoints(a.consumerImplementationId, b.consumerImplementationId) || compareCodePoints(a.slotId, b.slotId);
 }
-function snapshotRows(value: unknown): readonly Row[] {
+function snapshotRows(value: unknown): { readonly rows: readonly Row[]; readonly occurrences: number } {
   const rows = denseArray(value, limits.bindings);
   // The aggregate bound precedes every proportional copy, as for a supplied plan.
   let occurrences = 0;
@@ -37,7 +37,7 @@ function snapshotRows(value: unknown): readonly Row[] {
     occurrences += denseArray(data(row, "providerImplementationIds"), limits.providers).length;
     if (occurrences > limits.providerOccurrences) {throw new SnapshotFault("limit");}
   }
-  return Object.freeze(rows.map((rowValue) => {
+  const captured = Object.freeze(rows.map((rowValue) => {
     const row = record(rowValue, ["consumerImplementationId", "slotId", "providerImplementationIds"]);
     return Object.freeze({
       consumerImplementationId: identifier(data(row, "consumerImplementationId")),
@@ -45,6 +45,36 @@ function snapshotRows(value: unknown): readonly Row[] {
       providerImplementationIds: Object.freeze(denseArray(data(row, "providerImplementationIds"), limits.providers).map(identifier)),
     });
   }));
+  return { rows: captured, occurrences };
+}
+
+// Candidates depend on capability identity, never revision. Share immutable lists across slots;
+// only a consumer that provides the capability needs its own self-excluding snapshot.
+function candidateIndex(byId: ReadonlyMap<string, Metadata>): (consumer: string, capability: string) => readonly string[] {
+  const providersOf = new Map<string, Set<string>>();
+  for (const [implementationId, metadata] of byId) {
+    for (const provided of metadata.declaration.provides) {
+      let providers = providersOf.get(provided.capabilityId);
+      if (providers === undefined) { providers = new Set(); providersOf.set(provided.capabilityId, providers); }
+      providers.add(implementationId);
+    }
+  }
+  const indexed = new Map([...providersOf].map(([capability, providers]) => [capability, {
+    providers, candidates: Object.freeze(sorted([...providers], compareCodePoints)),
+    excluding: new Map<string, readonly string[]>(),
+  }]));
+  const empty: readonly string[] = Object.freeze([]);
+  return (consumer, capability) => {
+    const found = indexed.get(capability);
+    if (found === undefined) {return empty;}
+    if (!found.providers.has(consumer)) {return found.candidates;}
+    let candidates = found.excluding.get(consumer);
+    if (candidates === undefined) {
+      candidates = Object.freeze(found.candidates.filter((id) => id !== consumer));
+      found.excluding.set(consumer, candidates);
+    }
+    return candidates;
+  };
 }
 
 // ADR-0035: the profile follows the module entries. An explicit row is kept as written; a `required` slot
@@ -57,35 +87,25 @@ export function deriveProfile(input: {
   readonly rootModuleIds: readonly string[];
 }): DerivedProfile {
   const profileId = identifier(input.profileId);
-  const explicit = input.bindings === undefined ? [] : snapshotRows(input.bindings);
+  const captured = input.bindings === undefined ? { rows: [], occurrences: 0 } : snapshotRows(input.bindings);
+  const explicit = captured.rows;
   const keys = new Set(explicit.map((row) => JSON.stringify([row.consumerImplementationId, row.slotId])));
-  const providersOf = new Map<string, string[]>();
-  for (const [implementationId, metadata] of input.byId) {
-    for (const provided of metadata.declaration.provides) {
-      const providers = providersOf.get(provided.capabilityId);
-      // A module that declares one capability twice is still one candidate; Core reports the duplicate.
-      if (providers === undefined) {providersOf.set(provided.capabilityId, [implementationId]);}
-      else if (!providers.includes(implementationId)) {providers.push(implementationId);}
-    }
-  }
-  const completed: Row[] = [...explicit];
+  const candidatesFor = candidateIndex(input.byId);
+  const inferred: { readonly consumerImplementationId: string; readonly slotId: string; readonly provider: string }[] = [];
   const unresolved: UnresolvedBinding[] = [];
   for (const [consumerImplementationId, metadata] of input.byId) {
+    let groupPath: readonly string[] | undefined;
     for (const slot of metadata.declaration.slots) {
       if (keys.has(JSON.stringify([consumerImplementationId, slot.slotId]))) {continue;}
-      const candidates = (providersOf.get(slot.capabilityId) ?? [])
-        .filter((id) => id !== consumerImplementationId);
-      candidates.sort(compareCodePoints);
+      const candidates = candidatesFor(consumerImplementationId, slot.capabilityId);
       const only = candidates.at(0);
       if (slot.cardinality.kind === "required" && candidates.length === 1 && only !== undefined) {
-        completed.push(Object.freeze({
-          consumerImplementationId, slotId: slot.slotId, providerImplementationIds: Object.freeze([only]),
-        }));
+        inferred.push({ consumerImplementationId, slotId: slot.slotId, provider: only });
       } else {
+        groupPath ??= Object.freeze([...input.groupPaths.get(consumerImplementationId) ?? []]);
         unresolved.push(Object.freeze({
           consumerImplementationId, slotId: slot.slotId, capabilityId: slot.capabilityId,
-          cardinality: slot.cardinality.kind, groupPath: Object.freeze([...input.groupPaths.get(consumerImplementationId) ?? []]),
-          candidates: Object.freeze(candidates),
+          cardinality: slot.cardinality.kind, groupPath, candidates,
         }));
       }
     }
@@ -93,6 +113,14 @@ export function deriveProfile(input: {
   if (unresolved.length > 0) {
     return { ok: false, unresolved: Object.freeze(sorted(unresolved, compareRows)) };
   }
+  // Keep the unresolved outcome above. Only a complete profile needs the completed carrier budget;
+  // count inferred rows and their one provider before allocating that profile or invoking Core.
+  if (explicit.length + inferred.length > limits.bindings || captured.occurrences + inferred.length > limits.providerOccurrences) {
+    throw new SnapshotFault("limit");
+  }
+  const completed: Row[] = [...explicit, ...inferred.map(({ consumerImplementationId, slotId, provider }) => Object.freeze({
+    consumerImplementationId, slotId, providerImplementationIds: Object.freeze([provider]),
+  }))];
   const selections = [...input.byId.values()].map((metadata) => Object.freeze({
     moduleId: metadata.declaration.moduleId, implementationId: metadata.declaration.implementationId,
   }));

@@ -161,7 +161,9 @@ const windowsLockScript = `
 const spawnPowerShellLock = env => spawn("powershell.exe", [
   "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", windowsLockScript,
 ], {
-  env,
+  // A Node intermediary can carry PowerShell 7 module paths into Windows
+  // PowerShell 5.1. Let this child rebuild its own module search path.
+  env: Object.fromEntries(Object.entries(env).filter(([key]) => key.toUpperCase() !== "PSMODULEPATH")),
   stdio: ["ignore", "pipe", "pipe"],
   windowsHide: true,
   // Allow 30s for the first acknowledgment, then the existing 25s held-lock

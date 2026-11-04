@@ -220,7 +220,7 @@ jobs:
   lanes-node26-windows:
     name: check lane (windows-2025, Node 26 rollback, ${{ matrix.lane }})
     runs-on: windows-2025
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.lane == 'governance' && 20 || 15 }}
     env:
       ROOT_CI_NODE_VERSION: 26.11.1
       ROOT_CI_RUNTIME_PROFILE: node

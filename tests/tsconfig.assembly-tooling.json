@@ -3,7 +3,9 @@
   "files": [
     "assembly/format-failure.test.ts",
     "assembly/descriptor-aggregate.test.ts",
-    "assembly/live-instance-custody.test.ts"
+    "assembly/live-instance-custody.test.ts",
+    "assembly/preparation-ownership.test.ts",
+    "../packages/assembly/tests/profile-completion-bounds.test.ts"
   ],
   "include": []
 }

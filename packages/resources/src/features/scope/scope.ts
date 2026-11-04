@@ -40,8 +40,8 @@ class ScopeNode {
   readonly path: readonly string[];
   readonly resources: Resources;
   readonly facade: Scope;
-  readonly #parent: ScopeNode | undefined;
-  readonly #entry: Entry | undefined;
+  #parent: ScopeNode | undefined;
+  #entry: Entry | undefined;
   readonly #order: Order;
   readonly #notifications: AbortNotifications;
   readonly #setupAbort = new AbortController();
@@ -164,58 +164,76 @@ class ScopeNode {
   }
 
   // ---- tree signals (walk the registry; O(1) child attach and detach) ----
+  /** Live iterators preserve child order and reentrant detach/add behavior without recursive calls. */
+  #walk(visit: (node: ScopeNode) => boolean): void {
+    const cursors: Iterator<ScopeNode>[] = [[this].values()];
+    for (let cursor = cursors.at(-1); cursor; cursor = cursors.at(-1)) {
+      const next = cursor.next();
+      if (next.done === true) {
+        cursors.pop();
+      } else if (visit(next.value)) {
+        cursors.push(next.value.#children.values());
+      }
+    }
+  }
+
   #abortSetups(reason: unknown): void {
     if (this.#setupAbort.signal.aborted) {
       return;
     }
     this.#notifications.depth += 1;
     try {
-      this.#setupAbort.abort(reason);
-      for (const child of this.#children) {
-        child.#abortSetups(reason);
-      }
+      this.#walk((node) => {
+        if (node.#setupAbort.signal.aborted) { return false; }
+        node.#setupAbort.abort(reason);
+        return true;
+      });
     } finally {
       this.#finishNotification();
     }
   }
 
   #request(): void {
-    if (this.#requested) {
-      return;
-    }
-    this.#requested = true;
-    for (const child of this.#children) {
-      child.#request();
-    }
+    this.#walk((node) => {
+      if (node.#requested) { return false; }
+      node.#requested = true;
+      return true;
+    });
   }
 
   #abortRequested(): void {
     if (this.#requestNotified) {
       return;
     }
-    this.#requestNotified = true; // a reentrant close joins without restarting this walk
     this.#notifications.depth += 1;
     try {
-      if (!this.#setupAbort.signal.aborted) {
-        this.#setupAbort.abort(new ScopeClosedError(this.path));
-      }
-      for (const child of this.#children) {
-        child.#abortRequested();
-      }
+      this.#walk((node) => {
+        if (node.#requestNotified) { return false; }
+        node.#requestNotified = true; // a reentrant close joins without restarting this walk
+        if (!node.#setupAbort.signal.aborted) {
+          node.#setupAbort.abort(new ScopeClosedError(node.path));
+        }
+        return true;
+      });
     } finally {
       this.#finishNotification();
     }
   }
 
   #finishNotification(): void {
+    this.#notifications.depth -= 1;
+    this.#drainStarts();
+  }
+
+  #drainStarts(): void {
     const notifications = this.#notifications;
-    notifications.depth -= 1;
     if (notifications.depth !== 0 || notifications.draining) {
       return;
     }
     notifications.draining = true;
     try {
-      // Reentrant ancestor closes wait for every pending native abort listener in this tree.
+      // Child flights append their starts while a parent suspends. Drain the live queue in this turn,
+      // after every native abort listener in this tree returns, without recursive child-flight startup.
       for (const pending of notifications.pending) {
         void pending.node.#run(pending.flight);
       }
@@ -226,13 +244,13 @@ class ScopeNode {
   }
 
   #escalateTree(reason: unknown): void {
-    const flight = this.#flight;
-    if (flight && !flight.escalate.signal.aborted) {
-      flight.escalate.abort(reason);
-    }
-    for (const child of this.#children) {
-      child.#escalateTree(reason);
-    }
+    this.#walk((node) => {
+      const flight = node.#flight;
+      if (flight && !flight.escalate.signal.aborted) {
+        flight.escalate.abort(reason);
+      }
+      return true;
+    });
   }
 
   // ---- close ----
@@ -291,12 +309,8 @@ class ScopeNode {
   }
 
   #start(flight: Flight): void {
-    const notifications = this.#notifications;
-    if (notifications.depth > 0 || notifications.draining) {
-      notifications.pending.push({ node: this, flight });
-      return;
-    }
-    void this.#run(flight);
+    this.#notifications.pending.push({ node: this, flight });
+    this.#drainStarts();
   }
 
   #open(): Flight | undefined {
@@ -416,6 +430,8 @@ class ScopeNode {
       parent.#children.delete(this);
       parent.#forget(entry);
     }
+    this.#parent = undefined;
+    this.#entry = undefined;
   }
 
   #forget(entry: Entry): void {
@@ -434,33 +450,46 @@ class ScopeNode {
 
   // ---- report: release order (failed, running, pending setups, not yet run) ----
   #debts(out: Debt[]): void {
-    for (const entry of this.#failed) {
-      if (entry.where === "failed") {
-        this.#debt(entry, "failed", out);
-      }
-    }
-    for (const entry of this.#active) {
-      if (entry.where === "active") {
-        this.#debt(entry, "pending", out);
-      }
-    }
-    for (const record of this.#pending) {
-      out.push(freeze({ path: freeze([...this.path, record.name]), state: "pending" }));
-    }
-    for (const entry of this.#live.toReversed()) {
-      if (entry.where === "live") {
-        this.#debt(entry, "not-run", out);
+    const cursors: Iterator<ScopeNode | Debt>[] = [this.#debtItems()];
+    for (let cursor = cursors.at(-1); cursor; cursor = cursors.at(-1)) {
+      const next = cursor.next();
+      if (next.done === true) {
+        cursors.pop();
+      } else if (next.value instanceof ScopeNode) {
+        cursors.push(next.value.#debtItems());
+      } else {
+        out.push(next.value);
       }
     }
   }
 
-  #debt(entry: Entry, state: Debt["state"], out: Debt[]): void {
+  *#debtItems(): Generator<ScopeNode | Debt> {
+    for (const entry of this.#failed) {
+      if (entry.where === "failed") {
+        yield this.#debt(entry, "failed");
+      }
+    }
+    for (const entry of this.#active) {
+      if (entry.where === "active") {
+        yield this.#debt(entry, "pending");
+      }
+    }
+    for (const record of this.#pending) {
+      yield freeze({ path: freeze([...this.path, record.name]), state: "pending" });
+    }
+    for (const entry of this.#live.toReversed()) {
+      if (entry.where === "live") {
+        yield this.#debt(entry, "not-run");
+      }
+    }
+  }
+
+  #debt(entry: Entry, state: Debt["state"]): ScopeNode | Debt {
     if (entry.child) {
-      entry.child.#debts(out);
-      return;
+      return entry.child;
     }
     const path = freeze([...this.path, entry.name]);
-    out.push(freeze(state === "failed" ? { path, state, cause: entry.cause } : { path, state }));
+    return freeze(state === "failed" ? { path, state, cause: entry.cause } : { path, state });
   }
 
   #report(settled: boolean): CloseReport {
