@@ -263,8 +263,10 @@ reason to unify them.
 ### Final implementation verification
 
 The verified implementation revision is
-`6ab6180c1c5d1cc60a693e656097237c314943b2`. Final record updates after this
-revision change documentation only. Both local profiles use Node 24.22.1,
+`6ab6180c1c5d1cc60a693e656097237c314943b2`. The record update at
+`ab39c5cd6c2552f91c96134f68272301c0630734` changed documentation only.
+Subsequent delivery actions and their boundaries are recorded below.
+Both local profiles use Node 24.22.1,
 Bun 1.4.3 where required, and the repository's official runtime entrypoint.
 The isolated Node profile uses its official projection and pnpm 11.20.0;
 installations remain separate. TypeScript is 7.0.2 for all checked compiler
@@ -302,7 +304,7 @@ Cubic stopped at its review-size limit with a neutral result, and ReviewRouter
 reported incomplete runs without substantive coverage. Neither is an external
 approval.
 
-### External checks and delivery status
+### External checks at the initial handoff
 
 At the final implementation review, the
 [CI run for `6ab6180`](https://github.com/agent-teams-ai/get-modular/actions/runs/41742420390)
@@ -310,23 +312,71 @@ had 60 successful jobs, one failed Windows Core lane and its failed aggregate,
 and two queued macOS aggregates. Every substantive lane had finished; Assembly,
 Observation and packaging passed across all nine OS/runtime combinations.
 
-The Windows Node 26 Core failure is in the unchanged lock-acquisition fixture:
+The Windows Node 26 Core failure was in the unchanged lock-acquisition fixture:
 its existing 30-second readiness deadline expired at about 30.011 seconds, while
 the expected `LOCK_FAILED` result arrived at about 30.970 seconds. The complete
 Core source tree and its build helper are unchanged by this refactor. A targeted
 retry request was rejected because the containing workflow was still running;
-there is no successful retry result to claim. The fixture deadline and required
+there was no successful retry result at that handoff. The fixture deadline and required
 checks remain unchanged. This timing-sensitive failure is recorded explicitly
 instead of treating the CI run as green.
 
-The separate `commit-author-identity` status also fails: the old pinned verifier
-rejects the GitHub plugin's owner-name alias although the current central policy
-accepts it. [PR #221](https://github.com/agent-teams-ai/get-modular/pull/221)
-owns that immutable-pin migration and remains separate. This delivery does not
-change identity enforcement, merge that PR or claim the status passed.
+The separate `commit-author-identity` status also failed: the old pinned verifier
+rejected the GitHub plugin's owner-name alias although the current central policy
+accepted it. [PR #221](https://github.com/agent-teams-ai/get-modular/pull/221)
+owned the separate immutable-pin migration. At that handoff, this refactor had
+not changed the verifier pin or merged the dependency, and no passing identity
+status was claimed.
 
 The plan preceded implementation. Each commit was immediately published through
 the GitHub plugin after its remote tree was compared with the staged local tree.
-[PR #224](https://github.com/agent-teams-ai/get-modular/pull/224) is open and ready
-for review. Nothing has been merged or released; this record qualifies the
-bounded implementation and its observed checks, not a package release.
+At the initial handoff,
+[PR #224](https://github.com/agent-teams-ai/get-modular/pull/224) was open and ready
+for review. Nothing had been merged or released. The owner subsequently
+continued the task through delivery, as recorded below.
+
+### Delivery follow-up
+
+A bounded audit of the other maintained nested test launches found the same
+false-success defect in `packages/lifecycle-kernel/tests/packed-root.test.mjs`.
+Its original helper accepted a deliberately failing inner test with exit 0 and
+no execution receipt when invoked from an outer Node test. The localized fix
+clears `NODE_TEST_CONTEXT` only for nested Node test commands and requires all
+five packed semantic cases to pass, with zero failures, cancellations, skips or
+todos. The corrected helper rejects the same deliberate failure.
+
+The official `lifecycle:check` passed after this correction: build, source and
+consumer typechecking, five local cases and the packed harness with five actual
+nested passes. This small correction stays in the existing legacy harness to
+avoid an unrelated runner migration; its JavaScript type-coverage gap remains.
+No Lifecycle runtime, adoption, public status or new test case was added. The
+other inspected maintained launch paths already isolate their test environment
+or execute direct scripts with real assertions; no further instance was proven.
+
+The separately reviewed verifier-pin adoption remains owned by
+[PR #221](https://github.com/agent-teams-ai/get-modular/pull/221). Its existing
+one-line replacement was refreshed onto
+`20c3ce8c5bb839a16fbe8dc258d6d96fd5206787` as canonical source
+`493e5582a47521c06876579d2a76984b77a29b0c`. The independently reviewed
+[metadata bootstrap](https://github.com/agent-teams-ai/get-modular/actions/runs/41750109683)
+succeeded. The exact tree, sole parent, unchanged message and canonical owner
+author/committer were checked before the expected-SHA branch update. The
+temporary workflow is absent from that source tree, and its trigger branch was
+reset to the reviewed base. The new source received genuine successful
+[identity verification](https://github.com/agent-teams-ai/get-modular/actions/runs/41750297450).
+Its [full CI](https://github.com/agent-teams-ai/get-modular/actions/runs/41750299438)
+was pending at this checkpoint; no protection or status was bypassed.
+
+The subsequent
+[refactor CI run](https://github.com/agent-teams-ai/get-modular/actions/runs/41748101642)
+passed the Windows Node 26 Core lane: 3,145 cases passed, 10 were skipped and none
+failed. The previously timed-out lock fixture completed in approximately
+3.944 seconds, without a timeout or source change. This is new passing evidence;
+the earlier failed run remains recorded above.
+
+The runtime implementation is unchanged from `6ab6180`. Its complete Bun result
+and combined Node prefix/suffix evidence remain applicable to those unchanged
+inputs; the Lifecycle harness has the separate fresh evidence above. Verifier
+adoption does not relax required checks or replace fresh CI for an updated
+branch. The working PR records the exact final source, protected merge and main
+CI results after they are observed. Package publication remains separate.
