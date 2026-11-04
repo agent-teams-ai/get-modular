@@ -164,13 +164,20 @@ const windowsLockScript = `
         [System.IO.FileShare]::None
       )
     } catch {
+      [Console]::Error.WriteLine('LOCK_OPEN_FAILED')
+      [Console]::Error.Flush()
       $failure = $_.Exception
       if ($null -ne $failure.InnerException) { $failure = $failure.InnerException }
       $detail = @{
         type = $failure.GetType().FullName
         hresult = [int]$failure.HResult
         message = $failure.Message
-      } | ConvertTo-Json -Compress
+      }
+      [Console]::Error.WriteLine('LOCK_FAILURE_SERIALIZING')
+      [Console]::Error.Flush()
+      $detail = $detail | Microsoft.PowerShell.Utility\\ConvertTo-Json -Compress
+      [Console]::Error.WriteLine('LOCK_FAILURE_SERIALIZED')
+      [Console]::Error.Flush()
       [Console]::Out.WriteLine("${LOCK_FAILED_PREFIX}$detail")
       [Console]::Out.Flush()
       exit ${LOCK_ACQUISITION_FAILED_EXIT}
