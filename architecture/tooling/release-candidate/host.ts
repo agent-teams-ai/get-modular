@@ -25,7 +25,8 @@ const policyPaths = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "b
   "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/policy.ts",
   "architecture/tooling/release-candidate/host.ts", "architecture/tooling/release-candidate/io.ts",
   "architecture/tooling/release-candidate/run.ts", "architecture/tooling/release-candidate/baselines.ts", "architecture/tooling/release-candidate/metadata-authority.ts",
-  "architecture/foundation/public-api-compatibility.yaml", "architecture/tooling/build-core.ts", "architecture/tooling/build-assembly.ts"] as const;
+  // Match the authenticated build inputs of the ADR-0042 metadata cohort.
+  "architecture/foundation/public-api-compatibility.yaml", "architecture/tooling/build-core.mjs", "architecture/tooling/build-assembly.mjs"] as const;
 export interface PreparedRelease {
   readonly execution: ExecutionCustody;
   readonly before: SourceTree;
