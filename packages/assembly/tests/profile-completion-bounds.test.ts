@@ -182,11 +182,12 @@ test("profile identity sorting preserves Unicode code point order and the origin
     [astral, metadata(astral, [Value.provide()], [])],
     [bmp, metadata(bmp, [Value.provide()], [])],
     [consumerId, metadata(consumerId, [], [Value.slot("value", required())])],
+    ["completion/provider", metadata("completion/provider", [Value.provide()], [])],
   ]);
   const explicit: Row = {
     consumerImplementationId: consumerId,
     slotId: "value",
-    providerImplementationIds: [astral],
+    providerImplementationIds: ["completion/provider"],
   };
   const result = deriveProfile({
     profileId: "completion/codepoints",
@@ -198,6 +199,6 @@ test("profile identity sorting preserves Unicode code point order and the origin
   assert.equal(result.ok, true);
   if (!result.ok) throw new Error("explicitly completed profile rejected");
   assert.deepEqual(result.profile.roots, [bmp, astral]);
-  assert.deepEqual(result.profile.selections.map(({ implementationId }) => implementationId), [consumerId, bmp, astral]);
+  assert.deepEqual(result.profile.selections.map(({ implementationId }) => implementationId), [consumerId, "completion/provider", bmp, astral]);
   assert.deepEqual(result.profile.bindings, [explicit]);
 });
