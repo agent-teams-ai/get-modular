@@ -126,10 +126,12 @@ builds in another worker's checkout or changes a shared policy independently.
    unchecked-index and exact-optional checks. Do not bridge the migration with
    `any`, blanket casts, suppressions, weaker compiler flags or unchecked wrappers.
    Deliberate JavaScript text fixtures retain their tested syntax.
-7. **Public compatibility:** runtime/public declaration output and package
-   closure remain equivalent. No public export, dependency, support interval,
-   release baseline or accepted decision changes. Generic consumers continue to
-   use public package roots without repository tooling.
+7. **Public compatibility:** the build refactor preserves runtime/public
+   declaration output and package closure. The separately reviewed Assembly
+   correction below fixes alias-capture timing under the existing contract;
+   runtime equivalence does not describe that correction. No public export,
+   dependency, support interval, release baseline or accepted decision changes.
+   Generic consumers continue to use public package roots without repository tooling.
 
 ## Separate urgent Assembly correction
 
@@ -139,8 +141,9 @@ the caller's map after awaiting Core. Swapping two valid aliases during that
 await changes the resulting root map. The existing contract requires capture
 before the first await.
 
-Deliver this as a separate small PR with its own source/tests/changeset and
-review. Capture aliases into an owner-private representation and permit only
+The original plan assigned this correction a separate small PR with its own
+source/tests/changeset and review. The [combined delivery amendment](#combined-delivery-amendment)
+supersedes only that PR grouping. Capture aliases into an owner-private representation and permit only
 that representation after the first await. Preserve validation order, diagnostic
 codes, accessors-without-invocation checks and both preparation modes. Do not
 introduce another feature node or package.
@@ -208,7 +211,8 @@ incorrectly treating historical evidence as a live caller.
 
 1. Publish this plan after two critic rounds. Record exact scope decisions and
    open findings. Push each commit immediately and open a draft PR before the
-   large implementation. Deliver the independent Assembly correction separately.
+   large implementation. Keep the Assembly correction independently identifiable;
+   the [combined delivery amendment](#combined-delivery-amendment) owns its PR grouping.
 2. Implement custody, witness and build work in disjoint checkouts. Root updates
    exact integrations together; remove the old implementations, not just imports.
    Inspect the complete changed-path inventory for accidental historical edits.
@@ -467,3 +471,71 @@ This work does not qualify a future package cohort, publish packages, rewrite
 retained historical bytes, modify accepted authorities, or migrate unrelated
 qualification controllers. Source review, local execution, packed consumption,
 CI and protected delivery remain distinct claims.
+
+## Combined delivery amendment
+
+Three independent critics approved consolidating the two already reviewed
+changes into [PR227](https://github.com/agent-teams-ai/get-modular/pull/227).
+This supersedes the original separate-delivery arrangement above and in delivery
+step 1. It changes the PR boundary, not the accepted implementation scope.
+The original source-32 and source-e1 review and execution records remain historical,
+source-bound evidence. PR225 remains the superseded original review record.
+
+Publish an ordinary topic-branch integration commit with first parent
+`087595413f04d47910f55e230a19db8dee6659f6` and additional parent
+`e1b74a8a7ce8957cf518c12140ce462401990f29`, and push it immediately without force.
+Relative to the first parent, the only implementation changes are the exact four
+previously reviewed Assembly files, 85 additions and five deletions:
+
+- `.changeset/capture-preparation-root-aliases.md`;
+- `packages/assembly/src/features/construction/snapshot.ts`;
+- `tests/assembly/preparation-ownership.test.ts`;
+- `tests/assembly/packed-root.test.mjs`.
+
+The only additional path is this qualification record's explicit amendment.
+Verify exact path, mode and blob correspondence with the Assembly source; no
+other code, test selection, workflow, dependency or policy change is authorized.
+This includes one private production behavior correction. Its validation order,
+diagnostics, entry identities, two preparation modes and existing public API
+remain as reviewed. The combined-limit ambiguity and every other exclusion above
+remain outside this delivery. The broader rollback unit and renewed qualification
+are explicit costs of consolidating the deliveries.
+
+An uncommitted integration preview exercised combined tree
+`02bb4807641a83464ae74e02ad89e3a5e79dd90e`, with HEAD still at source e1 and tracked
+working files equal to that index before and after. Its fresh official Bun
+installation owned all six workspace aliases. The actual Core/Assembly and
+prerequisite builds, Assembly strict checks and existing Assembly suite all exited
+zero: 118 tests passed, with no failure or skip. Retained and historical archive
+selectors were absent; the packed suite exercised freshly built installed packages
+and asserted the named root-capture case and exact two-test child completion.
+The receipt is `combined-preview.receipt.json`, with output in
+`combined-preview.log`, completed on 2026-11-04 at 18:32:19 UTC.
+
+The preview does not qualify the eventual committed head. Its tree differs from
+the final tree by this document amendment alone; verify that precise relationship
+instead of claiming whole-tree identity. Both official Bun and isolated Node/pnpm
+complete checks, Bun `check:fast` and `check:changed`, and workspace verification
+remain mandatory on the published combined source. Preserve the changed report's
+actual custody classification rather than claiming qualified facets it does not
+provide. Repeat independent final review against the concrete amendment and
+published head, resolving every confirmed finding.
+
+Require the combined head's own complete 64-job CI matrix, including every
+native platform lane, and its author-identity check. This is qualification of a
+successor source, not an unchanged-source rerun.
+Keep source-087 run `41880063988` and all its failed or cancelled attempts visible.
+The successor executions of the unchanged Windows Node 26 static/packaging and
+macOS Node 26 Core/static workloads consume their already reviewed single further
+trial. A repeated failure signature requires the bounded diagnosis agreed by the
+critics before another trial; a new commit does not reset that limit.
+No runner, timeout, assertion, required check, permission or protection changes.
+The same PR concurrency group remains; consolidation makes no scheduling claim.
+
+After verifying the published parents and exact integrated content, close PR226
+as absorbed into PR227 with delivery pending, preserving reciprocal links and its
+review, local receipts and unsuccessful CI history. Do not describe it as merged.
+Only after final qualification, use the protected expected-head squash merge into
+main, verify the actual resulting tree and metadata, and require that main commit's
+complete 64-job CI. No intermediate source or preview substitutes for these gates;
+package publication and future release-cohort admission remain excluded.
