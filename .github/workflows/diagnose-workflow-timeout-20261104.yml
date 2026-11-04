@@ -1,0 +1,67 @@
+name: Windows workflow timeout observation
+
+on:
+  push:
+    branches: [diagnostic/workflow-timeout-20261104]
+
+permissions:
+  contents: read
+
+jobs:
+  observe:
+    name: One bounded Windows Node 26 observation
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      ROOT_CI_RUNTIME_PROFILE: node
+      ROOT_CI_NODE_VERSION: 26.11.1
+      FOUNDATION_PR_HEAD_REPOSITORY: agent-teams-ai/get-modular
+      WORKFLOW_NATIVE_DIAGNOSTIC_OUTPUT: ${{ runner.temp }}/workflow-timeout-observation
+    steps:
+      - name: Read the disposable observation controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: diagnostic-controller
+          persist-credentials: false
+      - name: Check out the exact subject source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 5c3d543807cd48258af2d98eb6ef537f89d23b7c
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
+        with:
+          version: 11.20.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.11.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.3
+      - name: Provision the existing retained history
+        working-directory: source
+        run: node architecture/tooling/runtime/retained-history.ts
+      - name: Prepare the official isolated Node profile
+        working-directory: source
+        run: node architecture/tooling/runtime/ci.ts
+      - name: Install the exact frozen profile
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT }}
+        run: node architecture/tooling/runtime/dev.ts install
+      - name: Validate the existing peer graph
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT }}
+        run: node architecture/tooling/runtime/dev.ts peers
+      - name: Observe one unchanged-deadline mandatory selection
+        working-directory: ${{ env.GM_RUNTIME_CHECKOUT }}
+        env:
+          DIAGNOSTIC_CONTROLLER: ${{ github.workspace }}/diagnostic-controller/diagnostics/workflow-timeout/workflow-native-diagnostic-controller.mjs
+        run: node "$env:DIAGNOSTIC_CONTROLLER"
+      - name: Retain the bounded diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: workflow-timeout-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/workflow-timeout-observation
+          if-no-files-found: error
