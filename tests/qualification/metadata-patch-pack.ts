@@ -28,6 +28,8 @@ export async function qualifyMetadataPacks(root: string, output: string): Promis
   const selectedDirectory = join(output, "selected"); const evidenceDirectory = join(output, "current-archive-evidence");
   mkdirSync(selectedDirectory); mkdirSync(evidenceDirectory);
   const run = (...args: string[]): string => execFileSync(process.execPath, args, { cwd: root, encoding: "utf8", timeout: 180_000 });
+  // This experiment replays the ADR-0042 metadata cohort, whose authenticated
+  // candidate source retains these build paths.
   run("architecture/tooling/build-core.mjs"); run("architecture/tooling/build-assembly.mjs");
   for (const name of ["resources", "conformance", "observation"]) {run("architecture/tooling/build-leaf-package.mjs", name);}
   const require = createRequire(join(root, "package.json"));

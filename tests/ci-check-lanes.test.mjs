@@ -108,7 +108,7 @@ function validateLanes(value, manifest = packageJson) {
       "node-version": "${{ env.ROOT_CI_NODE_VERSION }}",
       "node-version-file": ".node-version",
     }, "runtime selection must retain the Node 26 default and explicit Node 24 override");
-    assert.equal(job.steps.length, 11, "checkout, provisioning, projection, install, peers, payload and integrity");
+    assert.equal(job.steps.length, 12, "checkout, provisioning, projection, install, peers, payload, integrity and bounded failure uploads");
     assert.equal(job.steps[3].uses, "oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6");
     assert.equal(job.steps[3].with["bun-version-file"], ".bun-version");
     assert.equal(job.steps[4].run, "node architecture/tooling/runtime/retained-history.ts");
@@ -118,7 +118,7 @@ function validateLanes(value, manifest = packageJson) {
     for (const step of job.steps.slice(6, 10)) {
       assert.equal(step["working-directory"], "${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}");
     }
-    for (const step of job.steps.slice(0, -1)) {
+    for (const step of job.steps.slice(0, -2)) {
       assert.equal(step.if, undefined, "lane step must not be skipped");
       assert.equal(step["continue-on-error"], undefined);
     }
@@ -129,7 +129,9 @@ function validateLanes(value, manifest = packageJson) {
       "${{ github.event.pull_request.head.repo.full_name }}");
     assert.equal(execution.env.SDK_GROWTH_FAILURE_ARTIFACT, "${{ runner.temp }}/sdk-growth-failure.json");
     assert.equal(execution.env.SDK_GROWTH_CHECKOUT_SHA, "${{ github.sha }}");
-    const upload = job.steps.at(-1);
+    assert.equal(execution.env.WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT,
+      "${{ runner.temp }}/workflow-subprocess-failure.json");
+    const upload = job.steps.at(-2);
     assert.equal(upload.if, "failure() && matrix.lane == 'packaging'");
     assert.equal(upload.uses, "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
     assert.equal(upload["continue-on-error"], undefined);
@@ -137,10 +139,19 @@ function validateLanes(value, manifest = packageJson) {
       name: "sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '26.11.1' }}-${{ github.run_id }}-${{ github.run_attempt }}",
       path: "${{ runner.temp }}/sdk-growth-failure.json", "if-no-files-found": "ignore",
     });
-    const integrity = job.steps.at(-2);
+    const subprocessUpload = job.steps.at(-1);
+    assert.equal(subprocessUpload.name, "Retain bounded workflow subprocess failure evidence");
+    assert.equal(subprocessUpload.if, "failure() && matrix.lane == 'static'");
+    assert.equal(subprocessUpload.uses, "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a");
+    assert.equal(subprocessUpload["continue-on-error"], undefined);
+    assert.deepEqual(subprocessUpload.with, {
+      name: "workflow-subprocess-${{ runner.os }}-${{ env.ROOT_CI_RUNTIME_PROFILE || 'bun' }}-${{ env.ROOT_CI_NODE_VERSION || '26.11.1' }}-${{ github.run_id }}-${{ github.run_attempt }}",
+      path: "${{ runner.temp }}/workflow-subprocess-failure.json", "if-no-files-found": "ignore",
+    });
+    const integrity = job.steps.at(-3);
     assert.equal(integrity.run, "node architecture/tooling/runtime/dev.ts verify");
     assert.equal(integrity.env.EXPECTED_HEAD_SHA, "${{ github.sha }}");
-    assert.equal(job.steps.indexOf(execution), job.steps.length - 3, "integrity must follow payload");
+    assert.equal(job.steps.indexOf(execution), job.steps.length - 4, "integrity must follow payload");
     for (const row of rows) {
       const scripts = scriptsOf(row);
       assert.equal(new Set(scripts).size, scripts.length, `${host}/${row.lane}: duplicate script`);
@@ -188,7 +199,7 @@ function validateLanes(value, manifest = packageJson) {
     const gate = aggregate(value, host);
     assert(gate, `${host}: missing aggregate`);
     assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : rollback ? `check (${os}, Node 26 rollback)` : `check (${os})`, "required context");
-    assert.equal(gate["runs-on"], os);
+    assert.equal(gate["runs-on"], os === "macos-15" ? "ubuntu-24.04" : os, "aggregate runner");
     assert.deepEqual(gate.needs, [`lanes-${host}`], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
     assert.equal(gate["continue-on-error"], undefined);
@@ -375,6 +386,7 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
       change(laneJob(value, host));
       assert.throws(() => validateLanes(value));
     };
+    if (hosts[host] === "macos-15") mutate(job => { job["runs-on"] = "ubuntu-24.04"; });
     for (const row of laneJob(workflow, host).strategy.matrix.include) {
       for (const script of scriptsOf(row)) {
         mutate(job => {
@@ -419,14 +431,27 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
     mutate(job => { job.defaults = { run: { shell: "bash" } }; });
     mutate(job => { delete runner(job).env.FOUNDATION_PR_HEAD_REPOSITORY; });
     mutate(job => { job.steps.pop(); });
-    mutate(job => { delete job.steps.at(-2).env.EXPECTED_HEAD_SHA; });
+    mutate(job => { job.steps.splice(-2, 1); });
+    mutate(job => { delete job.steps.at(-3).env.EXPECTED_HEAD_SHA; });
     // Regression: broad upload paths or conditions would retain unrelated packaging data.
-    mutate(job => { job.steps.at(-1).with.path = "${{ runner.temp }}/**"; });
-    mutate(job => { job.steps.at(-1).if = "failure()"; });
-    mutate(job => { job.steps.at(-1).with.name = "sdk-growth"; });
-    mutate(job => { job.steps.at(-1).uses = "actions/upload-artifact@v7"; });
+    mutate(job => { job.steps.at(-2).with.path = "${{ runner.temp }}/**"; });
+    mutate(job => { job.steps.at(-2).if = "failure()"; });
+    mutate(job => { job.steps.at(-2).with.name = "sdk-growth"; });
+    mutate(job => { job.steps.at(-2).uses = "actions/upload-artifact@v7"; });
     mutate(job => { delete runner(job).env.SDK_GROWTH_FAILURE_ARTIFACT; });
     mutate(job => { delete runner(job).env.SDK_GROWTH_CHECKOUT_SHA; });
+    // Static diagnostics retain only the bounded record, with a distinct runtime identity.
+    mutate(job => { job.steps.at(-1).name = "Upload diagnostics"; });
+    mutate(job => { job.steps.at(-1).with.path = "${{ runner.temp }}/**"; });
+    mutate(job => { job.steps.at(-1).if = "failure()"; });
+    mutate(job => { job.steps.at(-1).if = "failure() && matrix.lane == 'packaging'"; });
+    mutate(job => { job.steps.at(-1).with.name = "workflow-subprocess"; });
+    mutate(job => { job.steps.at(-1).with.name = job.steps.at(-1).with.name.replace("-${{ env.ROOT_CI_RUNTIME_PROFILE || 'bun' }}", ""); });
+    mutate(job => { job.steps.at(-1).uses = "actions/upload-artifact@v7"; });
+    mutate(job => { job.steps.at(-1).with["if-no-files-found"] = "error"; });
+    mutate(job => { job.steps.at(-1)["continue-on-error"] = true; });
+    mutate(job => { delete runner(job).env.WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT; });
+    mutate(job => { runner(job).env.WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT = "${{ runner.temp }}/other.json"; });
   }
   const drift = clone(packageJson);
   drift.scripts.check += " && node architecture/tooling/runtime/command.ts run new:check";
@@ -450,6 +475,7 @@ test("rejects an omitted dependency, skipped aggregate or renamed required conte
       gate => { gate.needs = ["lanes-ubuntu", "lanes-macos"]; },
       gate => { gate.if = "success()"; },
       gate => { gate.name = "other"; },
+      gate => { gate["runs-on"] = "macos-15"; },
       gate => { gate.steps[0].if = "false"; },
     ]) {
       const value = clone(workflow);

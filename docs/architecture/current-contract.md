@@ -66,12 +66,12 @@ proposed metadata; ADR-0021 is their acceptance authority.
 
 The product owner authorized M3 implementation and full end-to-end qualification
 on 2026-09-07. Generated production assembly is implemented in this atomic
-checkpoint. The [production generator](../../architecture/tooling/generate-core.mjs)
+checkpoint. The [production generator](../../architecture/tooling/generate-core.ts)
 builds the current-source direct seed, compiles the real own input, verifies
 direct construction and allowlist correspondence, and independently verifies
 rendered wiring before publishing it. The public barrel uses that generated
 root with unchanged compiler signatures, public exports and package resolution.
-The [production generation tests](../../packages/core/tests/qualification/production-generation.test.mjs)
+The [production generation tests](../../packages/core/tests/qualification/production-generation.test.ts)
 cover the build integration. Full M3 cold/poisoned recovery, retained-archive
 qualification and runtime proof remain pending. No `self-composed-qualified`,
 conformance or `release-eligible` claim follows from implementation; generated
@@ -505,9 +505,9 @@ package:
   `.ts` specifiers inside emitted declaration files.
 - Tests run with `node --test` and an explicit glob. Private component tests use
   `dist-test`, public tests use production `dist`, and the direct qualification
-  entry uses `dist-stage0`. `architecture/tooling/build-core.mjs` coordinates
+  entry uses `dist-stage0`. `architecture/tooling/build-core.ts` coordinates
   verified generation and clean production, component and qualification builds.
-  `architecture/tooling/generate-core.mjs` uses `tsconfig.stage0.json` as the
+  `architecture/tooling/generate-core.ts` uses `tsconfig.stage0.json` as the
   production seed; `tsconfig.seed.json` remains the qualification variant seed.
   Standalone `core:typecheck` prepares verified wiring before its no-emit check.
   Full and fast gates begin with dependency-free runtime preflight, committed

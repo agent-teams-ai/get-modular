@@ -28,7 +28,7 @@ import {
   validateContractLedger,
 } from "../architecture/checks/v1-contract.mjs";
 import { captureGitIndexSnapshot } from
-  "../architecture/checks/tracked-file-custody.mjs";
+  "../architecture/checks/tracked-file-custody.ts";
 import {
   boundedDiagnosticSummary,
   chainGraph,

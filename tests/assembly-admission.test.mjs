@@ -14,7 +14,7 @@ import {
   ASSEMBLY_RUN_SCOPE_DECISION_PATH, ASSEMBLY_COMPILER_FLOOR_DECISION_PATH, M2_HISTORICAL_LOCK_DIGEST,
   createHistoricalM2EvidenceReader, validateAssemblyAdmission, validateLeafPackageWorkspaceAdmission,
 } from "../architecture/checks/assembly-admission.mjs";
-import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.mjs";
+import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.ts";
 import {
   packageIdentityViolations, packageManifestInventory,
   productionArtifactPaths, productionArtifactSymlinkPaths,
@@ -23,7 +23,7 @@ import { validatePrivateCoreStart } from "../architecture/checks/private-core-st
 import { M2_EVIDENCE_LEDGER } from "../architecture/checks/m2-evidence.mjs";
 import {
   assertGitIndexSnapshotCurrent, captureGitIndexSnapshot, readIndexSnapshotFile,
-} from "../architecture/checks/tracked-file-custody.mjs";
+} from "../architecture/checks/tracked-file-custody.ts";
 
 const root = new URL("../", import.meta.url);
 const read = path => readFileSync(new URL(path, root));

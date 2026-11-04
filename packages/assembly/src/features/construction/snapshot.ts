@@ -154,18 +154,21 @@ export function copyPlan(census: Readonly<PlanCensus>): CompositionPlan {
 export function snapshotPlan(value: unknown): CompositionPlan {
   return copyPlan(inspectPlan(value));
 }
-export function rootKeys(value: unknown): { readonly object: Record<string, unknown>; readonly keys: readonly string[] } {
+/** Own alias values before preparation can await Core; entry objects retain their identities. */
+export function rootKeys(value: unknown): { readonly object: Readonly<Record<string, unknown>>; readonly keys: readonly string[] } {
   const object = dataObject(value);
   const keys = Reflect.ownKeys(object);
   if (keys.length > limits.roots) {return limit();}
+  const captured: Record<string, unknown> = {};
+  Object.setPrototypeOf(captured, null);
   const stringKeys: string[] = [];
   for (const key of keys) {
     if (typeof key !== "string") {return shape();}
     identifier(key);
-    data(object, key);
+    captured[key] = data(object, key);
     stringKeys.push(key);
   }
-  return { object, keys: stringKeys };
+  return Object.freeze({ object: Object.freeze(captured), keys: Object.freeze(stringKeys) });
 }
 export function envelope(value: unknown): Readonly<Record<string, unknown>> {
   const input = record(value, ["plan", "digest"], ["ok", "status", "success", "kind", "diagnostics"]);

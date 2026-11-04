@@ -3,19 +3,12 @@ import { resolve } from "node:path";
 import {
   assertGitIndexSnapshotCurrent, assertTrackedWorkspaceMatchesHead, captureGitIndexSnapshot,
   readIndexSnapshotBlob, readIndexSnapshotFile, readWorkingTreeRegularFile,
-} from "../../checks/tracked-file-custody.mjs";
+} from "../../checks/tracked-file-custody.ts";
+import type { GitIndexSnapshot, WorkingTreeProjection } from "../../checks/tracked-file-custody.ts";
 import { git, markerPath, nodeMarker, project, projectionPaths } from "./policy.ts";
 
-type Snapshot = Awaited<ReturnType<typeof captureGitIndexSnapshot>>;
-interface Projection {
-  readonly path: string;
-  readonly sourceOid: string;
-  readonly sourceBytes: Buffer;
-  readonly projectedBytes: Buffer;
-}
-
 // Manager metadata is a Host representation, never a replacement index/authority.
-async function projections(snapshot: Snapshot): Promise<readonly Projection[]> {
+async function projections(snapshot: GitIndexSnapshot): Promise<readonly WorkingTreeProjection[]> {
   const root = snapshot.repositoryRoot;
   const markerBefore = await readWorkingTreeRegularFile(markerPath, root);
   if (markerBefore.kind !== "regular" || !("bytes" in markerBefore) || !Buffer.isBuffer(markerBefore.bytes)) {
@@ -26,7 +19,7 @@ async function projections(snapshot: Snapshot): Promise<readonly Projection[]> {
     throw new Error("runtime.projection.snapshot-head-drift");
   }
   await assertGitIndexSnapshotCurrent(snapshot);
-  const records: Projection[] = [];
+  const records: WorkingTreeProjection[] = [];
   for (const path of projectionPaths) {
     const entry = snapshot.entries.get(path);
     const committed = /^([0-7]{6}) blob ([a-f0-9]{40})\t(.+)$/u.exec(git(root, "ls-tree", marker.commit, "--", path));
@@ -54,7 +47,7 @@ async function projections(snapshot: Snapshot): Promise<readonly Projection[]> {
   return records;
 }
 
-export async function readRuntimeIndexSnapshotFile(snapshot: Snapshot, path: string, label: string): Promise<Buffer> {
+export async function readRuntimeIndexSnapshotFile(snapshot: GitIndexSnapshot, path: string, label: string): Promise<Buffer> {
   if (!existsSync(resolve(snapshot.repositoryRoot, markerPath)) || !projectionPaths.some(candidate => candidate === path)) {
     return readIndexSnapshotFile(snapshot, path, label);
   }

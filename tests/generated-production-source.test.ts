@@ -5,18 +5,18 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import {
   createGeneratedProductionReader,
   GENERATED_PRODUCTION_PATH,
   verifySnapshotInputs,
-} from "../architecture/checks/generated-production-source.mjs";
-import { LEAF_PACKAGES } from "../architecture/checks/leaf-packages.mjs";
-import { captureGitIndexSnapshot } from "../architecture/checks/tracked-file-custody.mjs";
+} from "../architecture/checks/generated-production-source.ts";
+import { LEAF_PACKAGES } from "../architecture/checks/leaf-packages.ts";
+import { captureGitIndexSnapshot } from "../architecture/checks/tracked-file-custody.ts";
 
 const source = Buffer.from("// digest: exact\nexport const root = {};\n");
 
-async function fixture(t) {
+async function fixture(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), "gm-generated-source-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const path = join(root, GENERATED_PRODUCTION_PATH);
@@ -67,7 +67,7 @@ test("snapshot verification rejects authored bytes, authority and index drift", 
   const { root } = await fixture(t);
   const environment = Object.fromEntries(Object.entries(process.env)
     .filter(([key]) => !key.startsWith("GIT_")));
-  const git = (...args) => execFileSync("git", args, {
+  const git = (...args: string[]) => execFileSync("git", args, {
     cwd: root,
     env: {
       ...environment,
@@ -96,7 +96,7 @@ test("snapshot verification rejects authored bytes, authority and index drift", 
 });
 
 test("importing the build module does not start generation", async () => {
-  const module = await import("../architecture/tooling/build-core.mjs");
+  const module = await import("../architecture/tooling/build-core.ts");
   assert.equal(typeof module.buildCore, "function");
 });
 
@@ -115,8 +115,12 @@ test("governance cleans successful build outputs when completion detects source 
     GIT_CONFIG_NOSYSTEM: "1",
   };
   await exec("git", ["clone", "--quiet", "--no-hardlinks", repositoryRoot, root], { env });
-  // Exercise current checkers and build tooling, including uncommitted fixes.
-  for (const path of ["architecture/checks", "architecture/tooling"]) {
+  // Exercise current checkers, their witness and command contracts, including uncommitted fixes.
+  // Replace these finite trees so a removed implementation cannot survive the overlay.
+  const currentInputs = ["architecture/checks", "architecture/tooling", "tests/qualification/support",
+    "packages/core/tests/qualification-support/support/construction-witness.ts", "package.json"];
+  for (const path of currentInputs) {
+    await rm(join(root, path), { recursive: true, force: true });
     await cp(join(repositoryRoot, path), join(root, path), {
       recursive: true,
       force: true,
@@ -147,7 +151,7 @@ test("governance cleans successful build outputs when completion detects source 
     completionLoop,
   ].join("\n");
   await writeFile(governancePath, governance.replace(completionLoop, hook));
-  await exec("git", ["add", "--", "architecture/checks", "architecture/tooling",
+  await exec("git", ["add", "--", ...currentInputs,
     "architecture/decisions/accepted-decisions.json", ...leafDecisions], {
     cwd: root, env,
   });
@@ -155,8 +159,11 @@ test("governance cleans successful build outputs when completion detects source 
     exec(process.execPath, ["architecture/checks/governance.mjs"], {
       cwd: root, env, maxBuffer: 4 * 1024 * 1024,
     }),
-    error => {
+    (error: unknown) => {
+      assert(error instanceof Error && "code" in error && "stdout" in error && "stderr" in error);
       assert.equal(error.code, 1);
+      assert(typeof error.stdout === "string");
+      assert(typeof error.stderr === "string");
       assert.ok(error.stdout.includes(marker), error.stdout);
       assert.match(error.stderr, /TRACKED_FILE_CUSTODY_FAILED/u);
       assert.ok(error.stderr.includes(`${driftPath} (working-tree-diverged)`), error.stderr);

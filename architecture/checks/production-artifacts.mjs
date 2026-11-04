@@ -6,11 +6,11 @@ import { isDeepStrictEqual } from "node:util";
 import {
   expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, leafSubpaths, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES,
   PUBLIC_PUBLISH_CONFIG, publicRepository,
-} from "./leaf-packages.mjs";
+} from "./leaf-packages.ts";
 import {
   indexSnapshotPaths,
   indexSnapshotSymlinkPaths,
-} from "./tracked-file-custody.mjs";
+} from "./tracked-file-custody.ts";
 
 const PRODUCTION_SOURCE = /\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/u;
 // Current Core and Assembly builds compile .ts inputs to .js and .d.ts only.

@@ -9,10 +9,10 @@ import {
   manifestExclusionViolations,
   validatePrivateCoreStart,
 } from "../architecture/checks/private-core-start.mjs";
-import { isStartingBaseAncestor } from "../architecture/checks/tracked-file-custody.mjs";
+import { isStartingBaseAncestor } from "../architecture/checks/tracked-file-custody.ts";
 import { CORE_DEVELOPMENT_DEPENDENCIES } from "../architecture/checks/assembly-admission.mjs";
 import { ACCEPTED_AUTHORITY_LEDGER_DIGEST } from "../architecture/checks/governance.mjs";
-import { LEAF_PACKAGES } from "../architecture/checks/leaf-packages.mjs";
+import { LEAF_PACKAGES } from "../architecture/checks/leaf-packages.ts";
 
 import { readCurrentM2Authority, M2_LOCK_DECISION, M2_LOCK_WITNESS } from "../architecture/checks/m2-lock-witness.mjs";
 

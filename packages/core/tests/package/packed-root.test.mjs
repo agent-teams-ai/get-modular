@@ -185,6 +185,10 @@ test('packed M2 exposes one root across Node and TypeScript consumers', async t 
     }
     assert.equal(prepared.progress().failed, null, 'every prepared consumer case must pass');
     assert.deepEqual(prepared.progress().pending, [], 'every prepared consumer case must execute');
+    const completion = prepared.progress();
+    t.diagnostic(JSON.stringify({ phase: 'packed-m2-completion', archive: identity,
+      node: node.version, compilers: compilers.map(compiler => compiler.version),
+      completed: completion.completed.length, pending: completion.pending.length, failed: completion.failed }));
   } finally {
     // Preserve the original final guard even when a subtest or preparation fails.
     assert.equal(hash(await readFile(archive)), archiveHash);

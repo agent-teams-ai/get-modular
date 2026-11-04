@@ -8,15 +8,15 @@ import { promisify } from 'node:util';
 import { parse } from 'yaml';
 import { M2_EVIDENCE_LEDGER } from '../../../architecture/checks/m2-evidence.mjs';
 import { M2_ORIGINAL_DECISION, m2Digest, readCurrentM2Authority } from '../../../architecture/checks/m2-lock-witness.mjs';
-import { assertGitIndexSnapshotCurrent } from '../../../architecture/checks/tracked-file-custody.mjs';
+import { assertGitIndexSnapshotCurrent } from '../../../architecture/checks/tracked-file-custody.ts';
 import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from '../../../architecture/tooling/runtime/projection-custody.ts';
 
 const exec = promisify(execFile);
 const SUITES = Object.freeze(['tests/m2-start.test.mjs',
   'tests/qualification/m2-candidate/retained-acceptance.test.mjs']);
-const CURRENT_MODULES = ['architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.mjs',
+const CURRENT_MODULES = ['architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.ts',
   'architecture/checks/private-core-start.mjs', 'architecture/checks/production-artifacts.mjs',
-  'architecture/checks/tracked-file-custody.mjs', 'architecture/tooling/runtime/projection-custody.ts',
+  'architecture/checks/tracked-file-custody.ts', 'architecture/tooling/runtime/projection-custody.ts',
   'architecture/tooling/runtime/policy.ts'];
 const ADR20 = 'docs/decisions/0020-define-diagnostic-coverage-outside-object-resource-admission.md';
 const TOOLS = ['canonicalize', 'jsonc-parser', 'yaml'];

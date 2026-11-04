@@ -12,7 +12,7 @@ import * as ts from "typescript/unstable/ast";
 import { parseTypeScript } from "./qualification/support/typescript-project.ts";
 import { parse } from "yaml";
 import { packageIdentityViolations, packageManifestInventory } from "../architecture/checks/production-artifacts.mjs";
-import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.mjs";
+import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "../architecture/checks/leaf-packages.ts";
 
 const directory = "architecture/contracts/ownership/";
 const checkpoint = JSON.parse(readFileSync(`${directory}checkpoint.json`, "utf8"));

@@ -10,9 +10,11 @@ const root = fileURLToPath(new URL("../../../../", import.meta.url));
 test("clean production build follows only the public entry while checking unselected source separately", async t => {
   const sandbox = await mkdtemp(join(tmpdir(), "gm-build-closure-"));
   t.after(() => rm(sandbox, { recursive: true, force: true }));
-  const files = ["package.json", "tsconfig.base.json", "architecture/tooling/build-core.mjs",
-    "architecture/tooling/generate-core.mjs",
-    "tests/qualification/support/construction-witness.mjs",
+  const files = ["package.json", "tsconfig.base.json", "architecture/tooling/build-core.ts",
+    "architecture/tooling/generate-core.ts", "architecture/tooling/typescript-build.ts",
+    "architecture/tooling/construction-witness-projection.ts",
+    "tests/qualification/support/construction-witness.ts",
+    "packages/core/tests/qualification-support/support/construction-witness.ts",
     "packages/core/package.json", "packages/core/tsconfig.json", "packages/core/tsconfig.typecheck.json",
     "packages/core/tsconfig.test.json", "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json", "packages/core/src",
     "packages/core/self-composition", "packages/core/tests/features/canonicalization/witness-variant"];
@@ -27,7 +29,7 @@ test("clean production build follows only the public entry while checking unsele
   await writeFile(join(core, unselected), "export const probe: number = 1;\n");
   await mkdir(join(core, "dist"), { recursive: true });
   await writeFile(join(core, "dist/stale.js"), "throw new Error('stale output');\n");
-  const build = () => spawnSync(process.execPath, [join(sandbox, "architecture/tooling/build-core.mjs")], {
+  const build = () => spawnSync(process.execPath, [join(sandbox, "architecture/tooling/build-core.ts")], {
     cwd: sandbox, encoding: "utf8", timeout: 120_000,
   });
   const good = build();

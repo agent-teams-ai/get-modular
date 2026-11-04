@@ -149,6 +149,8 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     linkInstall(caller, work);
     assert.equal(treeDigest(snapshot(work)), treeDigest(candidate), "candidate.promotion-input-drift");
     assertBuildTools(prepared, work);
+    // ADR-0042 admits the retained metadata cohort. Its authenticated source
+    // owns these build paths; today's tooling migration cannot rewrite them.
     execute(work, process.execPath, ["architecture/tooling/build-core.mjs"]);
     execute(work, process.execPath, ["architecture/tooling/build-assembly.mjs"]);
     assertBuildTools(prepared, work);

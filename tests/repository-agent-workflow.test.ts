@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -171,16 +172,69 @@ async function fixture(
   }
 }
 
-function changed(root: string): { readonly exit: number | null; readonly report: ChangedReport } {
+function boundedFailureText(value: unknown, limit: number): string | null {
+  return typeof value === "string" ? value.slice(0, limit) : null;
+}
+
+function changedFailure(
+  error: Error, result: SpawnSyncReturns<string>, triggerPath: string | null, elapsedMs: number,
+): Error {
+  const artifact = process.env.WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT;
+  let retention = "disabled";
+  if (artifact) {
+    const code = "code" in error ? error.code : null;
+    const errno = "errno" in error ? error.errno : null;
+    const syscall = "syscall" in error ? error.syscall : null;
+    const stdout = typeof result.stdout === "string" ? result.stdout : null;
+    const stderr = typeof result.stderr === "string" ? result.stderr : null;
+    const record = {
+      schemaVersion: 1,
+      kind: "workflow.changed.subprocess-failure",
+      triggerPath: boundedFailureText(triggerPath, 256),
+      checkoutSha: boundedFailureText(process.env.GITHUB_SHA, 64),
+      nodeVersion: process.versions.node,
+      platform: process.platform,
+      packageManager: isRecord(currentPolicy) ? boundedFailureText(currentPolicy.packageManager, 16) : null,
+      elapsedMs,
+      timeoutMs: 30_000,
+      maxBufferBytes: 2_000_000,
+      error: {
+        code: boundedFailureText(code, 64),
+        errno: typeof errno === "number" && Number.isFinite(errno) ? errno : boundedFailureText(errno, 64),
+        syscall: boundedFailureText(syscall, 128),
+        message: boundedFailureText(error.message, 512),
+      },
+      status: result.status,
+      signal: result.signal,
+      stdout: { bytes: stdout === null ? null : Buffer.byteLength(stdout), tail: stdout?.slice(-1024) ?? null },
+      stderr: { bytes: stderr === null ? null : Buffer.byteLength(stderr), tail: stderr?.slice(-1024) ?? null },
+    };
+    try {
+      // Keep the first failure outside the disposable fixture, whose cleanup is unchanged.
+      writeFileSync(artifact, JSON.stringify(record) + "\n", { encoding: "utf8", flag: "wx", mode: 0o600 });
+      retention = "written";
+    } catch (cause) {
+      retention = isRecord(cause) && cause.code === "EEXIST" ? "exists" : "failed";
+    }
+  }
+  // Foundation's bounded reporter retains error causes but omits test stdout/stderr.
+  // A failed diagnostic write must not replace the original subprocess error.
+  return new Error(`changed subprocess failed; record ${retention}`, { cause: error });
+}
+
+function changed(root: string, triggerPath: string | null = null): { readonly exit: number | null; readonly report: ChangedReport } {
   const preflight = spawnSync(process.execPath, [join(import.meta.dirname, "../architecture/checks/compiler-floor.ts")],
     { encoding: "utf8", timeout: 10_000 });
   assert.equal(preflight.error, undefined, preflight.stderr);
   assert.equal(preflight.status, 0, preflight.stderr);
+  const started = performance.now();
   const result = spawnSync(process.execPath, [
     cli, "agent-workflow", "changed", "--consumer", root,
     "--base", "refs/heads/main", "--format", "json",
   ], { env: identity, encoding: "utf8", timeout: 30_000, maxBuffer: 2_000_000 });
-  assert.equal(result.error, undefined, result.stderr);
+  const elapsedMs = performance.now() - started;
+  assert.equal(result.error, undefined, result.error === undefined ? result.stderr
+    : changedFailure(result.error, result, triggerPath, elapsedMs));
   const report: unknown = JSON.parse(result.stdout);
   assert.ok(isReport(report), result.stdout || result.stderr);
   return { exit: result.status, report };
@@ -220,32 +274,32 @@ test("changed workflow rejects invalid TypeScript through published Foundation",
       { cwd: root, encoding: "utf8", timeout: 30_000 });
     assert.equal(control.status, 1, control.stderr);
     assert.match(control.stdout, /TS2322/u);
-    const old = changed(root);
+    const old = changed(root, "src/index.ts");
     assert.equal(old.exit, 0);
     assert.equal(old.report.outcome, "passed");
     assert.deepEqual(old.report.steps, []);
   });
   await fixture(currentPolicy, async root => {
     await put(root, "src/index.ts", invalidSource);
-    const rejected = changed(root);
+    const rejected = changed(root, "src/index.ts");
     assert.equal(rejected.exit, 1, JSON.stringify(rejected.report));
     assert.equal(rejected.report.outcome, "violations");
     assert.deepEqual(rejected.report.changedPaths, ["src/index.ts"]);
     assert.equal(codeStep(rejected.report).outcome, "violations");
     assert.match(codeStep(rejected.report).output, /TS2322/u);
     await put(root, "README.md", "# Mixed docs and invalid code\n");
-    const mixed = changed(root);
+    const mixed = changed(root, "README.md");
     assert.equal(mixed.exit, 1, JSON.stringify(mixed.report));
     assert.ok(mixed.report.steps.some(step => step.script === "docs:changed"));
     assert.equal(codeStep(mixed.report).outcome, "violations");
     await put(root, "src/index.ts", 'export const answer: string = "valid change";\n');
-    const corrected = changed(root);
+    const corrected = changed(root, "src/index.ts");
     assert.equal(corrected.exit, 0, JSON.stringify(corrected.report));
     assert.equal(codeStep(corrected.report).outcome, "passed");
   });
   await fixture(currentPolicy, async root => {
     await put(root, "README.md", "# Docs only\n");
-    const docs = changed(root);
+    const docs = changed(root, "README.md");
     assert.equal(docs.exit, 0, JSON.stringify(docs.report));
     assert.deepEqual(docs.report.steps.map(step => step.script), ["docs:changed"]);
   }, invalidSource);
@@ -274,7 +328,7 @@ test("changed workflow escalates compiler and check configuration", async () => 
       } else {
         await put(root, path, path === ".npmrc" ? "ignore-scripts=true\n" : "{}\n");
       }
-      const result = changed(root);
+      const result = changed(root, path);
       assert.equal(result.exit, 1, `${path}: ${JSON.stringify(result.report)}`);
       assert.equal(result.report.coverage, "fast-full", path);
       assert.equal(codeStep(result.report).outcome, "violations", path);

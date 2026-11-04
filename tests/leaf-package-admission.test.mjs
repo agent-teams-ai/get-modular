@@ -8,7 +8,7 @@ import {
   assertLeafPackageTable, expectedLeafExports, expectedLeafImporter, expectedPeerDependencies, LEAF_PACKAGES,
   leafBuildOutputs, leafEntrySources, leafManifestPath, leafPackageById, leafSubpaths, PRIVATE_CANDIDATE,
   PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
-} from "../architecture/checks/leaf-packages.mjs";
+} from "../architecture/checks/leaf-packages.ts";
 
 const registryPath = "architecture/decisions/accepted-decisions.json";
 const sha256 = bytes => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -224,7 +224,7 @@ test("the lifecycle-kernel row keeps its reviewed tests and command chain", () =
     "packages/lifecycle-kernel/tests/packed-root.test.mjs",
   ]);
   assert.deepEqual(kernel.commands, {
-    "lifecycle:build": "node architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
+    "lifecycle:build": "node architecture/tooling/build-leaf-package.ts lifecycle-kernel",
     "lifecycle:typecheck":
       "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit"
       + " && node architecture/tooling/test-assembly-types.mjs --projects packages/lifecycle-kernel/tsconfig.types.json"

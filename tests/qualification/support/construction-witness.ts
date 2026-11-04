@@ -1,3 +1,8 @@
+// Maintained source: tests/qualification/support/construction-witness.ts.
+// The Core-local copy is generated with:
+// node architecture/tooling/construction-witness-projection.ts --write
+// Cold checking and builds reject any complete-byte difference.
+
 import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { isAbsolute, posix, resolve } from 'node:path';
@@ -5,6 +10,68 @@ import { pathToFileURL } from 'node:url';
 import canonicalize from 'canonicalize';
 import { version } from 'typescript';
 import { createScanner, SyntaxKind } from 'typescript/unstable/ast';
+
+
+/** Finite observations owned by the witness, independent of Core's API types. */
+export type ConstructionTuple = [
+  implementationId: string,
+  index: number,
+  providers: [slotId: string, providerId: string][],
+];
+export interface ConstructionWitness {
+  tuples: ConstructionTuple[];
+  digest: string;
+}
+export interface WitnessInput {
+  packageRoot: string;
+  buildRoot: string;
+  compositionPath: string;
+  allowlistPath: string;
+  plan: unknown;
+  qualification?: boolean;
+}
+export interface GeneratedWitnessInput {
+  sourceText: unknown;
+  packageRoot: unknown;
+  buildRoot: unknown;
+  allowlistPath: string;
+  plan: unknown;
+}
+interface Token { kind: SyntaxKind; text: string }
+interface Reference { module: string; export: string }
+interface ImportBinding extends Reference { local: string; typeOnly: boolean }
+interface ImportGroup { typeOnly: boolean; specifiers: { export: string; local: string }[] }
+interface Construction { local: string; factory: string; slots: Map<string, string> }
+interface RootSyntax {
+  bindings: Map<string, ImportBinding>;
+  groups: ImportGroup[];
+  constructions: Construction[];
+  port: string;
+  value: string;
+}
+type AllowlistEntry =
+  | { spread: string; key?: never; handle?: never }
+  | { key: string; handle: Map<string, string>; spread?: never };
+interface Compatibility { family: 'exact'; familyVersion: 1; token: string }
+interface Capability { capabilityId: string; compatibility: Compatibility }
+interface Slot extends Capability { slotId: string }
+interface Handle {
+  declaration: { moduleId: string };
+  declarationRef: Reference;
+  factoryRef: Reference;
+  localName: string;
+  slots: Map<string, Slot>;
+  provides: Map<string, Capability>;
+}
+function record(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object';
+}
+function list(value: unknown): value is unknown[] { return Array.isArray(value); }
+function errorCode(error: unknown): unknown { return record(error) ? error.code : undefined; }
+function present<T>(value: T | undefined, reason = 'syntax'): T {
+  check(value !== undefined, reason);
+  return value;
+}
 
 const invalidCode = 'witness.invalid-construction';
 const correspondenceCode = 'witness.allowlist-correspondence';
@@ -16,37 +83,37 @@ const generatedTextByteLimit = 1024 * 1024;
 const forbiddenSlots = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype', 'then']);
 const handleFields = ['declaration', 'factory', 'importPath', 'factoryExport', 'declarationExport', 'localName'];
 
-function invalid(reason) {
+function invalid(reason: string) {
   return Object.assign(new Error('Invalid finite construction witness input.'), {
     code: invalidCode, context: { reason },
   });
 }
-function check(condition, reason = 'syntax') {
+function check(condition: unknown, reason = 'syntax'): asserts condition {
   if (!condition) throw invalid(reason);
 }
-function portable(value) {
+function portable(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 128
     && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\/[a-z][a-z0-9]*(?:-[a-z0-9]+)*)+$/u.test(value);
 }
-function relativePath(value) {
+function relativePath(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_./-]+$/u.test(value)
     && !isAbsolute(value) && !value.startsWith('../') && value !== '..'
     && posix.normalize(value) === value && !value.split('/').includes('.');
 }
-function modulePath(from, specifier) {
+function modulePath(from: string, specifier: unknown): string {
   check(typeof specifier === 'string' && /^\.\.?\/[A-Za-z0-9_./-]+\.js$/u.test(specifier), 'relative-import');
   const result = posix.normalize(posix.join(posix.dirname(from), specifier));
   check(relativePath(result), 'relative-import');
   return result;
 }
-function reference(module, exported) { return { module, export: exported }; }
-function safeReference(value) {
+function reference<M, E>(module: M, exported: E) { return { module, export: exported }; }
+function safeReference(value: { module: unknown; export: unknown } | undefined) {
   return {
     module: relativePath(value?.module) ? value.module : null,
     export: bindingName(value?.export) ? value.export : null,
   };
 }
-function corresponds(implementationId, field, expected, actual) {
+function corresponds(implementationId: unknown, field: string, expected: Reference, actual: { module: unknown; export: unknown } | undefined) {
   if (expected.module === actual?.module && expected.export === actual?.export) return;
   check(portable(implementationId), 'implementation-identity');
   throw Object.assign(new Error('Allowlist handle and source import disagree.'), {
@@ -54,21 +121,21 @@ function corresponds(implementationId, field, expected, actual) {
     context: { implementationId, field, expected: safeReference(expected), actual: safeReference(actual) },
   });
 }
-function fields(value, expected, reason) {
-  check(value !== null && typeof value === 'object' && !Array.isArray(value), reason);
+function fields(value: unknown, expected: readonly string[], reason: string): asserts value is Record<string, unknown> {
+  check(record(value) && !Array.isArray(value), reason);
   const keys = Reflect.ownKeys(value);
-  check(keys.length === expected.length && keys.every(key => expected.includes(key)), reason);
+  check(keys.length === expected.length && keys.every(key => typeof key === 'string' && expected.includes(key)), reason);
 }
 
 // Check skipped trivia as well: an unterminated comment or a reference directive
 // cannot disappear behind the scanner's skipTrivia setting.
-function trivia(source) {
+function trivia(source: string) {
   let index = 0;
   while (index < source.length) {
-    if (/\s/u.test(source[index])) { index += 1; continue; }
+    if (/\s/u.test(present(source[index]))) { index += 1; continue; }
     if (source.startsWith('//', index)) {
       let end = index + 2;
-      while (end < source.length && !/[\r\n\u2028\u2029]/u.test(source[end])) end += 1;
+      while (end < source.length && !/[\r\n\u2028\u2029]/u.test(present(source[end]))) end += 1;
       check(!/^\/\/\/\s*<reference\b/u.test(source.slice(index, end)), 'reference-directive');
       index = end;
     } else if (source.startsWith('/*', index)) {
@@ -78,12 +145,12 @@ function trivia(source) {
     } else throw invalid('scanner-trivia');
   }
 }
-function tokens(source) {
+function tokens(source: string): Token[] {
   const scanner = createScanner(true, undefined, source);
-  const result = [];
+  const result: Token[] = [];
   let previousEnd = 0;
   let braces = 0;
-  const templates = [];
+  const templates: number[] = [];
   for (;;) {
     let kind = scanner.scan();
     if (kind === SyntaxKind.CloseBraceToken && templates.at(-1) === braces) {
@@ -117,33 +184,34 @@ const forbiddenBindings = new Set([
   'while', 'with', 'implements', 'interface', 'let', 'package', 'private',
   'protected', 'public', 'static', 'await', 'yield', 'eval', 'arguments',
 ]);
-function rawBindingSpelling(value) {
+function rawBindingSpelling(value: unknown): value is string {
   return typeof value === 'string'
     && /^[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*$/u.test(value)
     && !forbiddenBindings.has(value);
 }
-function bindingToken(item) {
+function bindingToken(item: Token | undefined): item is Token {
   return rawBindingSpelling(item?.text) && (item.kind === SyntaxKind.Identifier
     || (item.kind >= SyntaxKind.FirstKeyword && item.kind <= SyntaxKind.LastKeyword));
 }
-function bindingName(value) {
+function bindingName(value: unknown): value is string {
   if (!rawBindingSpelling(value)) return false;
   const scanned = tokens(value);
-  return scanned.length === 1 && scanned[0].text === value && bindingToken(scanned[0]);
+  return scanned.length === 1 && scanned[0]?.text === value && bindingToken(scanned[0]);
 }
-function slotName(value) {
+function slotName(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z][a-z0-9]{0,63}$/u.test(value)
     && !forbiddenSlots.has(value);
 }
 class Parser {
-  constructor(source) { this.items = tokens(source); this.index = 0; }
+  items: Token[]; index: number;
+  constructor(source: string) { this.items = tokens(source); this.index = 0; }
   peek() { return this.items[this.index]?.text; }
-  eat(text) {
+  eat(text: string) {
     if (this.peek() !== text) return false;
     this.index += 1;
     return true;
   }
-  need(...words) { for (const word of words) check(this.eat(word)); }
+  need(...words: string[]) { for (const word of words) check(this.eat(word)); }
   identifier() {
     const item = this.items[this.index++];
     check(bindingToken(item));
@@ -151,7 +219,7 @@ class Parser {
   }
   slot() {
     const item = this.items[this.index++];
-    check(slotName(item?.text), 'invalid-slot');
+    check(item !== undefined && slotName(item.text), 'invalid-slot');
     return item.text;
   }
   string() {
@@ -166,9 +234,9 @@ class Parser {
       && (!/[^\x20-\x7e]/u.test(body) || bindingName(body)), 'unsupported-string-spelling');
     return body;
   }
-  list(open, close, item) {
+  list<T>(open: string, close: string, item: () => T): T[] {
     this.need(open);
-    const result = [];
+    const result: T[] = [];
     while (!this.eat(close)) {
       result.push(item());
       if (this.eat(close)) break;
@@ -178,14 +246,14 @@ class Parser {
   }
   end() { check(this.index === this.items.length); }
 }
-function claimName(names, name) {
+function claimName(names: Set<string>, name: string) {
   check(bindingName(name), 'invalid-binding');
   check(!names.has(name), 'duplicate-binding');
   names.add(name);
 }
-function imports(parser, from, names) {
-  const bindings = new Map();
-  const groups = [];
+function imports(parser: Parser, from: string, names: Set<string>) {
+  const bindings = new Map<string, ImportBinding>();
+  const groups: ImportGroup[] = [];
   while (parser.eat('import')) {
     const typeOnly = parser.eat('type');
     const specifiers = parser.list('{', '}', () => {
@@ -206,18 +274,18 @@ function imports(parser, from, names) {
   }
   return { bindings, groups };
 }
-function parseRoot(source, path) {
+function parseRoot(source: string, path: string): RootSyntax {
   const parser = new Parser(source);
   const names = new Set(['root']);
   const imported = imports(parser, path, names);
-  const constructions = [];
+  const constructions: Construction[] = [];
   while (parser.eat('const')) {
     const local = parser.identifier();
     claimName(names, local);
     parser.need('=');
     const factory = parser.identifier();
     parser.need('(');
-    const slots = new Map();
+    const slots = new Map<string, string>();
     parser.list('{', '}', () => {
       const slot = parser.slot();
       const provider = parser.eat(':') ? parser.identifier() : slot;
@@ -236,26 +304,26 @@ function parseRoot(source, path) {
   parser.end();
   return { ...imported, constructions, port, value };
 }
-function parseAllowlist(source, path) {
+function parseAllowlist(source: string, path: string) {
   const parser = new Parser(source);
   const imported = imports(parser, path, new Set(['Map', 'ReadonlyMap', 'allowlist']));
   const typeGroups = imported.groups.filter(group => group.typeOnly);
-  check(typeGroups.length === 1 && typeGroups[0].specifiers.length === 1, 'allowlist-type');
-  const typeLocal = typeGroups[0].specifiers[0].local;
+  check(typeGroups.length === 1 && typeGroups[0]?.specifiers.length === 1, 'allowlist-type');
+  const typeLocal = present(present(typeGroups[0]).specifiers[0]).local;
   const type = imported.bindings.get(typeLocal);
-  check(type.export === 'AllowlistHandle' && type.module === 'self-composition/allowlist-types.js', 'allowlist-type');
+  check(type !== undefined && type.export === 'AllowlistHandle' && type.module === 'self-composition/allowlist-types.js', 'allowlist-type');
   const generic = () => parser.need('<', 'string', ',', typeLocal, '>');
   parser.need('export', 'const', 'allowlist', ':', 'ReadonlyMap');
   generic();
   parser.need('=', 'new', 'Map');
   generic();
   parser.need('(');
-  const entries = parser.list('[', ']', () => {
+  const entries = parser.list<AllowlistEntry>('[', ']', () => {
     if (parser.eat('...')) return { spread: parser.identifier() };
     parser.need('[');
     const key = parser.identifier();
     parser.need(',');
-    const handle = new Map();
+    const handle = new Map<string, string>();
     parser.list('{', '}', () => {
       const field = parser.identifier();
       check(handleFields.includes(field) && !handle.has(field), 'handle-fields');
@@ -274,7 +342,7 @@ function parseAllowlist(source, path) {
 // This finite owner format admits local exported constants, not forwarding
 // modules. Checking namespace values alone loses a re-export's defining module
 // and can incorrectly authorize a different sibling factory for the same ID.
-function localDeclaration(source, module, identityName, declarationName) {
+function localDeclaration(source: string, module: string, identityName: string, declarationName: string) {
   const parser = new Parser(source);
   // The finite format has no regex literals or division. Their tokens need
   // expression-sensitive rescanning; treating regex braces as delimiters can
@@ -283,7 +351,7 @@ function localDeclaration(source, module, identityName, declarationName) {
     SyntaxKind.Unknown].includes(item.kind)), 'nonlocal-declaration');
   const names = new Set(['Object']);
   imports(parser, module, names);
-  const definitions = new Map();
+  const definitions = new Map<string, Token[]>();
   while (parser.peek() !== undefined) {
     check(parser.eat('export') && parser.eat('const'), 'nonlocal-declaration');
     const name = parser.identifier();
@@ -298,12 +366,12 @@ function localDeclaration(source, module, identityName, declarationName) {
     }
     parser.need('=');
     const start = parser.index;
-    const close = [];
+    const close: string[] = [];
     const delimiters = new Map([['(', ')'], ['[', ']'], ['{', '}']]);
     while (parser.peek() !== ';' || close.length > 0) {
       const text = parser.peek();
       check(text !== undefined, 'nonlocal-declaration');
-      if (delimiters.has(text)) close.push(delimiters.get(text));
+      if (delimiters.has(text)) close.push(present(delimiters.get(text)));
       else if ([')', ']', '}'].includes(text)) check(close.pop() === text, 'nonlocal-declaration');
       parser.index += 1;
     }
@@ -315,11 +383,11 @@ function localDeclaration(source, module, identityName, declarationName) {
   // Own IDs are local string/template constants. A borrowed constant alias
   // cannot relocate its declaration's ownership.
   const literalIdentity = identity?.length === 1
-    && [SyntaxKind.StringLiteral, SyntaxKind.NoSubstitutionTemplateLiteral].includes(identity[0].kind);
-  const templateIdentity = identity?.length === 3 && identity[0].kind === SyntaxKind.TemplateHead
-    && bindingToken(identity[1]) && identity[2].kind === SyntaxKind.TemplateTail;
+    && [SyntaxKind.StringLiteral, SyntaxKind.NoSubstitutionTemplateLiteral].includes(present(identity[0]).kind);
+  const templateIdentity = identity?.length === 3 && identity[0]?.kind === SyntaxKind.TemplateHead
+    && bindingToken(identity[1]) && identity[2]?.kind === SyntaxKind.TemplateTail;
   check(literalIdentity || templateIdentity, 'nonlocal-declaration');
-  check(declaration?.slice(0, 3).join(' ') === 'Object . freeze', 'nonlocal-declaration');
+  check(declaration !== undefined && declaration.slice(0, 3).join(' ') === 'Object . freeze', 'nonlocal-declaration');
   let offset = 3;
   if (declaration[offset] === '<') {
     check(declaration[offset + 1] === 'ModuleDeclaration' && declaration[offset + 2] === '>', 'nonlocal-declaration');
@@ -339,49 +407,49 @@ function localDeclaration(source, module, identityName, declarationName) {
   } while (depth > 0);
   check(end === declaration.length - 1, 'nonlocal-declaration');
 }
-function featureModule(module, qualification) {
+function featureModule(module: string, qualification: boolean) {
   return /^src\/features\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)?\/(?:declaration|factory)\.js$/u.test(module)
     || (qualification && (module === `${variantDirectory}/declaration.js` || module === `${variantDirectory}/factory.js`));
 }
-function compatibility(value) {
+function compatibility(value: unknown): asserts value is Compatibility {
   fields(value, ['family', 'familyVersion', 'token'], 'compatibility');
   check(value.family === 'exact' && value.familyVersion === 1 && portable(value.token), 'compatibility');
 }
-function sameCompatibility(left, right) {
+function sameCompatibility(left: Compatibility, right: Compatibility) {
   return left.family === right.family && left.familyVersion === right.familyVersion && left.token === right.token;
 }
-function declarationMaps(declaration) {
-  check(declaration?.kind === 'get-modular.module-declaration' && declaration.schemaVersion === 1
+function declarationMaps(declaration: unknown) {
+  check(record(declaration) && declaration.kind === 'get-modular.module-declaration' && declaration.schemaVersion === 1
     && portable(declaration.moduleId) && portable(declaration.implementationId)
-    && Array.isArray(declaration.slots) && Array.isArray(declaration.provides), 'declaration');
-  const slots = new Map();
-  const provides = new Map();
+    && list(declaration.slots) && list(declaration.provides), 'declaration');
+  const slots = new Map<string, Slot>();
+  const provides = new Map<string, Capability>();
   for (const slot of declaration.slots) {
-    check(slotName(slot?.slotId) && !slots.has(slot.slotId), 'declared-slot');
+    check(record(slot) && slotName(slot.slotId) && !slots.has(slot.slotId), 'declared-slot');
     fields(slot.cardinality, ['kind'], 'required-cardinality');
     check(slot.cardinality.kind === 'required' && portable(slot.capabilityId), 'required-cardinality');
     compatibility(slot.compatibility);
-    slots.set(slot.slotId, slot);
+    slots.set(slot.slotId, { slotId: slot.slotId, capabilityId: slot.capabilityId, compatibility: slot.compatibility });
   }
   for (const provided of declaration.provides) {
-    check(portable(provided?.capabilityId) && !provides.has(provided.capabilityId), 'provided-capability');
+    check(record(provided) && portable(provided.capabilityId) && !provides.has(provided.capabilityId), 'provided-capability');
     compatibility(provided.compatibility);
-    provides.set(provided.capabilityId, provided);
+    provides.set(provided.capabilityId, { capabilityId: provided.capabilityId, compatibility: provided.compatibility });
   }
-  return { slots, provides };
+  return { declaration: { moduleId: declaration.moduleId }, slots, provides };
 }
-async function directory(path) {
+async function directory(path: unknown): Promise<string> {
   check(typeof path === 'string' && isAbsolute(path), 'absolute-directory');
   try {
     const actual = await realpath(path);
     check((await stat(actual)).isDirectory(), 'absolute-directory');
     return actual;
   } catch (error) {
-    if (error.code === invalidCode) throw error;
+    if (errorCode(error) === invalidCode) throw error;
     throw invalid('unavailable-directory');
   }
 }
-async function checkedFile(root, path) {
+async function checkedFile(root: string, path: string) {
   check(relativePath(path), 'source-path');
   const target = resolve(root, ...path.split('/'));
   try {
@@ -389,22 +457,22 @@ async function checkedFile(root, path) {
     check((await stat(target)).isFile(), 'regular-file');
     return target;
   } catch (error) {
-    if (error.code === invalidCode) throw error;
+    if (errorCode(error) === invalidCode) throw error;
     throw invalid('unavailable-input');
   }
 }
-async function textFile(root, path) {
+async function textFile(root: string, path: string) {
   const target = await checkedFile(root, path);
   try { return await readFile(target, 'utf8'); }
   catch { throw invalid('unavailable-input'); }
 }
-function sourcePath(module) { return module.slice(0, -3) + '.ts'; }
-function declarationPath(module) { return module.slice(0, -3) + '.d.ts'; }
+function sourcePath(module: string) { return module.slice(0, -3) + '.ts'; }
+function declarationPath(module: string) { return module.slice(0, -3) + '.d.ts'; }
 
-async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
-  const namespaces = new Map();
-  const visited = new Set();
-  async function namespace(module, role, allowTests) {
+async function readHandles(packageRoot: string, buildRoot: string, initialPath: string, qualification: boolean) {
+  const namespaces = new Map<string, Map<string, unknown>>();
+  const visited = new Set<string>();
+  async function namespace(module: string, role: string, allowTests: boolean) {
     check(featureModule(module, allowTests) && module.endsWith(`/${role}.js`), 'feature-layout');
     if (!namespaces.has(module)) {
       await checkedFile(packageRoot, sourcePath(module));
@@ -412,22 +480,24 @@ async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
       try {
         // Only original feature namespaces are read. Neither source root nor
         // source/built allowlist is imported, and no factory is invoked.
-        namespaces.set(module, new Map(Object.entries(await import(pathToFileURL(built).href))));
+        const loaded: unknown = await import(pathToFileURL(built).href);
+        check(record(loaded), 'unavailable-namespace');
+        namespaces.set(module, new Map(Object.entries(loaded)));
       } catch { throw invalid('unavailable-namespace'); }
     }
-    return namespaces.get(module);
+    return present(namespaces.get(module));
   }
-  async function read(path, depth) {
+  async function read(path: string, depth: number): Promise<Map<string, Handle>> {
     check(depth <= 1 && !visited.has(path), 'allowlist-cycle');
     visited.add(path);
     const extension = path === variantPath;
     check(!extension || qualification, 'qualification-only');
     const ast = parseAllowlist(await textFile(packageRoot, path), path);
     const used = new Set([ast.typeLocal]);
-    const use = local => {
-      const binding = ast.bindings.get(local);
+    const use = (local: string | undefined) => {
+      const binding = local === undefined ? undefined : ast.bindings.get(local);
       check(binding && !binding.typeOnly, 'unresolved-binding');
-      used.add(local);
+      used.add(binding.local);
       return binding;
     };
     for (const binding of ast.bindings.values()) {
@@ -435,34 +505,36 @@ async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
       check(featureModule(binding.module, extension && qualification)
         || (extension && binding.module === 'self-composition/allowlist.js' && binding.export === 'allowlist'), 'allowlist-import');
     }
-    let result = new Map();
+    let result = new Map<string, Handle>();
     let entries = ast.entries;
     if (extension) {
-      check(entries.length === 2 && entries[0].spread && entries[1].handle, 'variant-extension');
-      const base = use(entries[0].spread);
+      check(entries.length === 2 && entries[0]?.spread && entries[1]?.handle, 'variant-extension');
+      const base = use(present(entries[0]).spread);
       check(base.module === 'self-composition/allowlist.js' && base.export === 'allowlist', 'base-import');
       result = new Map(await read(basePath, depth + 1));
       entries = entries.slice(1);
     } else check(entries.every(entry => entry.handle), 'base-spread');
     const localNames = new Set([...result.values()].map(handle => handle.localName));
     for (const entry of entries) {
+      check(entry.handle !== undefined, 'base-spread');
       const key = use(entry.key);
       const declared = use(entry.handle.get('declaration'));
       const factory = use(entry.handle.get('factory'));
       const keyExports = await namespace(key.module, 'declaration', extension);
       const id = keyExports.get(key.export);
-      const candidates = [...keyExports].filter(([, value]) => value?.kind === 'get-modular.module-declaration'
+      const candidates = [...keyExports].filter(([, value]) => record(value) && value.kind === 'get-modular.module-declaration'
         && portable(id) && value.implementationId === id);
       if (candidates.length !== 1) {
         const actualExports = await namespace(declared.module, 'declaration', extension);
         const actualDeclaration = actualExports.get(declared.export);
-        check(portable(actualDeclaration?.implementationId), 'declaration-identity');
+        check(record(actualDeclaration) && portable(actualDeclaration.implementationId), 'declaration-identity');
         const identities = [...actualExports].filter(([, value]) => value === actualDeclaration.implementationId);
         check(identities.length === 1, 'identity-export');
-        corresponds(actualDeclaration.implementationId, 'implementationId', reference(declared.module, identities[0][0]), key);
+        corresponds(actualDeclaration.implementationId, 'implementationId', reference(declared.module, present(identities[0])[0]), key);
         throw invalid('declaration-identity');
       }
-      const [declarationExport, declaration] = candidates[0];
+      const [declarationExport, declaration] = present(candidates[0]);
+      check(portable(id), 'declaration-identity');
       localDeclaration(await textFile(packageRoot, sourcePath(key.module)), key.module, key.export, declarationExport);
       localDeclaration(await textFile(buildRoot, key.module), key.module, key.export, declarationExport);
       const declarationRef = reference(key.module, declarationExport);
@@ -471,13 +543,13 @@ async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
       const factoryModule = posix.join(posix.dirname(key.module), 'factory.js');
       const exports = await namespace(factoryModule, 'factory', extension);
       const factories = [...exports].filter(([, value]) => typeof value === 'function');
-      check(factories.length === 1 && bindingName(factories[0][0]), 'factory-export');
-      const factoryRef = reference(factoryModule, factories[0][0]);
+      check(factories.length === 1 && bindingName(present(factories[0])[0]), 'factory-export');
+      const factoryRef = reference(factoryModule, present(factories[0])[0]);
       corresponds(id, 'factory', factoryRef, factory);
       const factoryExport = entry.handle.get('factoryExport');
-      let textualModule = null;
+      let textualModule: string | null = null;
       try { textualModule = modulePath('src/composition/generated/stage1.ts', entry.handle.get('importPath')); }
-      catch (error) { if (error.code !== invalidCode) throw error; }
+      catch (error) { if (errorCode(error) !== invalidCode) throw error; }
       corresponds(id, 'importPath', factoryRef, reference(textualModule, factoryRef.export));
       corresponds(id, 'factoryExport', factoryRef, reference(textualModule, factoryExport));
       corresponds(id, 'declarationExport', declarationRef, reference(key.module, entry.handle.get('declarationExport')));
@@ -486,7 +558,7 @@ async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
       check(!result.has(id), 'duplicate-implementation');
       const maps = declarationMaps(declaration);
       localNames.add(localName);
-      result.set(id, { declaration, declarationRef, factoryRef, localName, ...maps });
+      result.set(id, { declarationRef, factoryRef, localName, ...maps });
     }
     check(used.size === ast.bindings.size, 'unused-allowlist-import');
     return result;
@@ -494,82 +566,85 @@ async function readHandles(packageRoot, buildRoot, initialPath, qualification) {
   return read(initialPath, 0);
 }
 
-function checkPlan(plan, handles) {
+function checkPlan(plan: unknown, handles: Map<string, Handle>) {
   fields(plan, ['kind', 'schemaVersion', 'profileId', 'roots', 'selections', 'bindings', 'dependencyOrder'], 'plan-shape');
   check(plan.kind === 'get-modular.composition-plan' && plan.schemaVersion === 1 && portable(plan.profileId), 'plan-shape');
-  check(Array.isArray(plan.roots) && plan.roots.length === 1 && plan.roots[0] === 'get-modular/compiler-facade'
-    && Array.isArray(plan.selections) && plan.selections.length > 0
-    && Array.isArray(plan.bindings) && Array.isArray(plan.dependencyOrder), 'finite-plan-shape');
-  const selected = new Map();
-  const modules = new Map();
-  const rows = new Map();
+  check(list(plan.roots) && plan.roots.length === 1 && plan.roots[0] === 'get-modular/compiler-facade'
+    && list(plan.selections) && plan.selections.length > 0
+    && list(plan.bindings) && list(plan.dependencyOrder), 'finite-plan-shape');
+  const selected = new Map<string, Handle>();
+  const modules = new Map<string, string>();
+  const rows = new Map<string, Map<string, string>>();
   for (const selection of plan.selections) {
     fields(selection, ['moduleId', 'implementationId'], 'selection-shape');
+    check(typeof selection.implementationId === 'string' && typeof selection.moduleId === 'string', 'selected-implementation');
     const handle = handles.get(selection.implementationId);
     check(handle && handle.declaration.moduleId === selection.moduleId
       && !selected.has(selection.implementationId) && !modules.has(selection.moduleId), 'selected-implementation');
     selected.set(selection.implementationId, handle);
     modules.set(selection.moduleId, selection.implementationId);
-    rows.set(selection.implementationId, new Map());
+    rows.set(selection.implementationId, new Map<string, string>());
   }
-  const facade = modules.get(plan.roots[0]);
+  const facade = modules.get('get-modular/compiler-facade');
   check(facade !== undefined, 'selected-root');
-  const position = new Map();
+  const position = new Map<string, number>();
   for (const [index, id] of plan.dependencyOrder.entries()) {
-    check(selected.has(id) && !position.has(id), 'dependency-order');
+    check(typeof id === 'string' && selected.has(id) && !position.has(id), 'dependency-order');
     position.set(id, index);
   }
   check(position.size === selected.size, 'dependency-order');
   for (const binding of plan.bindings) {
     fields(binding, ['consumerImplementationId', 'slotId', 'providerImplementationIds', 'capabilityId', 'compatibility'], 'binding-shape');
+    check(typeof binding.consumerImplementationId === 'string' && typeof binding.slotId === 'string', 'required-binding');
     const consumer = selected.get(binding.consumerImplementationId);
     const slot = consumer?.slots.get(binding.slotId);
-    check(slot && Array.isArray(binding.providerImplementationIds)
+    check(slot && list(binding.providerImplementationIds)
       && binding.providerImplementationIds.length === 1, 'required-binding');
     compatibility(binding.compatibility);
     const providerId = binding.providerImplementationIds[0];
+    check(typeof providerId === 'string', 'binding-correspondence');
     const provider = selected.get(providerId);
     const provided = provider?.provides.get(slot.capabilityId);
     check(provided && binding.capabilityId === slot.capabilityId
       && sameCompatibility(binding.compatibility, slot.compatibility)
       && sameCompatibility(provided.compatibility, slot.compatibility), 'binding-correspondence');
-    check(position.get(providerId) < position.get(binding.consumerImplementationId), 'provider-order');
-    const bindings = rows.get(binding.consumerImplementationId);
+    check(present(position.get(providerId), 'provider-order') < present(position.get(binding.consumerImplementationId), 'provider-order'), 'provider-order');
+    const bindings = present(rows.get(binding.consumerImplementationId));
     check(!bindings.has(binding.slotId), 'duplicate-plan-binding');
     bindings.set(binding.slotId, providerId);
   }
-  for (const [id, handle] of selected) check(rows.get(id).size === handle.slots.size, 'missing-plan-binding');
-  const reached = new Set();
+  for (const [id, handle] of selected) check(present(rows.get(id)).size === handle.slots.size, 'missing-plan-binding');
+  const reached = new Set<string>();
   const pending = [facade];
   while (pending.length) {
-    const id = pending.pop();
+    const id = present(pending.pop());
     if (reached.has(id)) continue;
     reached.add(id);
-    pending.push(...rows.get(id).values());
+    pending.push(...present(rows.get(id)).values());
   }
   check(reached.size === selected.size, 'unreachable-selection');
-  return { selected, rows, facade };
+  return { selected, rows, facade, dependencyOrder: plan.dependencyOrder };
 }
-function declaresType(source, name) {
+function declaresType(source: string, name: string) {
   const items = tokens(source);
-  const stack = [];
+  const stack: string[] = [];
   const delimiters = new Map([['{', '}'], ['[', ']'], ['(', ')']]);
   let count = 0;
   for (let index = 0; index < items.length; index += 1) {
-    const word = items[index].text;
-    if (stack.length === 0 && word === 'export' && ['interface', 'type'].includes(items[index + 1]?.text)
+    const word = present(items[index]).text;
+    if (stack.length === 0 && word === 'export' && ['interface', 'type'].includes(items[index + 1]?.text ?? '')
       && items[index + 2]?.text === name) count += 1;
-    if (delimiters.has(word)) stack.push(delimiters.get(word));
+    if (delimiters.has(word)) stack.push(present(delimiters.get(word)));
     else if (['}', ']', ')'].includes(word)) check(stack.pop() === word, 'port-declaration');
   }
   check(stack.length === 0 && count === 1, 'provided-port-export');
 }
-async function providedPort(packageRoot, buildRoot, facade) {
+async function providedPort(packageRoot: string, buildRoot: string, facade: Handle) {
   // Read only the pinned build's declaration signature, not factory bodies or
   // runtime return values. This finite signature has one typed deps parameter.
   const path = declarationPath(facade.factoryRef.module);
   const parser = new Parser(await textFile(buildRoot, path));
-  const imported = imports(parser, path, new Set());
+  const imported = imports(parser, path, new Set<string>());
   check(imported.groups.every(group => group.typeOnly), 'factory-signature-import');
   parser.need('export', 'declare', 'function');
   check(parser.identifier() === facade.factoryRef.export, 'factory-signature');
@@ -595,7 +670,7 @@ async function providedPort(packageRoot, buildRoot, facade) {
  * change source copies and supply a separate original namespace mapping.
  * No compiler algorithm, production canonicalizer, root, or allowlist executes.
  */
-export async function verifyConstruction({ packageRoot, buildRoot, compositionPath, allowlistPath, plan, qualification = false }) {
+export async function verifyConstruction({ packageRoot, buildRoot, compositionPath, allowlistPath, plan, qualification = false }: WitnessInput): Promise<ConstructionWitness> {
   check(version === '7.0.2', 'pinned-typescript');
   check(typeof qualification === 'boolean', 'qualification-flag');
   check(relativePath(compositionPath) && compositionPath.endsWith('.ts')
@@ -614,7 +689,7 @@ export async function verifyConstruction({ packageRoot, buildRoot, compositionPa
  */
 export async function verifyGeneratedConstruction({
   sourceText, packageRoot, buildRoot, allowlistPath, plan, ...unsupported
-}) {
+}: GeneratedWitnessInput): Promise<ConstructionWitness> {
   check(Object.keys(unsupported).length === 0, 'generated-options');
   check(version === '7.0.2', 'pinned-typescript');
   check(typeof sourceText === 'string', 'generated-text');
@@ -624,10 +699,10 @@ export async function verifyGeneratedConstruction({
   check(Buffer.byteLength(sourceText, 'utf8') <= generatedTextByteLimit, 'generated-text-size');
   check(relativePath(allowlistPath) && allowlistPath.endsWith('.ts'), 'source-path');
   const ast = parseRoot(sourceText, generatedPath);
-  packageRoot = await directory(packageRoot);
-  buildRoot = await directory(buildRoot);
+  const sourceRoot = await directory(packageRoot);
+  const originalBuild = await directory(buildRoot);
   return verifyRoot({
-    packageRoot, buildRoot, ast, allowlistPath, plan, qualification: false,
+    packageRoot: sourceRoot, buildRoot: originalBuild, ast, allowlistPath, plan, qualification: false,
   });
 }
 
@@ -635,40 +710,40 @@ export async function verifyGeneratedConstruction({
 // Source acquisition and the production text policy are their only differences.
 async function verifyRoot({
   packageRoot, buildRoot, ast, allowlistPath, plan, qualification,
-}) {
+}: { packageRoot: string; buildRoot: string; ast: RootSyntax; allowlistPath: string; plan: unknown; qualification: boolean }): Promise<ConstructionWitness> {
   const handles = await readHandles(packageRoot, buildRoot, allowlistPath, qualification);
-  const { selected, rows, facade } = checkPlan(plan, handles);
+  const { selected, rows, facade, dependencyOrder } = checkPlan(plan, handles);
   const typeGroups = ast.groups.filter(group => group.typeOnly);
-  check(typeGroups.length === 1 && typeGroups[0].specifiers.length === 1, 'root-type-import');
+  check(typeGroups.length === 1 && typeGroups[0]?.specifiers.length === 1, 'root-type-import');
   const type = ast.bindings.get(ast.port);
-  check(type?.typeOnly && typeGroups[0].specifiers[0].local === ast.port, 'root-type-annotation');
-  const expectedPort = await providedPort(packageRoot, buildRoot, selected.get(facade));
+  check(type?.typeOnly && present(present(typeGroups[0]).specifiers[0]).local === ast.port, 'root-type-annotation');
+  const expectedPort = await providedPort(packageRoot, buildRoot, present(selected.get(facade)));
   check(type.module === expectedPort.module && type.export === expectedPort.export, 'root-provided-port');
-  const factoryIndex = new Map();
+  const factoryIndex = new Map<string, Map<string, string>>();
   for (const [id, handle] of handles) {
     let exports = factoryIndex.get(handle.factoryRef.module);
-    if (!exports) { exports = new Map(); factoryIndex.set(handle.factoryRef.module, exports); }
+    if (!exports) { exports = new Map<string, string>(); factoryIndex.set(handle.factoryRef.module, exports); }
     check(!exports.has(handle.factoryRef.export), 'ambiguous-factory');
     exports.set(handle.factoryRef.export, id);
   }
-  const callees = new Map();
-  const importedIds = new Set();
+  const callees = new Map<string, string>();
+  const importedIds = new Set<string>();
   for (const binding of ast.bindings.values()) {
     if (binding.typeOnly) continue;
     const id = factoryIndex.get(binding.module)?.get(binding.export);
-    check(selected.has(id) && !importedIds.has(id), 'root-factory-import');
+    check(typeof id === 'string' && selected.has(id) && !importedIds.has(id), 'root-factory-import');
     importedIds.add(id);
     callees.set(binding.local, id);
   }
   check(importedIds.size === selected.size && ast.constructions.length === selected.size, 'construction-count');
-  const locals = new Map();
-  const tuples = [];
+  const locals = new Map<string, string>();
+  const tuples: ConstructionTuple[] = [];
   for (const [index, construction] of ast.constructions.entries()) {
     const id = callees.get(construction.factory);
-    check(id !== undefined && id === plan.dependencyOrder[index], 'construction-order');
-    const expected = rows.get(id);
+    check(id !== undefined && id === dependencyOrder[index], 'construction-order');
+    const expected = present(rows.get(id));
     check(construction.slots.size === expected.size, 'construction-slots');
-    const pairs = [];
+    const pairs: [string, string][] = [];
     for (const [slot, providerLocal] of construction.slots) {
       const provider = locals.get(providerLocal);
       check(expected.has(slot) && provider !== undefined && provider === expected.get(slot), 'construction-provider');

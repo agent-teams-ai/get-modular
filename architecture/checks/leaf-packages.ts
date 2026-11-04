@@ -1,10 +1,30 @@
 // Publication classes. A private candidate is never published. A public leaf is
 // published from 0.x under its decision with the npm shape of Core and Assembly.
+export interface LeafPackage {
+  readonly id: string;
+  readonly name: string;
+  readonly root: string;
+  readonly publication: "private-candidate" | "public";
+  readonly version: RegExp;
+  readonly decision: {
+    readonly id: string;
+    readonly path: string;
+    readonly fileDigest: string;
+    readonly immutableDigest: string;
+  };
+  readonly extension: { readonly id: string; readonly authority: string };
+  readonly requiredTests: readonly string[];
+  readonly commands: Readonly<Record<string, string>>;
+  readonly gate: string;
+  readonly peers?: readonly string[];
+  readonly subpaths?: readonly string[];
+}
+
 export const PRIVATE_CANDIDATE = "private-candidate";
 export const PUBLIC = "public";
 export const PUBLIC_PUBLISH_CONFIG = Object.freeze({ access: "public", registry: "https://registry.npmjs.org/" });
 export const PUBLIC_FILES = Object.freeze(["dist", "LICENSE", "README.md", "CHANGELOG.md"]);
-export const publicRepository = leaf => ({
+export const publicRepository = (leaf: LeafPackage) => ({
   type: "git", url: "git+https://github.com/agent-teams-ai/get-modular.git", directory: leaf.root,
 });
 
@@ -13,7 +33,7 @@ export const publicRepository = leaf => ({
 // checks read this table instead of naming a package. A leaf has no runtime
 // dependency except the Get Modular peers its row declares. Core and Assembly
 // import no leaf; a leaf imports another leaf only as a declared peer.
-export const LEAF_PACKAGES = Object.freeze([
+export const LEAF_PACKAGES: readonly LeafPackage[] = Object.freeze([
   Object.freeze({
     id: "lifecycle-kernel",
     name: "@get-modular/lifecycle-kernel",
@@ -35,7 +55,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "packages/lifecycle-kernel/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
-      "lifecycle:build": "node architecture/tooling/build-leaf-package.mjs lifecycle-kernel",
+      "lifecycle:build": "node architecture/tooling/build-leaf-package.ts lifecycle-kernel",
       "lifecycle:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/lifecycle-kernel/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/lifecycle-kernel/tsconfig.types.json"
@@ -71,7 +91,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "packages/resources/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
-      "resources:build": "node architecture/tooling/build-leaf-package.mjs resources",
+      "resources:build": "node architecture/tooling/build-leaf-package.ts resources",
       "resources:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/resources/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/resources/tsconfig.types.json"
@@ -106,7 +126,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "packages/conformance/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
-      "conformance:build": "node architecture/tooling/build-leaf-package.mjs conformance",
+      "conformance:build": "node architecture/tooling/build-leaf-package.ts conformance",
       "conformance:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/conformance/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/conformance/tsconfig.types.json"
@@ -147,7 +167,7 @@ export const LEAF_PACKAGES = Object.freeze([
       "packages/observation/tests/packed-root.test.mjs",
     ]),
     commands: Object.freeze({
-      "observation:build": "node architecture/tooling/build-leaf-package.mjs observation",
+      "observation:build": "node architecture/tooling/build-leaf-package.ts observation",
       "observation:typecheck":
         "node node_modules/typescript/bin/tsc -p packages/observation/tsconfig.json --noEmit"
         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/observation/tsconfig.types.json"
@@ -175,35 +195,35 @@ const BASE_PEERS = Object.freeze(["@get-modular/core", "@get-modular/assembly"])
 
 // A row without `peers` has none. Only a public row declares them, and each one
 // is Core, Assembly or an earlier public row, so row order is also gate order.
-export const leafPeers = leaf => leaf.peers ?? [];
+export const leafPeers = (leaf: LeafPackage): readonly string[] => leaf.peers ?? [];
 
 // Each admitted subpath has one source entry and one ESM carrier.
-export const leafSubpaths = leaf => leaf.subpaths ?? ["."];
-const subpathFile = subpath => subpath === "." ? "index" : subpath.slice(2);
-export const expectedLeafExports = leaf => Object.fromEntries(leafSubpaths(leaf).map(subpath => {
+export const leafSubpaths = (leaf: LeafPackage): readonly string[] => leaf.subpaths ?? ["."];
+const subpathFile = (subpath: string): string => subpath === "." ? "index" : subpath.slice(2);
+export const expectedLeafExports = (leaf: LeafPackage) => Object.fromEntries(leafSubpaths(leaf).map(subpath => {
   const file = subpathFile(subpath);
   return [subpath, {
     import: { types: `./dist/${file}.d.ts`, default: `./dist/${file}.js` },
     default: `./dist/${file}.js`,
   }];
 }));
-export const leafEntrySources = leaf => leafSubpaths(leaf)
+export const leafEntrySources = (leaf: LeafPackage): string[] => leafSubpaths(leaf)
   .map(subpath => `${leaf.root}/src/${subpathFile(subpath)}.ts`);
-export const leafBuildOutputs = leaf => leafSubpaths(leaf)
+export const leafBuildOutputs = (leaf: LeafPackage): string[] => leafSubpaths(leaf)
   .flatMap(subpath => [`dist/${subpathFile(subpath)}.js`, `dist/${subpathFile(subpath)}.d.ts`]);
 
 // Peers are declared with the workspace caret range, which `node architecture/tooling/runtime/command.ts run pack` turns
 // into the caret range of the one 0.x minor in the workspace.
 export const PEER_SPECIFIER = "workspace:^";
 
-export const expectedPeerDependencies = leaf =>
+export const expectedPeerDependencies = (leaf: LeafPackage) =>
   leafPeers(leaf).length === 0
     ? undefined
     : Object.fromEntries(leafPeers(leaf).toSorted().map(name => [name, PEER_SPECIFIER]));
 
 // The lock importer of a row: empty without peers, otherwise one workspace link
 // per declared peer and nothing else.
-export const expectedLeafImporter = leaf =>
+export const expectedLeafImporter = (leaf: LeafPackage) =>
   leafPeers(leaf).length === 0
     ? {}
     : {
@@ -212,7 +232,7 @@ export const expectedLeafImporter = leaf =>
       }])),
     };
 
-function peerProblem(leaf, rows, index) {
+function peerProblem(leaf: LeafPackage, rows: readonly LeafPackage[], index: number): string | undefined {
   if (leaf.peers === undefined) return undefined;
   if (!Array.isArray(leaf.peers) || leaf.peers.length === 0 || leaf.publication !== PUBLIC
     || new Set(leaf.peers).size !== leaf.peers.length) return "peers";
@@ -224,7 +244,7 @@ function peerProblem(leaf, rows, index) {
 // A row names its own identity, root, decision and version pattern. It cannot
 // claim Core or Assembly, a differently named root, another row's decision, an
 // unanchored or stateful version pattern or a peer it may not depend on.
-function identityProblem(leaf, rows, index) {
+function identityProblem(leaf: LeafPackage, rows: readonly LeafPackage[], index: number): string | undefined {
   if (!/^[a-z][a-z0-9-]*$/u.test(leaf.id) || ["core", "assembly"].includes(leaf.id)
     || rows.findIndex(other => other.id === leaf.id) !== index) return "id";
   if (leaf.root !== `packages/${leaf.id}` || leaf.name !== `@get-modular/${leaf.id}`) return "root";
@@ -248,21 +268,22 @@ function identityProblem(leaf, rows, index) {
 // Every command belongs to the row's namespace, its gate runs exactly the other
 // commands in order, and each required test lives in the row and is run by one
 // of them. A row therefore cannot reuse a shared command or gate nothing.
-function commandProblem(leaf) {
+function commandProblem(leaf: LeafPackage): string | undefined {
   const match = /^([a-z][a-z0-9-]*:)check$/u.exec(leaf.gate);
   const names = Object.keys(leaf.commands ?? {});
   const steps = names.filter(name => name !== leaf.gate);
-  if (!match || steps.length === 0
-    || !names.every(name => name.startsWith(match[1]) && typeof leaf.commands[name] === "string")
+  const namespace = match?.[1];
+  if (namespace === undefined || steps.length === 0
+    || !names.every(name => name.startsWith(namespace) && typeof leaf.commands[name] === "string")
     || leaf.commands[leaf.gate] !== steps.map(name => `node architecture/tooling/runtime/command.ts run ${name}`).join(" && ")) return "commands";
   if (!Array.isArray(leaf.requiredTests) || leaf.requiredTests.length === 0
     || !leaf.requiredTests.every(path => typeof path === "string"
       && path.startsWith(`${leaf.root}/tests/`) && !path.split("/").includes("..")
-      && steps.some(name => leaf.commands[name].split(" ").includes(path)))) return "requiredTests";
+      && steps.some(name => leaf.commands[name]?.split(" ").includes(path)))) return "requiredTests";
   return undefined;
 }
 
-export function assertLeafPackageTable(rows) {
+export function assertLeafPackageTable(rows: readonly LeafPackage[]): void {
   for (const [index, leaf] of rows.entries()) {
     const problem = identityProblem(leaf, rows, index) ?? commandProblem(leaf);
     if (problem !== undefined) throw new Error(`LEAF_PACKAGE_TABLE_INVALID: ${leaf.id}: ${problem}`);
@@ -271,9 +292,9 @@ export function assertLeafPackageTable(rows) {
 
 assertLeafPackageTable(LEAF_PACKAGES);
 
-export const leafManifestPath = leaf => `${leaf.root}/package.json`;
+export const leafManifestPath = (leaf: LeafPackage): string => `${leaf.root}/package.json`;
 
-export function leafPackageById(id) {
+export function leafPackageById(id: string): LeafPackage {
   const leaf = LEAF_PACKAGES.find(candidate => candidate.id === id);
   if (leaf === undefined) throw new Error(`LEAF_PACKAGE_UNKNOWN: ${id}`);
   return leaf;

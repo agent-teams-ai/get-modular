@@ -15,7 +15,7 @@ import {
   publicationBlockers,
   validateFirstProductionPackageAdmission,
 } from "../architecture/checks/feature-module-standard-profile.mjs";
-import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.mjs";
+import { LEAF_PACKAGES, leafManifestPath, PUBLIC } from "../architecture/checks/leaf-packages.ts";
 import {
   manifestCarrierViolations,
   packageIdentityViolations,

@@ -25,7 +25,7 @@ import {
   assertGitIndexSnapshotCurrent,
   captureGitIndexSnapshot,
   indexSnapshotPaths,
-} from "./tracked-file-custody.mjs";
+} from "./tracked-file-custody.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SHA256 = /^sha256:[a-f0-9]{64}$/u;

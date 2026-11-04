@@ -36,8 +36,8 @@ function pnpmCommand(args, options) {
 const temporary = await mkdtemp(join(tmpdir(), "gm-g1-packed-"));
 const npmEnvironment = { ...process.env, npm_config_cache: join(temporary, "npm-cache"), npm_config_update_notifier: "false" };
 try {
-  await run(process.execPath, ["architecture/tooling/build-core.mjs"]);
-  await run(process.execPath, ["architecture/tooling/build-assembly.mjs"]);
+  await run(process.execPath, ["architecture/tooling/build-core.ts"]);
+  await run(process.execPath, ["architecture/tooling/build-assembly.ts"]);
   const archives = [], archiveByPackage = new Map(), archivePackages = [];
   for (const surface of profile.packages) {
     const before = new Set(await readdir(temporary));
