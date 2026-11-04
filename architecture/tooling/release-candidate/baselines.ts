@@ -4,6 +4,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSyn
 import { hostname, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { parse } from "yaml";
+import { isDeepStrictEqual } from "node:util";
 import type { ExpectedInputs } from "@agent-teams/release-checks";
 import type { PreparedRelease } from "./host.ts";
 import { assertCustody, custody, execute, git, hash, identity, record, snapshot, treeDigest, type SourceTree } from "./io.ts";
@@ -11,21 +12,37 @@ import { assertMetadataAuthority, metadataDecision } from "./metadata-authority.
 
 export const baselinePaths = ["architecture/public-api/core.json", "architecture/public-api/assembly.json"] as const;
 const configPath = "architecture/foundation/public-api-compatibility.yaml";
+const admittedMetadataCohort = [
+  ["@get-modular/assembly", "0.7.0", "0.7.1", "patch"],
+  ["@get-modular/conformance", "0.5.0", "0.5.1", "patch"],
+  ["@get-modular/core", "0.7.0", "0.7.1", "patch"],
+] as const;
+function releaseRows(plan: ExpectedInputs["plan"]): string[][] {
+  return plan.releases.filter(item => item.oldVersion !== item.newVersion)
+    .map(item => [item.packageName, item.oldVersion ?? "", item.newVersion ?? "", item.type]).toSorted();
+}
+/**
+ * Read-only classification for the main-branch version workflow. An unadmitted
+ * cohort may be reported as pending, never versioned or promoted.
+ */
+export function pendingMetadataCohort(tree: SourceTree, plan: ExpectedInputs["plan"]): boolean {
+  if (tree[configPath] === undefined) {return false;}
+  const pair = plan.releases.some(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
+    && item.oldVersion !== item.newVersion);
+  if (!pair) {return false;}
+  assertMetadataAuthority(tree[metadataDecision]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
+  return !isDeepStrictEqual(releaseRows(plan), admittedMetadataCohort);
+}
 export function plannedBaselines(tree: SourceTree, plan: ExpectedInputs["plan"]): readonly string[] {
   if (tree[configPath] === undefined) {return [];}
   const pair = plan.releases.filter(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
     && item.oldVersion !== item.newVersion);
   if (pair.length === 0) {return [];}
-  assertMetadataAuthority(tree[metadataDecision]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
+  assert.equal(pendingMetadataCohort(tree, plan), false, "candidate.metadata-release-cohort");
   for (const [name, version] of [["resources", "0.2.1"], ["observation", "0.2.0"]]) {
     assert.equal(record(JSON.parse(tree[`packages/${name}/package.json`]?.contents ?? "{}"))["version"], version,
       "candidate.metadata-release-unchanged-leaves");
   }
-  const rows = plan.releases.filter(item => item.oldVersion !== item.newVersion)
-    .map(item => [item.packageName, item.oldVersion, item.newVersion, item.type]).toSorted();
-  assert.deepEqual(rows, [["@get-modular/assembly", "0.7.0", "0.7.1", "patch"],
-    ["@get-modular/conformance", "0.5.0", "0.5.1", "patch"], ["@get-modular/core", "0.7.0", "0.7.1", "patch"]],
-  "candidate.metadata-release-cohort");
   const policy = record(parse(tree[configPath].contents));
   assert(Array.isArray(policy["packages"]), "candidate.public-baseline-policy");
   assert.deepEqual(policy["packages"].map(value => {

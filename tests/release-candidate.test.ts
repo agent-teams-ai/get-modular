@@ -14,7 +14,7 @@ import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, ver
 import { assertNodeQualification, array, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 
-import { assertPromotionBranch, assertPromotionReceipt, baselinePaths, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
+import { assertPromotionBranch, assertPromotionReceipt, baselinePaths, pendingMetadataCohort, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nodeModules = join(repositoryRoot, "node_modules");
@@ -510,6 +510,33 @@ await test("custody rejects nested roots and same-spelling physical replacement"
   }
 });
 
+await test("unadmitted current-source release is reported but cannot version or modify its inputs", () => {
+  // Fixed source that produced the failed post-merge release-version workflow.
+  const source = "e6e9746bb2860d03450d9a8c9fa07366c0cd943c";
+  const temporary = mkdtempSync(join(tmpdir(), "get-modular-pending-release-TEST-"));
+  const root = join(temporary, "source");
+  try {
+    git(repositoryRoot, "clone", "--quiet", "--shared", "--no-hardlinks", repositoryRoot, root);
+    git(root, "checkout", "--detach", source);
+    mkdirSync(join(root, "node_modules"));
+    for (const entry of readdirSync(nodeModules)) {
+      if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
+      symlinkSync(join(nodeModules, entry), join(root, "node_modules", entry), process.platform === "win32" ? "junction" : "dir");
+    }
+    assert.throws(() => prepareRelease(root), /candidate.metadata-release-cohort/u);
+    const prepared = prepareRelease(root, { reportPendingAdmission: true });
+    assert.equal(prepared.hasRelease, true);
+    assert.equal(prepared.pendingAdmission, true);
+    assert.equal(pendingMetadataCohort(prepared.before, prepared.expected.plan), true);
+    assert(!prepared.expected.permittedChanges.some(item => baselinePaths.includes(item.path as typeof baselinePaths[number])));
+    assert.throws(() => versionPreparedRelease(prepared), /candidate.pending-release-admission/u);
+    assert.equal(git(root, "rev-parse", "HEAD").trim(), source);
+    assert.equal(git(root, "status", "--porcelain=v1", "--untracked-files=all"), "");
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 await test("real admitted metadata cohort promotes public baselines and independently replays exact bytes", () => {
   const started = performance.now(); let previous = started; const timings: Record<string, number> = {};
   const mark = (phase: string): void => {const now = performance.now(); timings[phase] = now - previous; previous = now;};
@@ -533,6 +560,7 @@ await test("real admitted metadata cohort promotes public baselines and independ
     const prepared = prepareRelease(root);
     mark("prepare");
     assert.deepEqual(plannedBaselines(prepared.before, prepared.expected.plan), baselinePaths);
+    assert.equal(pendingMetadataCohort(prepared.before, prepared.expected.plan), false);
     assert.deepEqual(plannedBaselines(prepared.before, { releases: [], consumptions: [] }), []);
     assert.throws(() => assertPromotionBranch(root), /candidate.promotion-branch/u);
     assert.throws(() => produceBaselines({ ...prepared, hasRelease: false }, prepared.before, baselinePaths), /public-producer-required/u);
@@ -547,6 +575,7 @@ await test("real admitted metadata cohort promotes public baselines and independ
       producer: { ...producer, digest: "sha256:substituted" } } }), /execution-custody-drift/u);
     const invalid = { ...prepared.expected.plan, releases: prepared.expected.plan.releases.map(release =>
       release.packageName === "@get-modular/conformance" ? { ...release, newVersion: "0.5.2" } : release) };
+    assert.equal(pendingMetadataCohort(prepared.before, invalid), true);
     assert.throws(() => plannedBaselines(prepared.before, invalid), /metadata-release-cohort/u);
     mark("admission-negatives");
     const generated = versionPreparedRelease(prepared);
