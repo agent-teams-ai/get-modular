@@ -65,6 +65,7 @@ jobs:
           FOUNDATION_PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           SDK_GROWTH_FAILURE_ARTIFACT: ${{ runner.temp }}/sdk-growth-failure.json
           SDK_GROWTH_CHECKOUT_SHA: ${{ github.sha }}
+          WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT: ${{ runner.temp }}/workflow-subprocess-failure.json
         working-directory: ${{ env.GM_RUNTIME_CHECKOUT || github.workspace }}
         run: node architecture/tooling/run-ci-check-lane.mjs
       - name: Verify tracked workspace integrity
@@ -79,6 +80,13 @@ jobs:
         with:
           name: sdk-growth-${{ runner.os }}-${{ env.ROOT_CI_NODE_VERSION || '26.11.1' }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/sdk-growth-failure.json
+          if-no-files-found: ignore
+      - name: Retain bounded workflow subprocess failure evidence
+        if: failure() && matrix.lane == 'static'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1, same retained-evidence owner
+        with:
+          name: workflow-subprocess-${{ runner.os }}-${{ env.ROOT_CI_RUNTIME_PROFILE || 'bun' }}-${{ env.ROOT_CI_NODE_VERSION || '26.11.1' }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/workflow-subprocess-failure.json
           if-no-files-found: ignore
 
   lanes-macos:

@@ -539,3 +539,75 @@ Only after final qualification, use the protected expected-head squash merge int
 main, verify the actual resulting tree and metadata, and require that main commit's
 complete 64-job CI. No intermediate source or preview substitutes for these gates;
 package publication and future release-cohort admission remain excluded.
+
+## Bounded subprocess diagnostics amendment
+
+The combined source was published as
+`8e56625d27e1c822f95954b9f38a121d2e8b3ae7`. Its complete official Bun check and
+independent `check:fast` both exited zero, with successful workspace verification
+before and after. These receipts remain bound to that source. Its first isolated
+Node full check failed with `build.source-changed`, after the runtime policy and
+governance checks passed. Verification before and after exited zero; this does not
+exclude a transient input change or qualify the failed full check. Preserve the
+failure and investigate the actual input observations in a separate diagnostic
+checkout before further qualification. Diagnostic observation is not a full-check
+receipt. A passing diagnostic run does not explain the earlier failure.
+
+The bounded observation completed with unchanged source and exit zero. It captured
+12 identical 211-entry manifests during governance and 11 identical 85-entry
+manifests during the subsequent ordinary Core build, directly from the existing
+input observations. File-event monitoring recorded no changes to captured authored
+files. System-call tracing was unavailable; the read-only Node debugger can change
+timing, and file events do not identify a writer. The receipt
+`combined-node-input-diagnostic-resumed2.receipt.json` therefore records
+non-reproduction, leaving the original failure unexplained. An independent critic
+approved one fresh normal official Node full check with the original guards and
+no debugger, preserving the failed receipt and stopping for diagnosis if it recurs.
+
+The combined source's CI run `41892740438` passed the previously failing Windows
+Node 26 static and packaging workloads. However, its Windows Bun static workload,
+job `126797146920`, repeated the same opaque subprocess-error signature in
+`tests/repository-agent-workflow.test.ts`. That fixture runs the Foundation CLI
+under Node; the Bun label describes its selected package-manager profile.
+The failure occurs before report parsing and semantic assertions. The installed
+Foundation 3 test runner suppresses ordinary test output and reduces the original
+error to an object marker, so the retained CI log cannot identify the process
+error code or triggering fixture path. No concurrency or timeout diagnosis is
+established by this observation.
+
+Independent critics approved this finite evidence improvement before another
+native trial. It adds exactly these implementation and contract paths to the
+combined delivery, alongside this document:
+
+- `tests/repository-agent-workflow.test.ts`: on the existing subprocess-error
+  branch only, preserve the first bounded diagnostic record at an explicitly
+  supplied external artifact path, and retain the original error as the failure
+  cause. Record the triggering path, runtime context, elapsed time, primitive
+  error fields, exit status and signal, output lengths and bounded output tails.
+  Artifact-writing failure must not replace or suppress the original failure.
+- `.github/workflows/ci.yml`: supply the diagnostic destination under the runner's
+  temporary directory and conditionally upload an existing record after a static
+  lane failure, using the already pinned upload action. Distinguish platform,
+  Node version and manager profile in the artifact name.
+- `tests/ci-check-lanes.test.mjs`: extend the existing finite workflow contract for
+  this failure-only artifact step while retaining every existing lane, mandatory
+  step, timeout, aggregate and native-platform assertion.
+
+This amendment improves failure evidence; it does not claim to repair the
+unidentified process failure. The subprocess timeout remains 30 seconds and the
+output buffer remains 2,000,000 bytes. Test selection, assertions, failure verdicts,
+native runners, required checks, dependency versions, permissions and protections
+remain unchanged. Do not add an automatic retry, a second test runner, a generic
+diagnostic framework, an environment dump or unbounded output retention.
+
+Validate the owning strict TypeScript project and existing CI contract. A
+disposable real launch-error experiment through the actual mandatory runner must
+retain the expected code and trigger path, preserve the original failure cause,
+leave the artifact available after fixture cleanup, and return nonzero. This
+negative control proves diagnostic transport, not reproduction or resolution of
+the Windows failure. Complete the ordinary successful selection and repeat
+independent review of the concrete patch. The published successor still requires
+both official complete check profiles, fast and changed checks, its own complete
+CI and identity, protected squash delivery, and successful resulting-main CI.
+Preserve prior failed attempts and the existing trial limits; this diagnostic
+amendment does not create an unlimited retry budget.
