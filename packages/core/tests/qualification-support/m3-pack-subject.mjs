@@ -81,6 +81,7 @@ async function sourceDirectories(root) {
     }
   }
   for (const path of ['packages/core/src', 'packages/core/self-composition',
+    'packages/core/tests/qualification-support/support/construction-witness.ts',
     'architecture/tooling', 'tests/qualification/support']) {
     await visit(join(root, path));
   }

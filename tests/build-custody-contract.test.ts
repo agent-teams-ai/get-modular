@@ -24,51 +24,65 @@ function strings(value: unknown): string[] {
 
 const repository = new URL("../", import.meta.url);
 const witness = "tests/qualification/support/construction-witness.ts";
+const projection = "packages/core/tests/qualification-support/support/construction-witness.ts";
+const generator = "architecture/tooling/generate-core.ts";
 const consumer = "packages/core/tests/qualification/construction-witness.test.ts";
+const publicEntry = "packages/core/src/index.ts";
 const production = "packages/core/src/features/canonicalization/owned-jcs/factory.ts";
 const policyPath = "architecture/foundation/source-dependencies.yaml";
 
-test("construction witness is an exact development entrypoint and remains forbidden in production", async t => {
+test("construction witness preserves package direction and remains forbidden in production", async t => {
   const directory = await mkdtemp(join(tmpdir(), "gm-witness-boundary-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const policy = record(parse(await readFile(new URL(policyPath, repository), "utf8")));
-  const subjects = new Map([
-    ["repository.development", witness],
-    ["core-development", consumer],
-    ["core-canonicalization-owned-jcs", production],
+  const subjects = new Map<string, readonly string[]>([
+    ["repository.development", [generator, witness]],
+    ["core-development", [projection, consumer]],
+    ["core-public-entrypoint", [publicEntry]],
+    ["core-canonicalization-owned-jcs", [production]],
   ]);
   const boundaries = records(policy.boundaries)
     .filter(boundary => typeof boundary.id === "string" && subjects.has(boundary.id))
     .map(boundary => {
       assert.equal(typeof boundary.id, "string");
       const id = String(boundary.id);
-      const path = subjects.get(id);
-      assert(path);
+      const paths = subjects.get(id);
+      assert(paths);
       const allow = record(boundary.allow);
       // Preserve the actual entrypoint and dependency decisions. Only the
       // disposable fixture's physical source inventory is reduced.
       return {
         ...boundary,
-        roots: [path],
-        entrypoints: strings(boundary.entrypoints).filter(entry => entry === path),
+        roots: paths,
+        entrypoints: strings(boundary.entrypoints).filter(entry => paths.includes(entry)),
         allow: { ...allow, boundaries: strings(allow.boundaries).filter(target => subjects.has(target)) },
       };
     });
-  assert.equal(boundaries.length, 3);
+  assert.equal(boundaries.length, 4);
   const configuration = {
     ...policy, packageRoots: ["packages/core"], rootPackage: true,
-    governedRoots: [witness, consumer, production].map(path => dirname(path)), boundaries,
+    governedRoots: ["architecture/tooling", "packages/core/src", "packages/core/tests", "tests/qualification/support"], boundaries,
   };
+  const consumerSource = 'import { proof } from "../qualification-support/support/construction-witness.ts"; export const checked = proof;\n';
+  const productionSource = "export const factory = true;\n";
   const files = new Map([
-    ["package.json", JSON.stringify({ name: "@get-modular/repository", private: true, type: "module" })],
+    ["package.json", await readFile(new URL("package.json", repository), "utf8")],
     ["packages/core/package.json", await readFile(new URL("packages/core/package.json", repository), "utf8")],
     ["pnpm-workspace.yaml", 'packages:\n  - "packages/*"\n'],
     ["foundation.config.yaml", stringify({ schemaVersion: 1, project: { id: "witness-boundary" },
       capabilities: { "architecture.source-dependencies": { configPath: policyPath } } })],
     [policyPath, stringify(configuration)],
     [witness, "export const proof = true;\n"],
-    [consumer, 'import { proof } from "../../../../tests/qualification/support/construction-witness.ts"; export const checked = proof;\n'],
-    [production, "export const factory = true;\n"],
+    [projection, "export const proof = true;\n"],
+    // Keep the ordinary repository-to-Core package edge and both local witness
+    // imports. A fixture containing only the reverse edge hid the package cycle
+    // caused by Core's former direct import of the root witness.
+    [generator, 'import { publicProbe } from "@get-modular/core";\n'
+      + 'import { proof } from "../../tests/qualification/support/construction-witness.ts";\n'
+      + 'export const built = proof && publicProbe;\n'],
+    [publicEntry, "export const publicProbe = true;\n"],
+    [consumer, consumerSource],
+    [production, productionSource],
   ]);
   for (const [path, contents] of files) {
     await mkdir(dirname(join(directory, path)), { recursive: true });
@@ -90,14 +104,21 @@ test("construction witness is an exact development entrypoint and remains forbid
   const admitted = check();
   assert.equal(admitted.status, 0, JSON.stringify(admitted.report));
   assert.equal(admitted.report.outcome, "passed", JSON.stringify(admitted.report));
-  await writeFile(join(directory, production),
-    'import { proof } from "../../../../../../tests/qualification/support/construction-witness.ts"; export const factory = proof;\n');
-  const rejected = check();
-  assert.notEqual(rejected.status, 0);
-  assert.equal(rejected.report.outcome, "violations", JSON.stringify(rejected.report));
-  const diagnostics = records(rejected.report.capabilities).flatMap(capability => records(capability.diagnostics));
-  assert(diagnostics.some(diagnostic => diagnostic.ruleId === "architecture.source-dependencies.cross-package-relative-import"),
-    JSON.stringify(rejected.report));
+  const mutations: readonly (readonly [string, string, string, string])[] = [
+    [production, 'import { proof } from "../../../../tests/qualification-support/support/construction-witness.ts"; export const factory = proof;\n',
+      productionSource, "architecture.source-dependencies.runtime-boundary-imports-development-boundary"],
+    [consumer, consumerSource + 'import { built } from "../../../../architecture/tooling/generate-core.ts"; export const cycle = built;\n',
+      consumerSource, "architecture.source-dependencies.package-runtime-cycle"],
+  ];
+  for (const [path, changed, original, rule] of mutations) {
+    await writeFile(join(directory, path), changed);
+    const rejected = check();
+    assert.notEqual(rejected.status, 0);
+    assert.equal(rejected.report.outcome, "violations", JSON.stringify(rejected.report));
+    const diagnostics = records(rejected.report.capabilities).flatMap(capability => records(capability.diagnostics));
+    assert(diagnostics.some(diagnostic => diagnostic.ruleId === rule), JSON.stringify(rejected.report));
+    await writeFile(join(directory, path), original);
+  }
 });
 
 test("migrated build qualification tests retain strict checking and normal test selection", async () => {
@@ -111,9 +132,12 @@ test("migrated build qualification tests retain strict checking and normal test 
     assert(files.includes(`../${path}`), path);
     await readFile(new URL(path, repository));
   }
+  assert(files.includes("qualification/support/construction-witness.ts"), witness);
+  assert(files.includes(`../${projection}`), projection);
   const governance = scripts["governance:test"];
   assert.equal(typeof governance, "string");
-  for (const name of ["generated-production-source.test.ts", "tracked-file-custody.test.ts", "build-custody-contract.test.ts"]) {
+  for (const name of ["generated-production-source.test.ts", "tracked-file-custody.test.ts",
+    "build-custody-contract.test.ts", "construction-witness-projection.test.ts"]) {
     assert(files.includes(name), name);
     assert(String(governance).split(" ").includes(`tests/${name}`), name);
   }

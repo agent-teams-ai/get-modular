@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import test from 'node:test';
 import canonicalize from 'canonicalize';
 import { version } from 'typescript';
-import { verifyConstruction } from '../../../../tests/qualification/support/construction-witness.ts';
+import { verifyConstruction } from '../qualification-support/support/construction-witness.ts';
 import { expectedDigest } from '../qualification-support/support/scale-output.mjs';
 import { m2RawCaseDefinitions } from '../qualification-support/support/m2-packed-raw-cases.mjs';
 import { materializeRawDocumentInput } from '../qualification-support/m2-candidate/raw-document-cases.mjs';

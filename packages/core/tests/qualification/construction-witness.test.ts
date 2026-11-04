@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import test, { type TestContext } from 'node:test';
 import canonicalize from 'canonicalize';
-import { verifyConstruction, verifyGeneratedConstruction, type ConstructionTuple, type WitnessInput } from '../../../../tests/qualification/support/construction-witness.ts';
+import { verifyConstruction, verifyGeneratedConstruction, type ConstructionTuple, type WitnessInput } from '../qualification-support/support/construction-witness.ts';
 
 // Mutable views of the fields these tests inspect and deliberately corrupt.
 // They retain the original records, including fields outside this test's view.

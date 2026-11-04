@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type { GitIndexSnapshot } from "../checks/tracked-file-custody.ts";
 import type { GeneratedProductionReader } from "../checks/generated-production-source.ts";
 import { buildTypeScriptProject } from "./typescript-build.ts";
+import { assertConstructionWitnessProjection } from "./construction-witness-projection.ts";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 export const core = join(repository, "packages/core");
@@ -92,7 +93,9 @@ async function inputs(snapshot: GitIndexSnapshot | undefined): Promise<string> {
     "tsconfig.base.json", "package.json",
     "architecture/tooling/build-core.ts", "architecture/tooling/generate-core.ts",
     "architecture/tooling/typescript-build.ts",
+    "architecture/tooling/construction-witness-projection.ts",
     "tests/qualification/support/construction-witness.ts",
+    "packages/core/tests/qualification-support/support/construction-witness.ts",
   ];
   if (snapshot) {
     // Installed packages retain the pinned-install trust assumption. Local
@@ -163,6 +166,7 @@ export async function generateCore({ snapshot }: GenerationOptions = {}): Promis
     const unchanged = async () => {
       if (await inputs(snapshot) !== before) throw failure("build.source-changed");
     };
+    await assertConstructionWitnessProjection(repository);
     runTypeScript("tsconfig.stage0.json");
     await unchanged();
     const { verifyConstruction, verifyGeneratedConstruction } = await import(

@@ -16,7 +16,9 @@ async function fixture(t: TestContext) {
   for (const path of [
     "package.json", "tsconfig.base.json",
     "architecture/tooling/build-core.ts", "architecture/tooling/generate-core.ts", "architecture/tooling/typescript-build.ts",
+    "architecture/tooling/construction-witness-projection.ts",
     "tests/qualification/support/construction-witness.ts",
+    "packages/core/tests/qualification-support/support/construction-witness.ts",
     "packages/core/package.json", "packages/core/tsconfig.json",
     "packages/core/tsconfig.typecheck.json", "packages/core/tsconfig.test.json",
     "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json",
@@ -616,6 +618,18 @@ test("permission failures attempt both removals and retain every cleanup error",
     await cleanProduction();
     await f.absent();
   }
+});
+
+test("witness projection drift fails before compilation and removes stale production output", async t => {
+  const { core, build, put, absent, poison } = await fixture(t);
+  await poison();
+  const projection = "tests/qualification-support/support/construction-witness.ts";
+  const drift = "export const staleProjection = true;\n";
+  await put(projection, drift);
+  fails(build(), /build\.construction-witness-projection-drift/u);
+  await absent();
+  await assert.rejects(readFile(join(core, "dist-stage0/self-composition/stage0-entry.js")), { code: "ENOENT" });
+  assert.equal(await readFile(join(core, projection), "utf8"), drift, "checking must not repair the projection");
 });
 
 test("cold production executes generated M2 and retains direct qualification", async t => {

@@ -1023,7 +1023,6 @@ boundaries:
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts
       - tests/qualification/support/pinned-pnpm.ts
-      - tests/qualification/support/construction-witness.ts
     allow:
       boundaries:
         - assembly-examples

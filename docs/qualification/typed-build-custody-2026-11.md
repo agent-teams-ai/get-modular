@@ -75,7 +75,7 @@ migration. No new public composition contract is intended.
 | Owner | Implementation and affected tests |
 | --- | --- |
 | Custody | Migrate `architecture/checks/tracked-file-custody.mjs` and `generated-production-source.mjs` to `.ts`; explicitly type snapshots, index/tree entries, regular-file observations, projections, read outcomes and generated readers. Migrate `tests/generated-production-source.test.mjs`; extract only custody-specific blocks from `tests/governance.test.mjs` into a focused strict `.test.ts`. |
-| Construction evidence | Migrate `tests/qualification/support/construction-witness.mjs` to `.ts`; retain independent finite parsing and source/export correspondence. Delete the Core-local copy. Migrate `packages/core/tests/qualification/construction-witness.test.mjs`, preserve its independent tuples and mutation expectations, and update all four live Core importers. |
+| Construction evidence | Maintain the strict witness at `tests/qualification/support/construction-witness.ts` and generate exactly one Core-local copy at `packages/core/tests/qualification-support/support/construction-witness.ts`; cold checking and direct builds compare every byte. Retain independent finite parsing and source/export correspondence. Remove separate maintenance of the local copy. Migrate `packages/core/tests/qualification/construction-witness.test.mjs`, preserve its independent tuples and mutation expectations, and update all four live Core importers. |
 | Build orchestration | Migrate `generate-core.mjs`, `build-core.mjs`, `build-assembly.mjs`, `build-leaf-package.mjs` and the directly consumed `leaf-packages.mjs` registry to `.ts`. Share only repeated compiler invocation. Migrate `production-generation.test.mjs` and `package/build-closure.test.mjs` into the required strict test project. |
 | Integration | Root owner updates live callers, explicit copy inventories, script contracts, strict project files, source-dependency entrypoints, current documentation and test selection. Historical retained path records keep their original identity. |
 
@@ -84,12 +84,15 @@ the migrated builder needs its checked contract. This is not permission to
 migrate unrelated leaf test infrastructure. The compiler helper remains a
 function receiving the existing project/root inputs, not a subprocess framework.
 
-The sole witness implementation remains under root `tests/qualification`.
-Declare exactly that development entrypoint for the already allowed
-`core-development -> repository.development` edge. Production imports must
-remain rejected. Do not expose a production export or a whole test directory.
-A second generated witness copy is unnecessary unless an actual isolated
-execution constraint proves the direct development dependency cannot work.
+The witness has one authored owner in `repository.development`. The generator
+imports that root implementation; the four Core consumers import a checked-in,
+byte-identical projection inside their existing development boundary. Run
+`node architecture/tooling/construction-witness-projection.ts --write` after
+editing the root source. Verification uses `--check` and never repairs drift.
+Both files and the fixed-path helper belong to strict checking; direct builds
+check parity before compilation and capture both files as inputs. No new package,
+public export, boundary permission or general copying framework is introduced.
+The full-graph findings and reviewed amendment appear below.
 
 Every implementation worker uses an isolated checkout at an explicit shared
 base, owns a disjoint file set, and supplies a patch or immediately pushed
@@ -191,7 +194,8 @@ and identified custody blocks (381), before shared setup and caller edits.
 Migration and explicit contracts plausibly produce 10–13k gross added/deleted
 lines, with a much smaller rename-aware diff. Final reporting must show both
 `git diff --no-renames --numstat` and rename-aware totals and identify moved
-code separately. The 685-line duplicated witness is actual ownership removal.
+code separately. The 685-line witness loses its second authored owner; the Core-local projection
+is generated and checked, not maintained independently.
 Do not add work merely to meet a line target.
 
 Engineering judgments on a ten-point scale: scope coherence 9, reliability
@@ -256,6 +260,45 @@ confirmed cold bootstrap, independent oracles and source-bound packed receipts;
 runtime review confirmed preserved validation positions and the separate
 Assembly scope. No implementation or passing qualification is claimed by these
 plan approvals.
+
+## Reviewed implementation amendments
+
+The first complete Foundation checks on the Bun and Node profiles exposed a
+package cycle at source `61dc14b5e77c6cc4dd6ed13844d67fffe721de05`:
+Core tests imported the root witness while repository consumers already imported
+Core and Assembly. The initial reduced fixture admitted the individual edge but
+omitted the reverse package dependency. Its success did not prove the full graph
+acyclic. A proposed move into Core development was then rejected by the actual
+checker because root tooling cannot import a private Core file by a relative
+path, even through an allowed boundary entrypoint. That move was not published.
+
+All three critics approved the bounded compatible amendment: one maintained root
+witness and one generated, byte-identical Core-local projection. The small fixed-
+path synchronization command is explicit; cold strict checking and direct builds
+only compare bytes and reject divergence. The generator captures the helper and
+both witness files as source inputs. Required fixtures copy those exact inputs.
+The boundary regression represents root's public Core consumption and rejects
+both production use of the development witness and a Core-to-root back-edge.
+No cycle exception, public export, new package or runtime-projection allowance
+is introduced; unrelated qualification copies remain outside this scope.
+
+Historical release operations also require their own source's build paths.
+The ordinary admitted-cohort E2E exposed an incorrect `.ts` replacement inside
+an authenticated historical checkout. The release controller's two build calls,
+their policy inputs and the bounded metadata-pack experiment retain `.mjs`;
+current build operations use `.ts`. Two critics reviewed this correction, and
+the actual public promotion and independent replay passed. A separate critic
+executed the metadata-pack experiment against the genuine historical release
+source, including exact unchanged Resources and Observation archive checks.
+No historical fixture or release admission was rewritten.
+
+The native Windows failure path stalled after `LOCK_OPENING` in the unmodified
+physical lock test. A reviewed nine-line adjustment qualifies the existing
+PowerShell JSON command and adds three flushed stderr stage markers. JSON fields,
+stdout acknowledgments, exit codes, deadlines and failure assertions remain
+unchanged. Module discovery is a hypothesis, not an established cause; native
+Windows execution must verify the result. This adjustment does not claim a
+successful Windows run by itself.
 
 ## Execution record
 

@@ -12,7 +12,9 @@ test("clean production build follows only the public entry while checking unsele
   t.after(() => rm(sandbox, { recursive: true, force: true }));
   const files = ["package.json", "tsconfig.base.json", "architecture/tooling/build-core.ts",
     "architecture/tooling/generate-core.ts", "architecture/tooling/typescript-build.ts",
+    "architecture/tooling/construction-witness-projection.ts",
     "tests/qualification/support/construction-witness.ts",
+    "packages/core/tests/qualification-support/support/construction-witness.ts",
     "packages/core/package.json", "packages/core/tsconfig.json", "packages/core/tsconfig.typecheck.json",
     "packages/core/tsconfig.test.json", "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json", "packages/core/src",
     "packages/core/self-composition", "packages/core/tests/features/canonicalization/witness-variant"];

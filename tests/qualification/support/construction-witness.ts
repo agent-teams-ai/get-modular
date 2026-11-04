@@ -1,3 +1,8 @@
+// Maintained source: tests/qualification/support/construction-witness.ts.
+// The Core-local copy is generated with:
+// node architecture/tooling/construction-witness-projection.ts --write
+// Cold checking and builds reject any complete-byte difference.
+
 import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { isAbsolute, posix, resolve } from 'node:path';

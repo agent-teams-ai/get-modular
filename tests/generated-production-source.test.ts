@@ -117,7 +117,8 @@ test("governance cleans successful build outputs when completion detects source 
   await exec("git", ["clone", "--quiet", "--no-hardlinks", repositoryRoot, root], { env });
   // Exercise current checkers, their witness and command contracts, including uncommitted fixes.
   // Replace these finite trees so a removed implementation cannot survive the overlay.
-  const currentInputs = ["architecture/checks", "architecture/tooling", "tests/qualification/support", "package.json"];
+  const currentInputs = ["architecture/checks", "architecture/tooling", "tests/qualification/support",
+    "packages/core/tests/qualification-support/support/construction-witness.ts", "package.json"];
   for (const path of currentInputs) {
     await rm(join(root, path), { recursive: true, force: true });
     await cp(join(repositoryRoot, path), join(root, path), {

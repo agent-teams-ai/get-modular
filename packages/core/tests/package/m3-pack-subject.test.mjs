@@ -57,6 +57,7 @@ async function fixture(t) {
   await file('.gitignore', 'packages/core/dist/\npackages/core/src/composition/generated/\n');
   await file('packages/core/src/input.ts', 'export const fixture = true;\n');
   await file('packages/core/self-composition/fixture.txt', 'disposable\n');
+  await file('packages/core/tests/qualification-support/support/construction-witness.ts', 'export {};\n');
   await file('tests/qualification/support/fixture.txt', 'disposable\n');
   await file('packages/core/README.md', 'Disposable small archive fixture.\n');
   await file('packages/core/LICENSE', 'Fixture only.\n');

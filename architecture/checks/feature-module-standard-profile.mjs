@@ -69,7 +69,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "lint:typed": "node architecture/tooling/runtime/command.ts tool agent-teams-foundation quality check --consumer .",
   "prelint:typed": "node architecture/checks/compiler-floor.ts",
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs tests/tracked-file-custody.test.ts tests/build-custody-contract.test.ts tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.ts tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/tracked-file-custody.test.ts tests/build-custody-contract.test.ts tests/construction-witness-projection.test.ts tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.ts tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",
@@ -83,7 +83,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "precheck:changed": "node architecture/tooling/runtime/command.ts run runtime:preflight && node architecture/checks/compiler-floor.ts",
   "lockfile:peers:check": "node architecture/tooling/runtime/dev.ts peers",
   "runtime:policy:typecheck": "node architecture/tooling/runtime/projection-check.ts && node architecture/tooling/runtime/command.ts run tooling:native:typecheck && node node_modules/typescript/bin/tsc -p tests/tsconfig.tooling-node-policy.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.repository-runtime.json --noEmit",
-  "tooling:native:typecheck": "node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit",
+  "tooling:native:typecheck": "node architecture/tooling/construction-witness-projection.ts --check && node node_modules/typescript/bin/tsc -p tests/tsconfig.native-tooling.json --noEmit",
   "runtime:policy:test": "node --test tests/tooling-node-policy.test.ts tests/npm-release.test.ts tests/repository-runtime.test.ts tests/runtime-projection-custody.test.ts tests/m3-runtime-collection.test.ts tests/release-candidate.test.ts && node architecture/tooling/release-candidate/run.ts check-pr",
   "release:version": "node architecture/tooling/release-candidate/run.ts version",
   "sdk-growth:check": "node architecture/checks/compiler-floor.ts && node architecture/tooling/runtime/command.ts run sdk-growth:typecheck && node architecture/checks/sdk-growth.mjs && node --test tests/sdk-growth.test.mjs && node tests/qualification/sdk-growth-admission.mjs && node tests/qualification/sdk-growth-packed-consumers.mjs && node tests/qualification/sdk-growth-registry-consumer.ts",
