@@ -6,6 +6,7 @@ import {
   appendFileSync, closeSync, lstatSync, mkdtempSync, openSync,
   readFileSync, readSync, readdirSync, realpathSync, rmSync, writeFileSync,
 } from 'node:fs';
+import { mkdtemp, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -18,6 +19,8 @@ const SMOKE = 'GET_MODULAR_WORKFLOW_PROBE_SMOKE';
 const MAX_RECORDS = 256;
 const MAX_BYTES = 65_536;
 const MAX_FILES = 32;
+// Match fs.promises.realpath used by the real fixture, including Windows 8.3 aliases.
+const canonical = realpathSync.native;
 const channels = {
   start: 'tracing:child_process.spawn:start',
   end: 'tracing:child_process.spawn:end',
@@ -54,13 +57,13 @@ function boundedRead(path, maximum) {
 }
 
 function installObserver() {
-  const directory = realpathSync(process.env[DIRECTORY]);
-  const expectedCli = realpathSync(process.env[CLI]);
-  if (!samePath(realpathSync(process.argv[1]), expectedCli)) throw new Error('probe-cli-binding');
+  const directory = canonical(process.env[DIRECTORY]);
+  const expectedCli = canonical(process.env[CLI]);
+  if (!samePath(canonical(process.argv[1]), expectedCli)) throw new Error('probe-cli-binding');
   const calibration = process.env[SMOKE] === '1';
   let consumerArgument;
   if (calibration) {
-    if (!samePath(expectedCli, realpathSync(self)) || process.argv[2] !== '--calibration-child') {
+    if (!samePath(expectedCli, canonical(self)) || process.argv[2] !== '--calibration-child') {
       throw new Error('probe-calibration-binding');
     }
     consumerArgument = process.argv[3];
@@ -75,8 +78,8 @@ function installObserver() {
   if (typeof consumerArgument !== 'string' || !isAbsolute(consumerArgument)) {
     throw new Error('probe-consumer-path');
   }
-  const consumer = realpathSync(consumerArgument);
-  const temporaryRoot = realpathSync(tmpdir());
+  const consumer = canonical(consumerArgument);
+  const temporaryRoot = canonical(tmpdir());
   if (!samePath(dirname(consumer), temporaryRoot) ||
       !basename(consumer).startsWith('gm-changed-workflow-TEST-')) {
     throw new Error('probe-consumer-scope');
@@ -183,14 +186,15 @@ function installObserver() {
   function bindControl(state, cwd) {
     if (typeof cwd !== 'string' || !isAbsolute(cwd) ||
         !basename(cwd).startsWith('agent-teams-foundation-process-')) return;
-    const root = realpathSync(cwd);
+    const root = canonical(cwd);
     if (!samePath(dirname(root), temporaryRoot)) throw new Error('probe-control-scope');
     const request = JSON.parse(boundedRead(join(root, 'request.json'), 65_536));
     if (!object(request) || request.schemaVersion !== 1 || typeof request.cwd !== 'string' ||
         typeof request.command !== 'string' || !Array.isArray(request.args) ||
         !request.args.every(value => typeof value === 'string') || typeof request.launchPath !== 'string' ||
-        !samePath(realpathSync(request.cwd), consumer) ||
-        !samePath(resolve(request.launchPath), join(root, 'launched'))) {
+        !samePath(canonical(request.cwd), consumer) || !isAbsolute(request.launchPath) ||
+        basename(request.launchPath) !== 'launched' ||
+        !samePath(canonical(dirname(request.launchPath)), root)) {
       throw new Error('probe-control-binding');
     }
     let operation = 'other';
@@ -278,7 +282,7 @@ function installObserver() {
 }
 
 async function calibrationChild() {
-  const consumer = realpathSync(process.argv[3]);
+  const consumer = canonical(process.argv[3]);
   const root = mkdtempSync(join(tmpdir(), 'agent-teams-foundation-process-'));
   const launched = join(root, 'launched');
   const contained = join(root, 'contained');
@@ -298,8 +302,8 @@ async function calibrationChild() {
   }
 }
 
-function selfCheck(destination) {
-  const consumer = mkdtempSync(join(tmpdir(), 'gm-changed-workflow-TEST-'));
+async function selfCheck(destination) {
+  const consumer = await realpath(await mkdtemp(join(tmpdir(), 'gm-changed-workflow-TEST-')));
   const directory = mkdtempSync(join(tmpdir(), 'workflow-native-probe-smoke-'));
   let receipt;
   try {
@@ -332,7 +336,7 @@ function selfCheck(destination) {
 
 const direct = process.argv[1] !== undefined && samePath(resolve(process.argv[1]), resolve(self));
 if (direct && process.argv[2] === '--self-check') {
-  selfCheck(process.argv[3]);
+  await selfCheck(process.argv[3]);
 } else {
   // Invalid/missing capture is unknown evidence. Instrumentation must never alter CLI success/failure.
   try { installObserver(); } catch { /* The controller requires initial/final records independently. */ }

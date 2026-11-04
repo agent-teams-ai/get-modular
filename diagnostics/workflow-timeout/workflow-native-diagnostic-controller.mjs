@@ -131,6 +131,11 @@ try {
   const phaseBytes = phaseFiles.reduce((sum, name) => sum + statSync(join(phases, name)).size, 0);
   receipt.phaseFileCount = phaseFiles.length;
   receipt.phaseBytes = phaseBytes;
+  receipt.expectedInvocationCount = 28; // Five ordinary calls and 23 escalation fixtures.
+  if (receipt.testExit === 0 && phaseFiles.length !== receipt.expectedInvocationCount) {
+    receipt.observationIncomplete = true;
+    if (verdict === 0) verdict = 1;
+  }
   if (phaseFiles.length > 32 || phaseBytes > 32 * 65536) {
     receipt.observationLimitExceeded = true;
     if (verdict === 0) verdict = 1;
