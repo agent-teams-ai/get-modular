@@ -300,7 +300,170 @@ unchanged. Module discovery is a hypothesis, not an established cause; native
 Windows execution must verify the result. This adjustment does not claim a
 successful Windows run by itself.
 
+### Result-only CI aggregation
+
+After the implementation checks, workflow `41856696365` reached terminal results
+for its native lanes while all three macOS aggregate jobs remained queued.
+GitHub rejected retries while that workflow was still running. Two independent
+critics reviewed and approved a bounded amendment: move only `check-macos`,
+`check-node24-macos` and `check-node26-macos` to `ubuntu-24.04`.
+
+Each aggregate has one Bash/jq step over `toJSON(needs)` and no checkout,
+installation or native execution. Its exact name, corresponding dependency,
+`always()` condition and nonempty/all-success predicate remain unchanged.
+All 54 native lanes, including 18 macOS lanes, retain their original runners,
+runtime versions, commands, default shells, failure policies and deadlines.
+This changes neither required checks nor Actions permissions or branch protection.
+It cannot change already queued runs or remove the native macOS queue; the new
+head still requires its own complete CI.
+
+The existing CI contract separately pins aggregate and native runners. Its
+bounded mutations reject moving a native macOS lane to Ubuntu and restoring an
+incorrect aggregate host. Existing real-shell controls continue to reject failed,
+cancelled, skipped, empty and malformed dependency results.
+The small correction stays in `tests/ci-check-lanes.test.mjs`: migrating the
+entire existing CI harness and its callers would materially expand this runner
+correction. That legacy test remains runtime-checked, without a new strict
+TypeScript coverage claim; no helper or responsibility is added to it.
+
 ## Execution record
 
-Implementation, independent final reviews, immutable-source test receipts and
-protected delivery remain pending.
+### Source and measured scope
+
+PR225's reviewed implementation source is
+`32d9e5c048bdc62d81c9d0e33bdf5d210231236f`, tree
+`13af0e29b4da3ac045ccbdeb330cdbfe0aa464ab`, against main base
+`558d3fcaaeab8c2706d105e79a502980b5b119d8`.
+All three critics completed both final review rounds; no source blocker remained.
+This source approval does not substitute for completed execution or CI.
+
+Measured against that base, `git diff --no-renames --numstat` reports 5,974 added
+and 4,915 deleted lines: 10,889 gross. Rename-aware accounting reports 2,102 added
+and 1,043 deleted lines: 3,145 across 61 changed paths. Migration accounts for
+much of the gross total. The witness retains one authored owner and one checked
+Core-local projection; the projection is not claimed as deleted code.
+
+### Confirmed local receipts
+
+The following checks exercised the implementation bytes subsequently published
+at the source above. Receipt names identify local execution logs, not retained
+release evidence or new accepted authority.
+
+| Check | Observed result | Receipt |
+| --- | --- | --- |
+| Cold strict checking | Passed with Core `dist`, `dist-stage0`, `dist-seed`, `dist-test` and `src/composition/generated/stage1.ts` absent; native tooling, tooling Node policy and repository runtime projects checked. | `witness-final-cold-typecheck.log` |
+| Cold production build | Completed successfully after the cold checks. | `witness-final-cold-build.log` |
+| Focused integration | 35 tests: 32 passed, zero failed or cancelled, three explicit skips. Includes projection drift and cleanup, build closure, source custody, boundary rejection and completion drift. | `witness-final-focused.log` |
+| Complete source-dependency graph | Passed after build preparation, with zero errors or warnings. The earlier cold attempt reported unavailable `dist-seed`; that attempt is not a pass. | `witness-final-prepared-graph.log`; earlier `witness-final-full-graph.log` |
+| Documentation | Protocol check, Markdown lint and spelling passed. | `witness-final-docs.log` |
+
+The three focused skips were the two native Windows lock cases and the POSIX
+permission case under root. They are not successful platform executions.
+Subsequent native Windows Core jobs `126706922345`, `126706922676` and
+`126706922775` in CI run `41865106468` passed at this source: each reported
+3,156 tests, 3,146 passed, zero failed and ten skips. All three physical Windows
+lock cases passed in each job. This verifies the corrected behavior; the original
+stall's proposed module-discovery cause remains unproven. These jobs alone do not
+establish complete CI success.
+
+Both original full-profile runs completed the packed M2 matrix: 272 completed,
+zero pending and no failed case, using Node `v24.22.1` and TypeScript `7.0.2`.
+Both observed the same archive SHA-256,
+`c030da8c1f1713a731470a750cd6aac8b5c7399c5077139acf06212913c1ff2e`,
+and integrity,
+`sha512-8vq8mGjgPJNEbnI0g2xt917bohM39O2cbLyGZeY8A1j5b9dBJHCFRggp+ixFdJIeqFyaUE6TloK2of8xdvpEXw==`.
+The enclosing Core suites each completed 3,156 tests: 3,151 passed, zero failed
+and five skips. Receipts are the `packed-m2-completion` records and enclosing
+summaries in `typed-bun-full-final.log` and `typed-node-full-final.log`.
+The independent official Bun `check:fast` also exited zero at the same source
+(`typed-fast-final.log`).
+
+The historical correction was also exercised independently. The metadata-pack
+experiment exited zero using controller
+`61dc14b5e77c6cc4dd6ed13844d67fffe721de05` against admitted historical source
+`54a3b9f990ffe66a7e7c7b3c21512a8d024f82c0` on an owned disposable
+`changeset-release/main` branch, with Node 24.22.1 and pnpm 11.20.0.
+Its `metadata-pack-proof.json` records `unchangedArchivesEqual: true` and
+`selectedOriginalArchivesAuthenticated: true`; Resources and Observation retained
+their authenticated archive bytes. The execution summary records clean controller
+and target afterward. The first fixture setup attempt was unsuccessful and is
+not qualified. This is a controller-61 receipt, not a new-head full-check receipt.
+The admitted public-promotion and independent-replay regression also passed;
+its final-head repetitions belong to the profile results below.
+
+Separate PR226 fixes Assembly root-alias capture at source
+`e1b74a8a7ce8957cf518c12140ce462401990f29`. Two independent critics completed two
+review rounds, and its full official Bun check passed (`assembly-final-full.log`).
+Its `check:fast` exited zero. Its `check:changed` also exited zero and records
+the nested `check` exit as zero, but reports `feedback-only`, reason
+`mutable-input-binding-unverified`, and no qualified facets
+(`assembly-final-fast.log`, `assembly-final-changed.log`). This mutable feedback
+is not a qualified coverage claim. These results do not qualify PR225 or establish
+either PR's merge or main CI.
+
+### Interrupted full checks and sequential resumption
+
+Both PR225 full checks were interrupted during `assembly:test` by the execution
+tool message `network approval was cancelled before a decision was returned`.
+No policy-decision reason or final command exit was returned. Neither original
+invocation is recorded as a completed zero-exit `check`.
+
+The unchanged `&&` chain had completed its first 20 scripts, following successful
+`precheck`. Recovery preserves the same source, installed profile and official
+`dev.ts run` route, with one whole remaining script per invocation and no altered
+flags, installation or source. Both profiles passed workspace verification before
+resumption (`typed-bun-resume-verify-before.log`,
+`typed-node-resume-verify-before.log`).
+
+| Resumed gate | Official Bun | Official Node/pnpm |
+| --- | --- | --- |
+| `assembly:test` | Exit zero; 117/117 passed, no failures or skips. | Exit zero; 117/117 passed, no failures or skips. |
+| `contracts:check` | Exit zero. | Exit zero. |
+| `contracts:test` | Repeated invocation confirmed exit zero. | Repeated invocation confirmed exit zero. |
+| `qualification:resource-profile` | Exit zero; existing finite qualification scope preserved. | Exit zero; existing finite qualification scope preserved. |
+| `qualification:v1-diagnostics-protocol` | Exit zero; 4/4 passed. | Exit zero; 4/4 passed. |
+| `qualification:v1-graph-semantics` | Exit zero; 4/4 passed. | Exit zero; 4/4 passed. |
+| `qualification:self-composition-templates` | Exit zero; 4/4 passed. | Exit zero; 4/4 passed. |
+| `governance:test` | Exit zero; 278 tests, 277 passed, zero failed, one existing filesystem skip. | Exit zero; same counts. |
+
+Confirmed suffix logs are `typed-{bun,node}-resume-01-assembly-test.log` and
+`typed-{bun,node}-resume-02-contracts-check.log`; step 03 through 08 exit receipts
+are `typed-{bun,node}-resume-{03,04,05,06,07,08}-receipt.json`, each naming its
+command, source and output log. The governance skip requires a case-insensitive
+filesystem. Both final `dev.ts verify` invocations, bound to the expected source
+above, exited zero; the Node verification also authenticates its official
+projection (`typed-{bun,node}-resume-verify-after.json` and corresponding logs).
+
+**Both complete official check routes passed through their successful prefixes
+and sequentially resumed suffixes at the same implementation source.** This is
+not an original full-check process exiting zero; neither original invocation
+returned a final exit status.
+
+### Source-bound evidence and delivery records
+
+PR225's `check:changed --format json` exited zero at the implementation source
+above. Its conservative complete `check` also exited zero, without cancellation,
+in the independent official Bun checkout (`typed-changed-final.log`). The report
+correctly classifies this as `feedback-only`, with reason
+`mutable-input-binding-unverified` and no qualified facets. This complete local
+execution is not a protected-input coverage claim.
+
+The local receipts and scope totals above remain bound to implementation source
+`32d9e5c048bdc62d81c9d0e33bdf5d210231236f`. Publishing this execution record does
+not extend those receipts to a later documentation commit. Each CI result belongs
+to the source named by its run; protected delivery belongs to the actual merge
+commit and resulting main checks. Their independently maintained records are:
+
+| Change | Delivery record | CI for the reviewed source |
+| --- | --- | --- |
+| Typed build and custody | [PR225](https://github.com/agent-teams-ai/get-modular/pull/225) | [Source-32 workflow](https://github.com/agent-teams-ai/get-modular/actions/runs/41865106468) |
+| Assembly root aliases | [PR226](https://github.com/agent-teams-ai/get-modular/pull/226) | [Source-e1 workflow](https://github.com/agent-teams-ai/get-modular/actions/runs/41856696365) |
+
+These references do not themselves assert complete CI success, a merge, or
+successful main verification. In particular, the native Windows results above
+must not be generalized to the entire required matrix.
+
+This work does not qualify a future package cohort, publish packages, rewrite
+retained historical bytes, modify accepted authorities, or migrate unrelated
+qualification controllers. Source review, local execution, packed consumption,
+CI and protected delivery remain distinct claims.

@@ -242,7 +242,9 @@ Node and preserves argv on Windows. Initial Node installation uses only the
 provisioned pinned manager and a finite argument list.
 
 The native OS matrix keeps its required aggregate names and complete obligation
-inventory. Default lanes install Bun; Node 24 compatibility and Node 26 rollback
+inventory. The three macOS result aggregates run their Bash/jq admission on
+Ubuntu; their native lane dependencies retain macOS runners and must all succeed.
+Default lanes install Bun; Node 24 compatibility and Node 26 rollback
 lanes each have a separate projected checkout and installation. The public
 installed-archive lane stays Node. M3 also stays Node: its trusted runner
 requires a clean exact-SHA source tree and scans the actual `.pnpm` compiler/parser

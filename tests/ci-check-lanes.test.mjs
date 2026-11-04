@@ -188,7 +188,7 @@ function validateLanes(value, manifest = packageJson) {
     const gate = aggregate(value, host);
     assert(gate, `${host}: missing aggregate`);
     assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : rollback ? `check (${os}, Node 26 rollback)` : `check (${os})`, "required context");
-    assert.equal(gate["runs-on"], os);
+    assert.equal(gate["runs-on"], os === "macos-15" ? "ubuntu-24.04" : os, "aggregate runner");
     assert.deepEqual(gate.needs, [`lanes-${host}`], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
     assert.equal(gate["continue-on-error"], undefined);
@@ -375,6 +375,7 @@ test("rejects missing, duplicate, unknown and reordered obligations on any OS", 
       change(laneJob(value, host));
       assert.throws(() => validateLanes(value));
     };
+    if (hosts[host] === "macos-15") mutate(job => { job["runs-on"] = "ubuntu-24.04"; });
     for (const row of laneJob(workflow, host).strategy.matrix.include) {
       for (const script of scriptsOf(row)) {
         mutate(job => {
@@ -450,6 +451,7 @@ test("rejects an omitted dependency, skipped aggregate or renamed required conte
       gate => { gate.needs = ["lanes-ubuntu", "lanes-macos"]; },
       gate => { gate.if = "success()"; },
       gate => { gate.name = "other"; },
+      gate => { gate["runs-on"] = "macos-15"; },
       gate => { gate.steps[0].if = "false"; },
     ]) {
       const value = clone(workflow);
