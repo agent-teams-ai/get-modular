@@ -378,5 +378,66 @@ The runtime implementation is unchanged from `6ab6180`. Its complete Bun result
 and combined Node prefix/suffix evidence remain applicable to those unchanged
 inputs; the Lifecycle harness has the separate fresh evidence above. Verifier
 adoption does not relax required checks or replace fresh CI for an updated
-branch. The working PR records the exact final source, protected merge and main
-CI results after they are observed. Package publication remains separate.
+branch. The working PR records the exact final source and its checks; merged PR
+metadata identifies the actual main commit. The final task report records the
+independently observed merge and main CI results. Package publication remains
+separate.
+
+### Native Windows qualification follow-up
+
+The subsequent `435355e3` source inherited the protected verifier adoption from
+merged main `5ead2623`. The adoption passed all 64 source CI jobs, and two
+independent post-merge checks verified its actual tree, parent, owner attribution
+and complete supplied message. The synchronized refactor received genuine
+successful identity verification. Its runtime implementation remains `6ab6180`.
+
+The preceding `8b92587` Windows Node 24 static lane reported a failed baseline
+in the unchanged generated-source quality fixture. The reporter truncated the
+underlying JSON, so that original cause could not be recovered. A separate
+[native diagnostic](https://github.com/agent-teams-ai/get-modular/actions/runs/41756116010)
+ran the same three sequential critical-test files on that exact source with
+full TAP output: 77 passed with zero failures, cancellations, skips or todos.
+The normal Windows Node 24 static lane then passed on `435355e3`. The original
+failure remains recorded; non-reproduction does not explain its cause.
+
+That source's Windows Node 24 Core lane also reported a readiness timeout in
+the existing missing-file PowerShell fixture: a 30.011-second timeout with no
+acknowledgment, followed by a release timeout at 35.014 seconds. The fixture
+calls no Core generation or cleanup implementation. Its host correctly rejects
+an unacknowledged result. The synthetic protocol controls and subsequent real
+handle and cleanup cases passed.
+
+The native launch chain was PowerShell 7, then Node, then Windows PowerShell
+5.1. The fixture inherited the parent's module search paths. Microsoft documents
+this exact [intermediate-process environment defect](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath?view=powershell-7.5#starting-windows-powershell-from-powershell-7)
+and recommends omitting `PSModulePath` from the Windows PowerShell child.
+The localized correction filters that key without regard to case at
+`spawnPowerShellLock`, preserving the other environment values and the original
+30/5/65-second bounds. No readiness result, assertion or physical lock is
+replaced. This small correction stays in the existing JavaScript fixture;
+its type-coverage gap remains, rather than expanding the change into a helper
+migration.
+
+An independently reviewed
+[Windows environment comparison](https://github.com/agent-teams-ai/get-modular/actions/runs/41762748794)
+used the exact source with temporary phase diagnostics. The inherited and
+corrected variants each passed all three existing real Windows cases, with no
+failures, cancellations, skips or todos. The receipts show PowerShell 7 paths
+in the original child and Windows PowerShell defaults in the corrected child.
+The comparison was sequential and does not establish the historical stall's
+cause or a performance improvement. It exercises only filesystem fixtures;
+its empty dependency directory is a junction target, not a package installation
+or qualification receipt. The temporary workflow is absent from this PR.
+
+A separate Windows Node 26 governance job completed all payload checks,
+including 269 governance passes and one existing platform skip, but reached its
+15-minute job deadline four seconds into the mandatory integrity step. That
+step took 10 and 12 seconds in two earlier successful runs. This is an observed
+execution-budget shortage, not evidence of an integrity-check hang. Only the
+`governance` row in `lanes-node26-windows` receives 20 minutes; every other row
+retains 15. The existing CI oracle checks that exact bounded exception. Script
+selection, step ordering, failure propagation and integrity verification remain
+mandatory. The oracle update stays local to its existing JavaScript file and
+does not claim added type coverage. Both the environment correction and this
+budget adjustment received independent critic review and require fresh CI on
+the final source.

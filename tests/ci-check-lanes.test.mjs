@@ -90,7 +90,9 @@ function validateLanes(value, manifest = packageJson) {
       : rollback ? { ROOT_CI_NODE_VERSION: "26.11.1", ROOT_CI_RUNTIME_PROFILE: "node" } : undefined,
       "default runtime or candidate selection drift");
     assert.equal(job["runs-on"], os);
-    assert.equal(job["timeout-minutes"], 15);
+    assert.equal(job["timeout-minutes"], host === "node26-windows"
+      ? "${{ matrix.lane == 'governance' && 20 || 15 }}"
+      : 15);
     assert.equal(job.strategy["fail-fast"], false);
     assert.equal(job.needs, undefined, "lane must have an independent checkout");
     assert.equal(job.if, undefined, "lane must not be skipped");
