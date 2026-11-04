@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import { assemblyFor, declareModule, defineContract, implement, type CapabilitiesOf } from "@get-modular/assembly";
 
 const Value = defineContract<number>()({ id: "census/value", revision: 1 });
@@ -36,4 +37,17 @@ test("repeated implementation IDs are sorted by ID, preserve every occurrence an
     { implementationId: "census/z", paths: [[], []], inputs: [] },
   ]);
   assert.equal(calls, 0);
+});
+
+test("temporary diagnostic: report full typed lint rules on CI", () => {
+  if (process.env.GITHUB_ACTIONS !== "true" || process.platform !== "linux") return;
+  const result = spawnSync(process.execPath, ["node_modules/stack-toolchain/dist/cli.js", "lint", "--json"], {
+    encoding: "utf8", timeout: 25_000, maxBuffer: 2_000_000,
+  });
+  console.log("TEMP_STACK_LINT_DIAG", JSON.stringify({
+    status: result.status,
+    stdout: result.stdout.slice(0, 80000),
+    stderr: result.stderr.slice(0, 10000),
+    error: result.error?.message,
+  }));
 });
