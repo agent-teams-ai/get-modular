@@ -9,7 +9,7 @@ import { checkReleaseCandidate, type CheckReport, type ExpectedInputs, type File
 import { array, assertCustody, clean, custody, execute, git, historicalFile, historicalSnapshot, identity, record, semantic,
   snapshot, text, treeDigest, type ExecutionCustody, type SourceFile, type SourceTree } from "./io.ts";
 
-import { plannedBaselines, produceBaselines, assertMetadataBaseline, baselinePaths } from "./baselines.ts";
+import { plannedBaselines, pendingMetadataCohort, produceBaselines, assertMetadataBaseline, baselinePaths } from "./baselines.ts";
 
 export const releaseBranch = "changeset-release/main";
 export const repository = "agent-teams-ai/get-modular";
@@ -33,6 +33,7 @@ export interface PreparedRelease {
   readonly rawPlan: unknown;
   readonly expected: ExpectedInputs;
   readonly hasRelease: boolean;
+  readonly pendingAdmission: boolean;
 }
 export interface CheckedCandidate { readonly report: CheckReport; readonly observed: ObservedCandidate }
 function required(tree: SourceTree, path: string): SourceFile {
@@ -130,13 +131,15 @@ function permission(tree: SourceTree, path: string, remove = false): PermittedCh
     before: before === undefined ? null : { type: "file", mode: "100644" }, after: remove ? null : { type: "file", mode: "100644" },
     contentAuthority: path.endsWith("/CHANGELOG.md") ? "get-modular.changelog-history-and-engine-replay" : "release-checks.version-and-intent-relation" };
 }
-function permissions(tree: SourceTree, plan: ExpectedInputs["plan"], acceptedIntents: readonly ReleaseIntent[]): readonly PermittedChange[] {
+function permissions(tree: SourceTree, plan: ExpectedInputs["plan"], acceptedIntents: readonly ReleaseIntent[], pendingAdmission: boolean): readonly PermittedChange[] {
   const result: PermittedChange[] = [];
   for (const release of plan.releases.filter(item => item.oldVersion !== item.newVersion)) {
     result.push(permission(tree, release.manifestPath), permission(tree, release.manifestPath.replace(/package\.json$/u, "CHANGELOG.md")));
   }
-  for (const path of plannedBaselines(tree, plan)) {
-    result.push({ ...permission(tree, path), contentAuthority: "get-modular.public-baseline-public-cli-replay" });
+  if (!pendingAdmission) {
+    for (const path of plannedBaselines(tree, plan)) {
+      result.push({ ...permission(tree, path), contentAuthority: "get-modular.public-baseline-public-cli-replay" });
+    }
   }
   for (const consumption of plan.consumptions) {
     const intent = acceptedIntents.find(item => item.id === consumption.intentId); assert(intent);
@@ -158,7 +161,7 @@ function freeze(value: unknown): void {
   }
 }
 /** Runs the sole official plan collector against clean, physically bound source before any version edit. */
-export function prepareRelease(root: string): PreparedRelease {
+export function prepareRelease(root: string, options: { readonly reportPendingAdmission?: boolean } = {}): PreparedRelease {
   clean(root);
   const execution = custody(root);
   const before = snapshot(execution.root);
@@ -175,9 +178,13 @@ export function prepareRelease(root: string): PreparedRelease {
   assert.equal(treeDigest(snapshot(execution.root)), treeDigest(before), "candidate.planning-mutated-source");
   const acceptedIntents = intents(before, packages, record(rawPlan));
   const plan = normalizePlan(record(rawPlan), packages, acceptedIntents);
+  // Only the reporting route may observe an unadmitted plan without failing.
+  // It never receives permission to generate a version or promote a baseline.
+  const pendingAdmission = options.reportPendingAdmission === true && pendingMetadataCohort(before, plan);
   const expected: ExpectedInputs = { binding: binding(before, execution, rawPlan), packages, intents: acceptedIntents,
-    plan, permittedChanges: permissions(before, plan, acceptedIntents) };
-  const prepared = { execution, before, rawPlan, expected, hasRelease: plan.releases.some(item => item.oldVersion !== item.newVersion) };
+    plan, permittedChanges: permissions(before, plan, acceptedIntents, pendingAdmission) };
+  const prepared = { execution, before, rawPlan, expected,
+    hasRelease: plan.releases.some(item => item.oldVersion !== item.newVersion), pendingAdmission };
   freeze(prepared);
   return prepared;
 }
@@ -231,6 +238,7 @@ function check(prepared: PreparedRelease, after: SourceTree, execution: Executio
   return { report, observed };
 }
 export function checkGeneratedCandidate(prepared: PreparedRelease): CheckedCandidate {
+  assert.equal(prepared.pendingAdmission, false, "candidate.pending-release-admission");
   const actual = custody(prepared.execution.root);
   assertCustody(prepared.execution, actual);
   const after = snapshot(actual.root);
@@ -238,6 +246,7 @@ export function checkGeneratedCandidate(prepared: PreparedRelease): CheckedCandi
   return check(prepared, after, actual, `worktree:${treeDigest(after)}`);
 }
 export function versionPreparedRelease(prepared: PreparedRelease): CheckedCandidate {
+  assert.equal(prepared.pendingAdmission, false, "candidate.pending-release-admission");
   assertCustody(prepared.execution, custody(prepared.execution.root));
   assert.equal(treeDigest(snapshot(prepared.execution.root)), treeDigest(prepared.before), "candidate.inputs-drifted-before-version");
   if (prepared.hasRelease) {execute(prepared.execution.root, process.execPath, [prepared.execution.engine.entrypoint, "version"]);}

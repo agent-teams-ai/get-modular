@@ -15,11 +15,24 @@ function processedMain(prepared: PreparedRelease): void {
 export function releaseCandidateMain(command: string | undefined): void {
   if (command === "status" || command === "version") { assertNodeQualification(root); }
   if (command === "status") {
-    const prepared = prepareRelease(root);
+    const prepared = prepareRelease(root, { reportPendingAdmission: true });
     processedMain(prepared);
-    const ready = String(prepared.hasRelease);
-    if (process.env.GITHUB_OUTPUT !== undefined && process.env.GITHUB_OUTPUT !== "") {appendFileSync(process.env.GITHUB_OUTPUT, `has-release=${ready}\n`);}
-    console.log(JSON.stringify({ source: prepared.execution.source, hasRelease: prepared.hasRelease, plan: prepared.expected.plan }));
+    const status = prepared.pendingAdmission ? "pending-admission" : prepared.hasRelease ? "ready" : "no-release";
+    const versionReady = status === "ready";
+    if (process.env.GITHUB_OUTPUT !== undefined && process.env.GITHUB_OUTPUT !== "") {
+      appendFileSync(process.env.GITHUB_OUTPUT, `version-ready=${versionReady}\nrelease-status=${status}\n`);
+    }
+    if (prepared.pendingAdmission) {
+      if (process.env.GITHUB_ACTIONS === "true") {
+        console.warn("::warning title=Release admission pending::The Changesets plan requires a new accepted cohort; no version branch or publication was authorized.");
+      }
+      if (process.env.GITHUB_STEP_SUMMARY !== undefined && process.env.GITHUB_STEP_SUMMARY !== "") {
+        appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+          "### Release version deferred: pending admission\n\nChangesets has a release plan, but ADR-0042 does not admit this cohort. No version branch or publication was created. The strict version and PR gates remain unchanged.\n");
+      }
+    }
+    console.log(JSON.stringify({ source: prepared.execution.source, hasRelease: prepared.hasRelease,
+      versionReady, status, plan: prepared.expected.plan }));
     return;
   }
   if (command === "version") {
