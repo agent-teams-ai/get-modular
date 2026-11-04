@@ -214,7 +214,8 @@ test("disposable packed consumer checks closed roots, synthetic wiring and both 
     command(process.execPath, ["--test", "runtime.test.mjs", "preparation.test.mjs", "inputs.test.mjs", "builder.test.mjs"], consumer);
     if (!historical) {
       const ownership = command(process.execPath, ["--test", "--test-reporter=tap", "preparation-ownership.test.ts"], consumer);
-      for (const receipt of ["tests 1", "pass 1", "fail 0", "cancelled 0", "skipped 0", "todo 0"]) {
+      assert.match(ownership, /^ok \d+ - preparation captures root aliases before awaiting Core in both modes$/mu);
+      for (const receipt of ["tests 2", "pass 2", "fail 0", "cancelled 0", "skipped 0", "todo 0"]) {
         assert.ok(ownership.includes(`# ${receipt}\n`), ownership);
       }
     }
