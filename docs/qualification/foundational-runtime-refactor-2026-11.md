@@ -18,8 +18,8 @@ related:
 
 ## Scope and evidence status
 
-The owner requested an autonomous technical-debt audit and justified refactoring
-on 2026-11-04. The reviewed starting point is
+The owner requested an autonomous technical-debt audit and justified refactoring.
+The reviewed starting point is
 `20c3ce8c5bb839a16fbe8dc258d6d96fd5206787`. This document records the concrete
 findings, implementation boundaries, verification and independent reviews. It
 does not accept a new API, change an accepted decision, qualify a release or
@@ -218,7 +218,7 @@ reason to unify them.
 ## Review and execution record
 
 - Initial independent audits: Core, Assembly/Conformance and
-  Resources/Observation/Lifecycle, using Astra with maximum reasoning effort.
+  Resources/Observation/Lifecycle, using Astra with ultra reasoning effort.
 - Initial plan critique: preserve capability-ID-only completion, atomic
   validation-before-freeze, synchronous subtree sealing and the abort-listener
   barrier. No evidence justified a production Core rewrite.
@@ -256,8 +256,77 @@ reason to unify them.
   queue preserves synchronous sealing, the abort-listener barrier, sequential
   child waiting and ordinary first-cleanup startup; no claim is made about every
   incidental nested callback ordering.
-- Repository-wide gates, final source revision and exact-head CI results remain
-  pending integration. The first plan-only GitHub check confirms that the old
-  pinned identity verifier rejects the plugin's owner-name alias despite the
-  current central policy. PR #221 owns that separate immutable-pin migration;
-  this delivery does not change identity enforcement or claim a passing check.
+- Strict typed lint also required explicit `next.done === true` checks in both
+  resource iterator loops. The exact two-line correction received independent
+  review; no suppression or broader source change was needed.
+
+### Final implementation verification
+
+The verified implementation revision is
+`6ab6180c1c5d1cc60a693e656097237c314943b2`. Final record updates after this
+revision change documentation only. Both local profiles use Node 24.22.1,
+Bun 1.4.3 where required, and the repository's official runtime entrypoint.
+The isolated Node profile uses its official projection and pnpm 11.20.0;
+installations remain separate. TypeScript is 7.0.2 for all checked compiler
+roles, including the minimum compiler floor. Ambient `NODE_PATH` is unset.
+The retained-history helper fetched and verified the required pinned source
+before the final runs; missing historical Git objects were an environment
+prerequisite, not a reason to weaken retained-evidence checks.
+
+| Verification | Observed result |
+| --- | --- |
+| Default Bun complete `check` | Exit 0, 2026-11-04 00:10:19-00:31:34 UTC. Starting and ending source are `6ab6180`; the working tree stayed clean. |
+| Isolated Node complete declared route | The original successful prefix covered preflight through Conformance runtime tests. After session interruption, all 19 remaining stages ran in declared order from `conformance:pack` through `governance:test`, each with exit 0. The suffix finished at 00:30:24 UTC. This is combined prefix/suffix evidence, not one uninterrupted successful invocation. |
+| `check:fast` | Exit 0 during integration. Because registration and lint fixes were still being committed, this is integration feedback rather than the final immutable-source receipt. |
+| `check:changed` | An early mutable run was invalidated by source edits. The isolated final-source dispatcher selected the complete check but lost its session before a final exit or report was observed. No passing wrapper result is claimed; the direct final complete checks provide the gate evidence. |
+| Strict lint, types, API and architecture | Passed in the final complete routes, including public API custody, source boundaries, feature-module profiles, contract and qualification checks. |
+
+Selected final local counts are 60 runtime-policy cases, 39 Resources cases,
+55 Conformance runtime cases, 174 Observation runtime cases, 122 SDK-growth
+cases, 117 Assembly cases and 3,150 Core cases passed. Core has five existing
+environment-dependent skips: four Windows-only cases and one permission
+control that cannot be established under root. Governance has 269 passes and
+one existing case-insensitive-volume skip. The new regressions have no skips.
+
+The 13 new focused regressions address demonstrated boundaries rather than
+duplicating every implementation detail. Packed evidence includes the Assembly
+public ownership case, all 29 Resources nested cases and the three new deep
+Observation cases, with explicit execution receipts. The closed-child GC probe
+runs against the compiled local public entry; that particular probe is not
+claimed as installed-archive evidence.
+
+Two complete independent critic rounds and targeted reviews of the subsequent
+integration fixes left no confirmed implementation finding open. This includes
+the exact final iterator correction. External review automation is separate:
+Cubic stopped at its review-size limit with a neutral result, and ReviewRouter
+reported incomplete runs without substantive coverage. Neither is an external
+approval.
+
+### External checks and delivery status
+
+At the final implementation review, the
+[CI run for `6ab6180`](https://github.com/agent-teams-ai/get-modular/actions/runs/41742420390)
+had 60 successful jobs, one failed Windows Core lane and its failed aggregate,
+and two queued macOS aggregates. Every substantive lane had finished; Assembly,
+Observation and packaging passed across all nine OS/runtime combinations.
+
+The Windows Node 26 Core failure is in the unchanged lock-acquisition fixture:
+its existing 30-second readiness deadline expired at about 30.011 seconds, while
+the expected `LOCK_FAILED` result arrived at about 30.970 seconds. The complete
+Core source tree and its build helper are unchanged by this refactor. A targeted
+retry request was rejected because the containing workflow was still running;
+there is no successful retry result to claim. The fixture deadline and required
+checks remain unchanged. This timing-sensitive failure is recorded explicitly
+instead of treating the CI run as green.
+
+The separate `commit-author-identity` status also fails: the old pinned verifier
+rejects the GitHub plugin's owner-name alias although the current central policy
+accepts it. [PR #221](https://github.com/agent-teams-ai/get-modular/pull/221)
+owns that immutable-pin migration and remains separate. This delivery does not
+change identity enforcement, merge that PR or claim the status passed.
+
+The plan preceded implementation. Each commit was immediately published through
+the GitHub plugin after its remote tree was compared with the staged local tree.
+[PR #224](https://github.com/agent-teams-ai/get-modular/pull/224) is open and ready
+for review. Nothing has been merged or released; this record qualifies the
+bounded implementation and its observed checks, not a package release.
