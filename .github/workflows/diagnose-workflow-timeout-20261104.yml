@@ -16,7 +16,6 @@ jobs:
       ROOT_CI_RUNTIME_PROFILE: node
       ROOT_CI_NODE_VERSION: 26.11.1
       FOUNDATION_PR_HEAD_REPOSITORY: agent-teams-ai/get-modular
-      WORKFLOW_NATIVE_DIAGNOSTIC_OUTPUT: ${{ runner.temp }}/workflow-timeout-observation
     steps:
       - name: Read the disposable observation controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -56,6 +55,7 @@ jobs:
       - name: Observe one unchanged-deadline mandatory selection
         working-directory: ${{ env.GM_RUNTIME_CHECKOUT }}
         env:
+          WORKFLOW_NATIVE_DIAGNOSTIC_OUTPUT: ${{ runner.temp }}/workflow-timeout-observation
           DIAGNOSTIC_CONTROLLER: ${{ github.workspace }}/diagnostic-controller/diagnostics/workflow-timeout/workflow-native-diagnostic-controller.mjs
         run: node "$env:DIAGNOSTIC_CONTROLLER"
       - name: Retain the bounded diagnostic evidence
