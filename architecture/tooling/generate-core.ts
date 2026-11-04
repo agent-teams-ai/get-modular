@@ -1,64 +1,74 @@
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import type { GitIndexSnapshot } from "../checks/tracked-file-custody.ts";
+import type { GeneratedProductionReader } from "../checks/generated-production-source.ts";
+import { buildTypeScriptProject } from "./typescript-build.ts";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 export const core = join(repository, "packages/core");
 const generated = join(core, "src/composition/generated/stage1.ts");
 const buildRoot = join(core, "dist-stage0");
-const require = createRequire(import.meta.url);
 let invoked = false;
 
-function failure(code) {
+export interface GenerationOptions {
+  readonly snapshot?: GitIndexSnapshot | undefined;
+}
+
+export interface GeneratedCore {
+  readonly verifyInputs: () => Promise<void>;
+  readonly generatedReader: GeneratedProductionReader | undefined;
+}
+
+function failure(code: string): Error & { readonly code: string } {
   return Object.assign(new Error(code), { code });
 }
 
-export async function cleanProduction() {
+export async function cleanProduction(): Promise<void> {
   const paths = [generated, join(core, "dist")];
   const results = await Promise.allSettled(
     paths.map(path => rm(path, { recursive: true, force: true })),
   );
-  const failures = results.flatMap((result, index) =>
+  const failures: { readonly path: string | undefined; readonly error: unknown }[] = results.flatMap((result, index) =>
     result.status === "rejected" ? [{ path: paths[index], error: result.reason }] : []);
-  if (failures.length === 1) throw failures[0].error;
+  const first = failures[0];
+  if (failures.length === 1 && first !== undefined) throw first.error;
   if (failures.length > 1) {
     throw new AggregateError(failures.map(({ error }) => error),
       `build.production-cleanup-failed: ${failures.map(({ path }) => path).join(", ")}`);
   }
 }
 
-export async function cleanProductionAfterFailure(error) {
+export async function cleanProductionAfterFailure(error: unknown): Promise<never> {
   try {
     await cleanProduction();
   } catch (cleanupError) {
+    const cleanupErrors: readonly unknown[] = cleanupError instanceof AggregateError ? cleanupError.errors : [cleanupError];
     throw new AggregateError([
       error,
-      ...(cleanupError instanceof AggregateError ? cleanupError.errors : [cleanupError]),
+      ...cleanupErrors,
     ], "build.failed-and-production-cleanup-failed");
   }
   throw error;
 }
 
-export function runTypeScript(configuration, noEmit = false) {
-  const tsc = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
-  const result = spawnSync(process.execPath, [
-    tsc, "-p", join(core, configuration), "--incremental", "false",
-    ...(noEmit ? ["--noEmit"] : []),
-  ], { cwd: repository, stdio: "inherit" });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw failure("build.typescript-failed");
+export function runTypeScript(configuration: string, noEmit = false): void {
+  buildTypeScriptProject({
+    repositoryRoot: repository,
+    project: join(core, configuration),
+    arguments: ["--incremental", "false", ...(noEmit ? ["--noEmit"] : [])],
+    failure: () => failure("build.typescript-failed"),
+  });
 }
 
 // A local change detector, not a retained SourceManifest or a custody claim.
 // Include unselected sources and tooling; only the two disposable generated
 // roots are omitted. Every invocation rebuilds and reads fresh namespaces.
-async function inputs(snapshot) {
-  const entries = [];
-  const discovered = new Set();
-  async function visit(path) {
+async function inputs(snapshot: GitIndexSnapshot | undefined): Promise<string> {
+  const entries: [path: string, executable: number, digest: string][] = [];
+  const discovered = new Set<string>();
+  async function visit(path: string): Promise<void> {
     if (path === "packages/core/src/composition/generated/stage1.ts"
       || path === "packages/core/src/composition/generated/stage1.variant.ts") return;
     if (discovered.has(path)) return;
@@ -80,8 +90,9 @@ async function inputs(snapshot) {
     "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json",
     "packages/core/tsconfig.test.json", "packages/core/tsconfig.typecheck.json",
     "tsconfig.base.json", "package.json",
-    "architecture/tooling/build-core.mjs", "architecture/tooling/generate-core.mjs",
-    "tests/qualification/support/construction-witness.mjs",
+    "architecture/tooling/build-core.ts", "architecture/tooling/generate-core.ts",
+    "architecture/tooling/typescript-build.ts",
+    "tests/qualification/support/construction-witness.ts",
   ];
   if (snapshot) {
     // Installed packages retain the pinned-install trust assumption. Local
@@ -107,19 +118,36 @@ async function inputs(snapshot) {
         paths.add(path);
       }
     }
-    const { verifySnapshotInputs } = await import("../checks/generated-production-source.mjs");
+    const { verifySnapshotInputs } = await import("../checks/generated-production-source.ts");
     await verifySnapshotInputs(snapshot, [...paths].sort());
   }
   return JSON.stringify(entries);
 }
 
-export async function generateCore({ snapshot } = {}) {
+// Freshly compiled seed exports are an execution boundary, not inferred `any`.
+// The witness remains the independent authority for the plan and construction.
+function invokeSeed(value: unknown, arguments_: readonly unknown[]): unknown {
+  if (typeof value !== "function") throw failure("build.invalid-seed-export");
+  const result: unknown = Reflect.apply(value, undefined, arguments_);
+  return result;
+}
+
+async function seedExport(path: string, name: string): Promise<unknown> {
+  const namespace: unknown = await import(pathToFileURL(join(buildRoot, "self-composition", path)).href);
+  if (typeof namespace !== "object" || namespace === null || !(name in namespace)) {
+    throw failure("build.invalid-seed-export");
+  }
+  const value: unknown = Reflect.get(namespace, name);
+  return value;
+}
+
+export async function generateCore({ snapshot }: GenerationOptions = {}): Promise<GeneratedCore> {
   // Reject indexed generated source before any destructive cleanup.
   if (snapshot) {
     if (resolve(snapshot.repositoryRoot) !== resolve(repository)) {
       throw failure("build.snapshot-repository-mismatch");
     }
-    const { verifySnapshotInputs } = await import("../checks/generated-production-source.mjs");
+    const { verifySnapshotInputs } = await import("../checks/generated-production-source.ts");
     await verifySnapshotInputs(snapshot, []);
   }
   // Reusing this operation in one process would reuse transitive ESM imports.
@@ -138,15 +166,16 @@ export async function generateCore({ snapshot } = {}) {
     runTypeScript("tsconfig.stage0.json");
     await unchanged();
     const { verifyConstruction, verifyGeneratedConstruction } = await import(
-      "../../tests/qualification/support/construction-witness.mjs"
+      "../../tests/qualification/support/construction-witness.ts"
     );
-    const load = path => import(pathToFileURL(join(buildRoot, "self-composition", path)).href);
-    const { compileComposition } = await load("stage0-entry.js");
-    const { ownDeclarations, ownProfile } = await load("own-profile.js");
-    const { allowlist } = await load("allowlist.js");
-    const { emitComposition } = await load("emit.js");
-    const result = await compileComposition({ declarations: ownDeclarations, profile: ownProfile });
-    if (result?.ok !== true) throw failure("emitter.invalid-result");
+    const compileComposition = await seedExport("stage0-entry.js", "compileComposition");
+    const ownDeclarations = await seedExport("own-profile.js", "ownDeclarations");
+    const ownProfile = await seedExport("own-profile.js", "ownProfile");
+    const allowlist = await seedExport("allowlist.js", "allowlist");
+    const emitComposition = await seedExport("emit.js", "emitComposition");
+    const result = await invokeSeed(compileComposition, [{ declarations: ownDeclarations, profile: ownProfile }]);
+    if (typeof result !== "object" || result === null || !("ok" in result)
+      || result.ok !== true || !("plan" in result)) throw failure("emitter.invalid-result");
     const mapping = {
       packageRoot: core, buildRoot,
       allowlistPath: "self-composition/allowlist.ts", plan: result.plan,
@@ -154,13 +183,16 @@ export async function generateCore({ snapshot } = {}) {
     await unchanged();
     // This first proof checks the entire allowlist before the renderer runs.
     await verifyConstruction({ ...mapping, compositionPath: "src/composition/stage0.ts" });
-    const sourceText = emitComposition(result, allowlist);
+    const sourceText = invokeSeed(emitComposition, [result, allowlist]);
     await verifyGeneratedConstruction({ ...mapping, sourceText });
+    // Successful generated-witness validation requires text. Keep the boundary
+    // checked locally too instead of asserting the dynamic emitter's return type.
+    if (typeof sourceText !== "string") throw failure("build.invalid-generated-text");
     await unchanged();
     await mkdir(dirname(generated), { recursive: true });
     await writeFile(generated, sourceText, { encoding: "utf8", flag: "wx" });
     const generatedReader = snapshot
-      ? (await import("../checks/generated-production-source.mjs"))
+      ? (await import("../checks/generated-production-source.ts"))
         .createGeneratedProductionReader(repository, Buffer.from(sourceText, "utf8"))
       : undefined;
     const verifyInputs = async () => {
@@ -174,7 +206,7 @@ export async function generateCore({ snapshot } = {}) {
     await verifyInputs();
     return Object.freeze({ verifyInputs, generatedReader });
   } catch (error) {
-    await cleanProductionAfterFailure(error);
+    return cleanProductionAfterFailure(error);
   }
 }
 

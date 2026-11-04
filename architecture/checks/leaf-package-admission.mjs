@@ -3,12 +3,12 @@ import { createHash } from "node:crypto";
 import { posix } from "node:path";
 import * as ts from "typescript/unstable/ast";
 import { parseTypeScript } from "../../tests/qualification/support/typescript-project.ts";
-import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
+import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.ts";
 import {
   assertLeafPackageTable, expectedLeafExports, expectedPeerDependencies, LEAF_PACKAGES, leafEntrySources,
   leafManifestPath, leafPeers, leafSubpaths, PUBLIC,
   PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
-} from "./leaf-packages.mjs";
+} from "./leaf-packages.ts";
 
 const PUBLICATION_FIELDS = Object.freeze([
   "bin", "browser", "main", "module", "publishConfig",

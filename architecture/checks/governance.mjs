@@ -7,8 +7,8 @@ import { readCurrentM2Authority } from "./m2-lock-witness.mjs";
 import { validatePrivateCoreStart } from "./private-core-start.mjs";
 import { validateAssemblyAdmission, validateLeafPackageWorkspaceAdmission } from "./assembly-admission.mjs";
 import { validateLeafPackageAdmission } from "./leaf-package-admission.mjs";
-import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.mjs";
-import { cleanProductionAfterFailure } from "../tooling/generate-core.mjs";
+import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.ts";
+import { cleanProductionAfterFailure } from "../tooling/generate-core.ts";
 
 import {
   manifestCarrierViolations,
@@ -31,7 +31,7 @@ import {
   safeRepositoryPath,
   safeRepositoryPathOrDirectory,
   untrackedPathsInScope,
-} from "./tracked-file-custody.mjs";
+} from "./tracked-file-custody.ts";
 
 export { productionArtifactPaths, productionArtifactSymlinkPaths } from
   "./production-artifacts.mjs";
@@ -834,7 +834,7 @@ export async function runGovernance() {
   try {
     if (scope.generatedSelfComposition
       && productionArtifacts.includes("packages/core/package.json")) {
-      const { buildCore } = await import("../tooling/build-core.mjs");
+      const { buildCore } = await import("../tooling/build-core.ts");
       generation = await buildCore({ snapshot });
       productionArtifacts = [...new Set([
         ...await productionArtifactPaths(root, snapshot),

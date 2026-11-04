@@ -1,22 +1,22 @@
 import assert from "node:assert/strict";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn, spawnSync, type SpawnSyncReturns } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { chmod, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 
 const repository = fileURLToPath(new URL("../../../../", import.meta.url));
 const generated = "src/composition/generated/stage1.ts";
 
-async function fixture(t) {
+async function fixture(t: TestContext) {
   const directory = await realpath(await mkdtemp(join(tmpdir(), "gm-production-generation-")));
   t.after(() => rm(directory, { recursive: true, force: true }));
   for (const path of [
     "package.json", "tsconfig.base.json",
-    "architecture/tooling/build-core.mjs", "architecture/tooling/generate-core.mjs",
-    "tests/qualification/support/construction-witness.mjs",
+    "architecture/tooling/build-core.ts", "architecture/tooling/generate-core.ts", "architecture/tooling/typescript-build.ts",
+    "tests/qualification/support/construction-witness.ts",
     "packages/core/package.json", "packages/core/tsconfig.json",
     "packages/core/tsconfig.typecheck.json", "packages/core/tsconfig.test.json",
     "packages/core/tsconfig.stage0.json", "packages/core/tsconfig.seed.json",
@@ -32,13 +32,13 @@ async function fixture(t) {
     process.platform === "win32" ? "junction" : "dir");
   const core = join(directory, "packages/core");
   await rm(join(core, "src/composition/generated"), { recursive: true, force: true });
-  const run = args => spawnSync(process.execPath, args, {
+  const run = (args: readonly string[]) => spawnSync(process.execPath, args, {
     cwd: directory, encoding: "utf8", timeout: 120_000, maxBuffer: 4_000_000,
   });
-  const build = () => run(["architecture/tooling/build-core.mjs"]);
-  const generate = () => run(["architecture/tooling/generate-core.mjs"]);
-  const typecheck = () => run(["architecture/tooling/generate-core.mjs", "--typecheck"]);
-  const put = async (path, text) => {
+  const build = () => run(["architecture/tooling/build-core.ts"]);
+  const generate = () => run(["architecture/tooling/generate-core.ts"]);
+  const typecheck = () => run(["architecture/tooling/generate-core.ts", "--typecheck"]);
+  const put = async (path: string, text: string) => {
     await mkdir(dirname(join(core, path)), { recursive: true });
     await writeFile(join(core, path), text);
   };
@@ -55,25 +55,25 @@ async function fixture(t) {
   return { directory, core, run, build, generate, typecheck, put, absent, poison };
 }
 
-function succeeds(result) {
+function succeeds(result: SpawnSyncReturns<string>): void {
   assert.ifError(result.error);
   assert.equal(result.signal, null);
   assert.equal(result.status, 0, result.stdout + result.stderr);
 }
 
-function fails(result, expected) {
+function fails(result: SpawnSyncReturns<string>, expected: RegExp): void {
   assert.ifError(result.error);
   assert.equal(result.signal, null);
   assert.notEqual(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout + result.stderr, expected);
 }
 
-async function bounded(promise, milliseconds, message) {
-  let timer;
+async function bounded<T>(promise: Promise<T>, milliseconds: number, message: () => string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
-      new Promise((_, reject) => {
+      new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error(message())), milliseconds);
       }),
     ]);
@@ -82,13 +82,46 @@ async function bounded(promise, milliseconds, message) {
   }
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function hasErrorCode(error: unknown, codes: readonly string[]): boolean {
+  return error instanceof Error && "code" in error
+    && typeof error.code === "string" && codes.includes(error.code);
+}
+
+async function fixtureCleanup(directory: string): Promise<() => Promise<unknown>> {
+  const namespace: unknown = await import(
+    pathToFileURL(join(directory, "architecture/tooling/generate-core.ts")).href
+  );
+  assert.ok(typeof namespace === "object" && namespace !== null && "cleanProduction" in namespace);
+  const cleanProduction: unknown = namespace.cleanProduction;
+  assert.ok(typeof cleanProduction === "function");
+  return async () => {
+    const result: unknown = Reflect.apply(cleanProduction, undefined, []);
+    return await result;
+  };
+}
+
+interface LockFailure {
+  readonly type: string;
+  readonly hresult: number;
+  readonly message: string;
+}
+
+type LockReadiness = { readonly acquired: true }
+  | { readonly acquired: false; readonly failure: LockFailure };
+
 const LOCK_FAILED_PREFIX = "LOCK_FAILED ";
 const LOCK_ACQUISITION_FAILED_EXIT = 3;
 
 // A failed exclusive open is an acknowledged terminal outcome of the child
 // protocol, distinct from a missing or late LOCK_READY, which stays a rejection.
 class LockAcquisitionError extends Error {
-  constructor(failure, status) {
+  readonly failure: LockFailure;
+
+  constructor(failure: LockFailure, status: string) {
     super(`Windows lock acquisition failed: ${JSON.stringify(failure)}; ${status}`);
     this.name = "LockAcquisitionError";
     this.failure = failure;
@@ -97,20 +130,21 @@ class LockAcquisitionError extends Error {
 
 // The child emits exactly these three fields; any other payload is a protocol
 // violation, never an acquisition failure.
-function parseLockFailure(line) {
-  let value;
+function parseLockFailure(line: string): LockFailure {
+  let value: unknown;
   try {
     value = JSON.parse(line.slice(LOCK_FAILED_PREFIX.length));
   } catch (error) {
     throw new Error(`malformed LOCK_FAILED record ${JSON.stringify(line)}`, { cause: error });
   }
-  const isRecord = value !== null && typeof value === "object" && !Array.isArray(value);
-  if (!isRecord || Object.keys(value).sort().join() !== "hresult,message,type"
-    || typeof value.type !== "string" || value.type === ""
-    || !Number.isInteger(value.hresult) || typeof value.message !== "string") {
+  if (value === null || typeof value !== "object" || Array.isArray(value)
+    || Object.keys(value).sort().join() !== "hresult,message,type"
+    || !("type" in value) || typeof value.type !== "string" || value.type === ""
+    || !("hresult" in value) || typeof value.hresult !== "number" || !Number.isInteger(value.hresult)
+    || !("message" in value) || typeof value.message !== "string") {
     throw new Error(`invalid LOCK_FAILED record shape ${JSON.stringify(line)}`);
   }
-  return value;
+  return { type: value.type, hresult: value.hresult, message: value.message };
 }
 
 // Both fixture-owned paths travel through the environment, never script text.
@@ -158,7 +192,7 @@ const windowsLockScript = `
     }
   `;
 
-const spawnPowerShellLock = env => spawn("powershell.exe", [
+const spawnPowerShellLock = (env: NodeJS.ProcessEnv) => spawn("powershell.exe", [
   "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", windowsLockScript,
 ], {
   // A Node intermediary can carry PowerShell 7 module paths into Windows
@@ -173,7 +207,9 @@ const spawnPowerShellLock = env => spawn("powershell.exe", [
 
 // spawnLock is replaceable only so the host-side protocol can be exercised
 // without Windows; the physical lock behavior is covered by the real child.
-async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock) {
+async function withWindowsFileLock(
+  path: string, action: () => Promise<void>, spawnLock = spawnPowerShellLock,
+): Promise<void> {
   const started = performance.now();
   const releasePath = `${path}.${randomUUID()}.release`;
   const child = spawnLock({
@@ -181,13 +217,13 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
   });
   let output = "";
   let diagnostics = "";
-  let childError;
-  let spawnedAt;
-  let exitedAt;
-  let closedAt;
+  let childError: Error | undefined;
+  let spawnedAt: number | undefined;
+  let exitedAt: number | undefined;
+  let closedAt: number | undefined;
   let didClose = false;
   let markerCreated = false;
-  const errors = [];
+  const errors: unknown[] = [];
   const elapsed = () => Math.round(performance.now() - started);
   // Spawn confirms OS process creation, not PowerShell script execution or a
   // file lock. Only the existing stdout acknowledgment authorizes the action.
@@ -201,27 +237,27 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
     `stdout=${JSON.stringify(output)}; stderr=${JSON.stringify(diagnostics)}`;
   // Chronology and violations persist until natural close: the first decisive
   // line settles readiness, but a later contradictory line is still a failure.
-  const protocol = [];
-  const protocolErrors = [];
+  const protocol: string[] = [];
+  const protocolErrors: Error[] = [];
   const counts = { ready: 0, failed: 0 };
   let pending = "";
-  const violation = message => {
+  const violation = (message: string) => {
     const error = new Error(`lock child protocol violation: ${message}: ${status()}`);
     protocolErrors.push(error);
     return error;
   };
   child.stderr.setEncoding("utf8");
-  child.stderr.on("data", chunk => {
+  child.stderr.on("data", (chunk: string) => {
     diagnostics = (diagnostics + chunk).slice(-8_192);
   });
-  const closed = new Promise(resolve => {
+  const closed = new Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>(resolve => {
     child.once("close", (code, signal) => {
       closedAt = elapsed();
       didClose = true;
       resolve({ code, signal });
     });
   });
-  const ready = new Promise((resolve, reject) => {
+  const ready = new Promise<LockReadiness>((resolve, reject) => {
     child.once("error", error => {
       childError = error;
       reject(error);
@@ -229,7 +265,7 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
     child.stdout.setEncoding("utf8");
     // Settling is idempotent, so a rejection after the first outcome only
     // reaches the final report through protocolErrors.
-    const handleLine = line => {
+    const handleLine = (line: string) => {
       if (line === "LOCK_READY") {
         counts.ready += 1;
         protocol.push(`${elapsed()}ms READY`);
@@ -245,16 +281,16 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
           try {
             resolve({ acquired: false, failure: parseLockFailure(line) });
           } catch (error) {
-            reject(violation(error.message));
+            reject(violation(errorMessage(error)));
           }
         }
       }
     };
-    child.stdout.on("data", chunk => {
+    child.stdout.on("data", (chunk: string) => {
       output = (output + chunk).slice(-8_192);
       // Only complete lines count; the unterminated tail may be a partial record.
       const lines = (pending + chunk).split(/\r?\n/u);
-      pending = lines.pop();
+      pending = lines.pop() ?? "";
       lines.forEach(handleLine);
     });
     child.once("close", () => {
@@ -262,7 +298,7 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
       reject(new Error(`lock child exited before readiness: ${status()}`));
     });
   });
-  let acquisitionFailure;
+  let acquisitionFailure: LockFailure | undefined;
   try {
     // Native Windows CI has exceeded the former 10s first-ack allowance.
     // Only LOCK_READY or a valid LOCK_FAILED still settles readiness.
@@ -320,7 +356,7 @@ async function withWindowsFileLock(path, action, spawnLock = spawnPowerShellLock
   if (errors.length > 1) {
     // Inner messages are inlined because assertion output stringifies only the wrapper.
     throw new AggregateError(errors, "Windows file lock action/readiness and teardown failed: " +
-      errors.map(error => error.message).join(" | "));
+      errors.map(errorMessage).join(" | "));
   }
 }
 
@@ -332,10 +368,11 @@ test("Windows lock helper reports failed acquisition and settles without running
   let called = false;
   await assert.rejects(withWindowsFileLock(join(directory, "missing.ts"), async () => {
     called = true;
-  }), error => {
+  }), (error: unknown) => {
     // A timeout, early exit or teardown failure is an AggregateError or another
     // type and fails here with its nested messages in the assertion output.
-    assert.ok(error instanceof LockAcquisitionError, `${error}\n${error.stack}`);
+    assert.ok(error instanceof LockAcquisitionError,
+      error instanceof Error ? `${error}\n${error.stack}` : String(error));
     assert.match(error.failure.type, /^System\.IO\.FileNotFoundException$/u, String(error));
     assert.match(error.message, /LOCK_OPENING/u);
     assert.doesNotMatch(error.message, /LOCK_READY/u);
@@ -348,7 +385,7 @@ test("Windows lock helper reports failed acquisition and settles without running
 // Platform-neutral host protocol checks; the child below only emits the lines
 // under test and holds no file lock.
 const probeFailure = { type: "Probe.Failure", hresult: 1, message: "nested" };
-const nodeLockChild = source => env => spawn(process.execPath, ["-e", source], {
+const nodeLockChild = (source: string) => (env: NodeJS.ProcessEnv) => spawn(process.execPath, ["-e", source], {
   env, stdio: ["ignore", "pipe", "pipe"], timeout: 30_000,
 });
 
@@ -362,7 +399,7 @@ test("lock host treats an acknowledged failed open as the one expected rejection
     console.error("LOCK_OPENING");
     console.log('${LOCK_FAILED_PREFIX}' + JSON.stringify({ type: "Probe.Failure", hresult: 1, message: "nested" }));
     process.exitCode = ${LOCK_ACQUISITION_FAILED_EXIT};
-  `)), error => {
+  `)), (error: unknown) => {
     assert.ok(error instanceof LockAcquisitionError, String(error));
     assert.deepEqual(error.failure, { type: "Probe.Failure", hresult: 1, message: "nested" });
     return true;
@@ -380,9 +417,9 @@ test("lock host still rejects a child that exits before any acknowledgment", asy
   }, nodeLockChild(`
     console.error("LOCK_OPENING");
     process.exitCode = ${LOCK_ACQUISITION_FAILED_EXIT};
-  `)), error => {
+  `)), (error: unknown) => {
     assert.equal(error instanceof LockAcquisitionError, false);
-    assert.match(String(error.message), /lock child exited before readiness:/u);
+    assert.match(errorMessage(error), /lock child exited before readiness:/u);
     return true;
   });
   assert.equal(called, false);
@@ -396,7 +433,7 @@ test("lock host rejects a failed-open acknowledgment with an unexpected exit cod
     nodeLockChild(`
       console.log('${LOCK_FAILED_PREFIX}' + JSON.stringify(${JSON.stringify(probeFailure)}));
       process.exitCode = 0;
-    `)), error => {
+    `)), (error: unknown) => {
     assert.ok(error instanceof AggregateError, String(error));
     assert.ok(error.errors[0] instanceof LockAcquisitionError);
     assert.match(error.message, /exitCode=0/u);
@@ -408,7 +445,7 @@ test("lock host rejects a failed-open acknowledgment with an unexpected exit cod
 test("lock host rejects malformed and non-record failure payloads as protocol errors", async t => {
   const directory = await mkdtemp(join(tmpdir(), "gm-lock-protocol-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const cases = [
+  const cases: readonly (readonly [string, RegExp])[] = [
     ["{not json", /malformed LOCK_FAILED record/u],
     ["null", /invalid LOCK_FAILED record shape/u],
     ["[]", /invalid LOCK_FAILED record shape/u],
@@ -423,9 +460,9 @@ test("lock host rejects malformed and non-record failure payloads as protocol er
     }, nodeLockChild(`
       console.log(${JSON.stringify(LOCK_FAILED_PREFIX + payload)});
       process.exitCode = ${LOCK_ACQUISITION_FAILED_EXIT};
-    `)), error => {
+    `)), (error: unknown) => {
       assert.equal(error instanceof LockAcquisitionError, false, payload);
-      assert.match(error.message, expected, payload);
+      assert.match(errorMessage(error), expected, payload);
       return true;
     });
     assert.equal(called, false, payload);
@@ -439,21 +476,21 @@ test("lock host rejects readiness and failure split across stdout chunks in eith
   const failed = LOCK_FAILED_PREFIX + JSON.stringify(probeFailure);
   // The pause between writes keeps the two records in separate chunks, after the
   // first one has already settled readiness.
-  const splitChild = (first, second, exitCode) => nodeLockChild(`
+  const splitChild = (first: string, second: string, exitCode: number) => nodeLockChild(`
     const lines = ${JSON.stringify([first, second])};
     process.stdout.write(lines[0] + "\\n", () => setTimeout(() => {
       process.stdout.write(lines[1] + "\\n", () => { process.exitCode = ${exitCode}; });
     }, 200));
   `);
-  const orders = [
+  const orders: readonly (readonly [string, string, string, number, RegExp])[] = [
     ["failed then ready", failed, "LOCK_READY", LOCK_ACQUISITION_FAILED_EXIT, /LOCK_READY after LOCK_FAILED/u],
     ["ready then failed", "LOCK_READY", failed, 0, /LOCK_FAILED after LOCK_READY/u],
   ];
   for (const [name, first, second, exitCode, expected] of orders) {
     await assert.rejects(withWindowsFileLock(join(directory, "missing.ts"), async () => {},
-      splitChild(first, second, exitCode)), error => {
-      assert.match(error.message, expected, name);
-      assert.match(error.message, /protocol=\["\d+ms (READY|FAILED)","\d+ms (READY|FAILED)"\]/u, name);
+      splitChild(first, second, exitCode)), (error: unknown) => {
+      assert.match(errorMessage(error), expected, name);
+      assert.match(errorMessage(error), /protocol=\["\d+ms (READY|FAILED)","\d+ms (READY|FAILED)"\]/u, name);
       return true;
     });
     assert.deepEqual(await readdir(directory), [], name);
@@ -469,12 +506,12 @@ test("Windows lock helper releases its real handle and marker after an action fa
   await writeFile(path, "owned fixture\n");
   const actionError = new Error("owned action failure");
   await assert.rejects(withWindowsFileLock(path, async () => {
-    await assert.rejects(rm(path), error => {
-      assert.ok(["EPERM", "EACCES", "EBUSY"].includes(error.code), String(error));
+    await assert.rejects(rm(path), (error: unknown) => {
+      assert.ok(hasErrorCode(error, ["EPERM", "EACCES", "EBUSY"]), String(error));
       return true;
     });
     throw actionError;
-  }), error => error === actionError);
+  }), (error: unknown) => error === actionError);
   assert.equal(await readFile(path, "utf8"), "owned fixture\n");
   await rm(path);
   assert.deepEqual(await readdir(directory), []);
@@ -482,14 +519,12 @@ test("Windows lock helper releases its real handle and marker after an action fa
 
 test("generated cleanup failure still removes stale production output", async t => {
   const f = await fixture(t);
-  const { cleanProduction } = await import(
-    pathToFileURL(join(f.directory, "architecture/tooling/generate-core.mjs")).href
-  );
+  const cleanProduction = await fixtureCleanup(f.directory);
   if (process.platform === "win32") {
     await f.poison();
     await withWindowsFileLock(join(f.core, generated), async () => {
-      await assert.rejects(cleanProduction(), error => {
-        assert.ok(["EPERM", "EACCES", "EBUSY"].includes(error.code), String(error));
+      await assert.rejects(cleanProduction(), (error: unknown) => {
+        assert.ok(hasErrorCode(error, ["EPERM", "EACCES", "EBUSY"]), String(error));
         assert.equal(error instanceof AggregateError, false);
         return true;
       });
@@ -503,8 +538,8 @@ test("generated cleanup failure still removes stale production output", async t 
     const blocker = "src/composition/generated";
     await f.put(blocker, "not a directory\n");
     await f.put("dist/index.js", "export const stale = true;\n");
-    await assert.rejects(cleanProduction(), error => {
-      assert.equal(error.code, "ENOTDIR");
+    await assert.rejects(cleanProduction(), (error: unknown) => {
+      assert.ok(hasErrorCode(error, ["ENOTDIR"]), String(error));
       assert.equal(error instanceof AggregateError, false);
       return true;
     });
@@ -527,13 +562,11 @@ test("permission failures attempt both removals and retain every cleanup error",
       : false,
 }, async t => {
   const f = await fixture(t);
-  const { cleanProduction } = await import(
-    pathToFileURL(join(f.directory, "architecture/tooling/generate-core.mjs")).href
-  );
+  const cleanProduction = await fixtureCleanup(f.directory);
   const generatedDirectory = dirname(join(f.core, generated));
   const dist = join(f.core, "dist");
-  const denied = error => {
-    assert.ok(["EACCES", "EPERM"].includes(error.code), String(error));
+  const denied = (error: unknown) => {
+    assert.ok(hasErrorCode(error, ["EACCES", "EPERM"]), String(error));
     return true;
   };
   for (const blockGenerated of [false, true]) {
@@ -545,16 +578,20 @@ test("permission failures attempt both removals and retain every cleanup error",
     try {
       if (blockGenerated) await chmod(generatedDirectory, 0o555);
       await chmod(f.core, 0o555);
-      await assert.rejects(cleanProduction(), error => {
+      await assert.rejects(cleanProduction(), (error: unknown) => {
         if (!blockGenerated) {
           assert.equal(error instanceof AggregateError, false);
           return denied(error);
         }
         assert.ok(error instanceof AggregateError);
-        assert.equal(error.errors.length, 2);
-        error.errors.forEach(denied);
-        assert.equal(error.errors[0].path, join(f.core, generated));
-        assert.equal(error.errors[1].path, dist);
+        const failures: readonly unknown[] = error.errors;
+        assert.equal(failures.length, 2);
+        failures.forEach(denied);
+        const [generatedFailure, distFailure] = failures;
+        assert.ok(generatedFailure instanceof Error && "path" in generatedFailure);
+        assert.ok(distFailure instanceof Error && "path" in distFailure);
+        assert.equal(generatedFailure.path, join(f.core, generated));
+        assert.equal(distFailure.path, dist);
         assert.ok(error.message.includes(join(f.core, generated)));
         assert.ok(error.message.includes(dist));
         return true;

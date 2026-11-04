@@ -140,9 +140,9 @@ On 2026-09-07 the product owner authorized M3 implementation and the full
 end-to-end qualification work. Generated production assembly is implemented in
 this atomic checkpoint: the public barrel, generation/build sequence, source
 boundaries, archive inventory and their guards switch together. The
-[production generator](../../architecture/tooling/generate-core.mjs) uses the
+[production generator](../../architecture/tooling/generate-core.ts) uses the
 existing [emitter](../../packages/core/self-composition/emit.ts); the
-[production generation tests](../../packages/core/tests/qualification/production-generation.test.mjs)
+[production generation tests](../../packages/core/tests/qualification/production-generation.test.ts)
 cover that integration. Full M3 cold recovery, retained-archive qualification
 and runtime proof remain pending. This implementation authorization grants no
 conformance or promotion: neither `self-composed-qualified` nor

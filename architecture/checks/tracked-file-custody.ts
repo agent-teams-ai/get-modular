@@ -1,8 +1,64 @@
 import { execFile, spawn } from "node:child_process";
 import { constants } from "node:fs";
+import type { FileHandle } from "node:fs/promises";
 import { lstat, open, realpath } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { promisify } from "node:util";
+
+/** One complete, materialized index observation; it grants no working-tree authority. */
+export type IndexEntry =
+  | { readonly kind: "regular" | "intent-to-add"; readonly mode: "100644" | "100755"; readonly oid: string; readonly stage: "0" }
+  | { readonly kind: "symlink"; readonly mode: "120000"; readonly oid: string; readonly stage: "0" };
+
+export interface GitIndexSnapshot {
+  readonly version: 1;
+  readonly repositoryRoot: string;
+  readonly headTreeOid: string | null;
+  readonly entries: ReadonlyMap<string, IndexEntry>;
+}
+
+export interface WorkingTreeProjection {
+  readonly path: string;
+  readonly sourceOid: string;
+  readonly sourceBytes: Buffer;
+  readonly projectedBytes: Buffer;
+}
+
+export interface WorkspaceVerificationOptions {
+  readonly expectedHeadCommit?: string | undefined;
+  readonly afterFirstPass?: (() => unknown) | undefined;
+  readonly workingTreeProjections?: readonly WorkingTreeProjection[] | undefined;
+}
+
+export type WorkingTreeFailure = {
+  readonly kind: "unsafe" | "missing" | "symlink" | "non-regular" | "outside" | "changed-during-read";
+};
+export type WorkingTreeReadResult = WorkingTreeFailure
+  | { readonly kind: "regular"; readonly bytes: Buffer; readonly executable: boolean };
+export type TrackedFileFailure = WorkingTreeFailure
+  | { readonly kind: "untracked" | "invalid-index-entry" | "intent-to-add" | "working-tree-diverged" };
+export type TrackedFileReadResult = TrackedFileFailure
+  | { readonly kind: "regular"; readonly tracked: true; readonly bytes: Buffer };
+export type IndexFileReadResult = TrackedFileFailure
+  | { readonly kind: "regular"; readonly tracked: true; readonly oid: string; readonly bytes: Buffer };
+
+export interface IndexReadOptions {
+  readonly afterIndexLookup?: ((entry: { readonly oid: string; readonly path: string }) => unknown) | undefined;
+}
+
+interface StagedEntry { readonly mode: string; readonly oid: string; readonly stage: string }
+interface TreeEntry { readonly mode: string; readonly oid: string; readonly type: string }
+interface DiffEntry {
+  readonly oldMode: string; readonly newMode: string;
+  readonly oldOid: string; readonly newOid: string; readonly status: string;
+}
+
+type WorkingTreePath = WorkingTreeFailure | { readonly kind: "regular"; readonly path: string };
+
+function errorCode(error: unknown): unknown {
+  return error !== null && (typeof error === "object" || typeof error === "function") && "code" in error
+    ? error.code : undefined;
+}
 
 const execFileAsync = promisify(execFile);
 const NON_PORTABLE_PATH_CHARACTERS = /[<>:"|?*\p{Cc}\p{Cf}\p{Cs}]/u;
@@ -26,8 +82,8 @@ const EMPTY_BLOB_OIDS = new Set([
 
 // Git must observe only the repository below repositoryRoot: no GIT_DIR,
 // GIT_WORK_TREE, GIT_INDEX_FILE, replace refs, or user/system configuration.
-function hermeticGitEnvironment() {
-  const environment = {};
+function hermeticGitEnvironment(): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
   for (const [name, value] of Object.entries(process.env)) {
     if (!name.startsWith("GIT_")) environment[name] = value;
   }
@@ -39,7 +95,7 @@ function hermeticGitEnvironment() {
   return environment;
 }
 
-export function safeRepositoryPath(value) {
+export function safeRepositoryPath(value: unknown): value is string {
   return typeof value === "string"
     && SAFE_RELATIVE_PATH.test(value)
     && !/^[A-Za-z]:[\\/]/u.test(value)
@@ -51,14 +107,14 @@ export function safeRepositoryPath(value) {
       && !WINDOWS_DEVICE_NAME.test(segment));
 }
 
-export function safeRepositoryPathOrDirectory(value) {
+export function safeRepositoryPathOrDirectory(value: unknown): boolean {
   const path = typeof value === "string" && value.endsWith("/")
     ? value.slice(0, -1)
     : value;
   return safeRepositoryPath(path);
 }
 
-async function inspectWorkingTreePath(relativePath, repositoryRoot) {
+async function inspectWorkingTreePath(relativePath: string, repositoryRoot: string): Promise<WorkingTreePath> {
   if (!safeRepositoryPath(relativePath)) return { kind: "unsafe" };
   const parts = relativePath.split("/");
   let current = repositoryRoot;
@@ -68,7 +124,7 @@ async function inspectWorkingTreePath(relativePath, repositoryRoot) {
     try {
       status = await lstat(current);
     } catch (error) {
-      if (["ENOENT", "ENOTDIR"].includes(error?.code)) return { kind: "missing" };
+      if (errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR") return { kind: "missing" };
       throw error;
     }
     if (status.isSymbolicLink()) return { kind: "symlink" };
@@ -87,11 +143,11 @@ async function inspectWorkingTreePath(relativePath, repositoryRoot) {
   return { kind: "regular", path: current };
 }
 
-export async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
+export async function readWorkingTreeRegularFile(relativePath: string, repositoryRoot: string): Promise<WorkingTreeReadResult> {
   const before = await inspectWorkingTreePath(relativePath, repositoryRoot);
   if (before.kind !== "regular") return before;
 
-  let handle;
+  let handle: FileHandle | undefined;
   try {
     handle = await open(before.path, constants.O_RDONLY | constants.O_NOFOLLOW);
     const status = await handle.stat();
@@ -110,8 +166,8 @@ export async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
     if (after.kind !== "regular") return after;
     return { kind: "regular", bytes, executable: (status.mode & 0o111) !== 0 };
   } catch (error) {
-    if (["ELOOP", "ENOENT", "ENOTDIR"].includes(error?.code)) {
-      return { kind: error.code === "ELOOP" ? "symlink" : "missing" };
+    if (errorCode(error) === "ELOOP" || errorCode(error) === "ENOENT" || errorCode(error) === "ENOTDIR") {
+      return { kind: errorCode(error) === "ELOOP" ? "symlink" : "missing" };
     }
     throw error;
   } finally {
@@ -119,7 +175,7 @@ export async function readWorkingTreeRegularFile(relativePath, repositoryRoot) {
   }
 }
 
-async function runGit(repositoryRoot, args) {
+async function runGit(repositoryRoot: string, args: readonly string[]) {
   return execFileAsync("git", ["--no-replace-objects", "--literal-pathspecs", ...args], {
     cwd: repositoryRoot,
     encoding: null,
@@ -128,7 +184,7 @@ async function runGit(repositoryRoot, args) {
   });
 }
 
-async function assertRepositoryToplevel(repositoryRoot) {
+async function assertRepositoryToplevel(repositoryRoot: string): Promise<void> {
   const { stdout } = await runGit(repositoryRoot, ["rev-parse", "--show-toplevel"]);
   const toplevel = await realpath(stdout.toString("utf8").replace(/\r?\n$/u, ""));
   if (toplevel !== await realpath(repositoryRoot)) {
@@ -138,18 +194,18 @@ async function assertRepositoryToplevel(repositoryRoot) {
   }
 }
 
-export async function isStartingBaseAncestor(baseCommit, repositoryRoot) {
+export async function isStartingBaseAncestor(baseCommit: string, repositoryRoot: string): Promise<boolean> {
   if (!GIT_OBJECT_ID.test(baseCommit)) throw new Error("invalid starting Git commit");
   try {
     await runGit(repositoryRoot, ["merge-base", "--is-ancestor", baseCommit, "HEAD"]);
     return true;
   } catch (error) {
-    if (error?.code === 1) return false;
+    if (errorCode(error) === 1) return false;
     throw error;
   }
 }
 
-async function exactIndexEntry(relativePath, repositoryRoot) {
+async function exactIndexEntry(relativePath: string, repositoryRoot: string): Promise<IndexEntry | { readonly kind: "untracked" | "invalid-index-entry" }> {
   try {
     const snapshot = await captureGitIndexSnapshot(repositoryRoot);
     return snapshot.entries.get(relativePath) ?? { kind: "untracked" };
@@ -158,9 +214,9 @@ async function exactIndexEntry(relativePath, repositoryRoot) {
   }
 }
 
-function parseStagedIndexEntries(output) {
+function parseStagedIndexEntries(output: Buffer): ReadonlyMap<string, StagedEntry> {
   if (!Buffer.isBuffer(output)) throw new TypeError("Git index snapshot must be bytes");
-  const entries = new Map();
+  const entries = new Map<string, StagedEntry>();
   let offset = 0;
   while (offset < output.length) {
     const terminator = output.indexOf(0, offset);
@@ -177,7 +233,8 @@ function parseStagedIndexEntries(output) {
     }
     const [, mode, oid, stage] = match;
     offset = terminator + 1;
-    if (!GIT_OBJECT_ID.test(oid) || !/^[0-3]$/u.test(stage)) {
+    if (mode === undefined || oid === undefined || stage === undefined
+      || !GIT_OBJECT_ID.test(oid) || !/^[0-3]$/u.test(stage)) {
       throw new Error("invalid Git index snapshot identity");
     }
     if (entries.has(path)) throw new Error("duplicate path in Git index snapshot");
@@ -186,9 +243,9 @@ function parseStagedIndexEntries(output) {
   return entries;
 }
 
-function parseMaterializedTree(output) {
+function parseMaterializedTree(output: Buffer): ReadonlyMap<string, TreeEntry> {
   if (!Buffer.isBuffer(output)) throw new TypeError("Git tree listing must be bytes");
-  const entries = new Map();
+  const entries = new Map<string, TreeEntry>();
   let offset = 0;
   while (offset < output.length) {
     const terminator = output.indexOf(0, offset);
@@ -205,7 +262,8 @@ function parseMaterializedTree(output) {
       throw new Error("Git tree listing contains an unsafe or non-UTF-8 path");
     }
     const [, mode, type, oid] = match;
-    if (!/^[0-7]{6}$/u.test(mode) || !GIT_OBJECT_ID.test(oid) || entries.has(path)) {
+    if (mode === undefined || type === undefined || oid === undefined
+      || !/^[0-7]{6}$/u.test(mode) || !GIT_OBJECT_ID.test(oid) || entries.has(path)) {
       throw new Error("invalid or duplicate Git tree identity");
     }
     entries.set(path, { mode, type, oid });
@@ -213,9 +271,9 @@ function parseMaterializedTree(output) {
   return entries;
 }
 
-function parseRawIndexDiff(output) {
+function parseRawIndexDiff(output: Buffer): ReadonlyMap<string, DiffEntry> {
   if (!Buffer.isBuffer(output)) throw new TypeError("Git index diff must be bytes");
-  const entries = new Map();
+  const entries = new Map<string, DiffEntry>();
   let offset = 0;
   while (offset < output.length) {
     const headerEnd = output.indexOf(0, offset);
@@ -231,7 +289,8 @@ function parseRawIndexDiff(output) {
       throw new Error("Git index diff contains an unsafe or non-UTF-8 path");
     }
     const [, oldMode, newMode, oldOid, newOid, status] = match;
-    if (!/^[0-7]{6}$/u.test(oldMode) || !/^[0-7]{6}$/u.test(newMode)
+    if (oldMode === undefined || newMode === undefined || oldOid === undefined || newOid === undefined || status === undefined
+      || !/^[0-7]{6}$/u.test(oldMode) || !/^[0-7]{6}$/u.test(newMode)
       || !GIT_OBJECT_ID.test(oldOid) || !GIT_OBJECT_ID.test(newOid)
       || entries.has(path)) {
       throw new Error("invalid or duplicate Git index diff identity");
@@ -242,12 +301,17 @@ function parseRawIndexDiff(output) {
   return entries;
 }
 
-function materializeIndexEntries(stagedEntries, headEntries, diffEntries) {
-  const entries = new Map();
+function materializeIndexEntries(
+  stagedEntries: ReadonlyMap<string, StagedEntry>,
+  headEntries: ReadonlyMap<string, TreeEntry>,
+  diffEntries: ReadonlyMap<string, DiffEntry>,
+): ReadonlyMap<string, IndexEntry> {
+  const entries = new Map<string, IndexEntry>();
   const unmatchedDiffPaths = new Set(diffEntries.keys());
   for (const [path, entry] of stagedEntries) {
-    if (entry.stage !== "0") throw new Error("Git index snapshot contains an unmerged entry");
-    if (!REGULAR_FILE_MODE.test(entry.mode) && entry.mode !== SYMBOLIC_LINK_MODE) {
+    const { mode, oid, stage } = entry;
+    if (stage !== "0") throw new Error("Git index snapshot contains an unmerged entry");
+    if (mode !== "100644" && mode !== "100755" && mode !== SYMBOLIC_LINK_MODE) {
       throw new Error("Git index snapshot contains an unsupported file mode");
     }
     const headEntry = headEntries.get(path);
@@ -259,17 +323,16 @@ function materializeIndexEntries(stagedEntries, headEntries, diffEntries) {
       && diffEntry?.newMode === entry.mode
       && diffEntry?.newOid === entry.oid;
     if (!matchesHead && !matchesDiff) {
-      if (!REGULAR_FILE_MODE.test(entry.mode) || !EMPTY_BLOB_OIDS.has(entry.oid)) {
+      if (mode === SYMBOLIC_LINK_MODE || !EMPTY_BLOB_OIDS.has(oid)) {
         throw new Error("Git index snapshot differs from its HEAD and materialized diff");
       }
-      entries.set(path, { kind: "intent-to-add", ...entry });
+      entries.set(path, { kind: "intent-to-add", mode, oid, stage });
       continue;
     }
     if (diffEntry) unmatchedDiffPaths.delete(path);
-    entries.set(path, {
-      kind: entry.mode === SYMBOLIC_LINK_MODE ? "symlink" : "regular",
-      ...entry,
-    });
+    entries.set(path, mode === SYMBOLIC_LINK_MODE
+      ? { kind: "symlink", mode, oid, stage }
+      : { kind: "regular", mode, oid, stage });
   }
   for (const path of unmatchedDiffPaths) {
     if (diffEntries.get(path)?.status !== "D") {
@@ -279,13 +342,13 @@ function materializeIndexEntries(stagedEntries, headEntries, diffEntries) {
   return entries;
 }
 
-function parseTreeOid(output) {
+function parseTreeOid(output: Buffer): string {
   const oid = output.toString("ascii").replace(/\r?\n$/u, "");
   if (!GIT_OBJECT_ID.test(oid)) throw new Error("invalid materialized Git tree identity");
   return oid;
 }
 
-function parseNulPaths(output) {
+function parseNulPaths(output: Buffer): string[] {
   if (!Buffer.isBuffer(output)) throw new TypeError("Git path listing must be bytes");
   if (output.length === 0) return [];
   if (output.at(-1) !== 0) throw new Error("invalid unterminated Git path listing");
@@ -304,10 +367,10 @@ function parseNulPaths(output) {
   return paths;
 }
 
-export async function captureGitIndexSnapshot(repositoryRoot) {
+export async function captureGitIndexSnapshot(repositoryRoot: string): Promise<GitIndexSnapshot> {
   await assertRepositoryToplevel(repositoryRoot);
-  let headTreeOid = null;
-  let headTreeBytes = Buffer.alloc(0);
+  let headTreeOid: string | null = null;
+  let headTreeBytes: Buffer = Buffer.alloc(0);
   try {
     const { stdout } = await runGit(repositoryRoot, [
       "rev-parse", "--verify", "--quiet", "HEAD^{tree}",
@@ -317,7 +380,7 @@ export async function captureGitIndexSnapshot(repositoryRoot) {
       "ls-tree", "--full-tree", "-r", "-z", headTreeOid,
     ]));
   } catch (error) {
-    if (error?.code !== 1) throw error;
+    if (errorCode(error) !== 1) throw error;
   }
   const { stdout: stagedBytes } = await runGit(repositoryRoot, ["ls-files", "--stage", "-z"]);
   const { stdout: diffBytes } = await runGit(repositoryRoot, [
@@ -336,19 +399,19 @@ export async function captureGitIndexSnapshot(repositoryRoot) {
   });
 }
 
-export function indexSnapshotPaths(snapshot) {
+export function indexSnapshotPaths(snapshot: GitIndexSnapshot): string[] {
   if (snapshot?.version !== INDEX_SNAPSHOT_VERSION || !(snapshot.entries instanceof Map)) {
     throw new TypeError("invalid Git index snapshot");
   }
   return [...snapshot.entries.keys()];
 }
 
-export function indexSnapshotSymlinkPaths(snapshot) {
+export function indexSnapshotSymlinkPaths(snapshot: GitIndexSnapshot): string[] {
   return indexSnapshotPaths(snapshot)
     .filter(path => snapshot.entries.get(path)?.kind === "symlink");
 }
 
-export async function assertGitIndexSnapshotCurrent(snapshot) {
+export async function assertGitIndexSnapshotCurrent(snapshot: GitIndexSnapshot): Promise<void> {
   const expectedPaths = indexSnapshotPaths(snapshot);
   const current = await captureGitIndexSnapshot(snapshot.repositoryRoot);
   const currentPaths = indexSnapshotPaths(current);
@@ -367,22 +430,17 @@ export async function assertGitIndexSnapshotCurrent(snapshot) {
   }
 }
 
-async function currentHeadCommit(repositoryRoot) {
+async function currentHeadCommit(repositoryRoot: string): Promise<string> {
   const { stdout } = await runGit(repositoryRoot, ["rev-parse", "--verify", "HEAD^{commit}"]);
   const oid = stdout.toString("ascii").replace(/\r?\n$/u, "");
   if (!GIT_OBJECT_ID.test(oid)) throw new Error("invalid HEAD commit identity");
   return oid;
 }
 
-/**
- * @param {string} repositoryRoot
- * @param {{ expectedHeadCommit?: string, afterFirstPass?: () => unknown,
- * workingTreeProjections?: readonly {path: string, sourceOid: string, sourceBytes: Buffer, projectedBytes: Buffer}[] }} [options]
- */
 export async function assertTrackedWorkspaceMatchesHead(
-  repositoryRoot,
-  { expectedHeadCommit, afterFirstPass, workingTreeProjections = [] } = {},
-) {
+  repositoryRoot: string,
+  { expectedHeadCommit, afterFirstPass, workingTreeProjections = [] }: WorkspaceVerificationOptions = {},
+): Promise<void> {
   const initialHeadCommit = await currentHeadCommit(repositoryRoot);
   if (expectedHeadCommit !== undefined && initialHeadCommit !== expectedHeadCommit) {
     throw new Error(
@@ -404,7 +462,7 @@ export async function assertTrackedWorkspaceMatchesHead(
     throw new Error("TRACKED_FILE_CUSTODY_FAILED: Git index differs from HEAD");
   }
 
-  const expectedBlobs = [];
+  const expectedBlobs: string[] = [];
   for (const path of paths) {
     const indexEntry = snapshot.entries.get(path);
     const headEntry = headEntries.get(path);
@@ -421,7 +479,7 @@ export async function assertTrackedWorkspaceMatchesHead(
   const expectedByPath = new Map(paths.map((path, index) => [path, blobBytes[index]]));
   // A Host may supply a finite, authenticated source-to-working representation.
   // HEAD/index identity, regular-file modes and both read passes remain mandatory.
-  const projectedPaths = new Set();
+  const projectedPaths = new Set<string>();
   for (const projection of workingTreeProjections) {
     const original = expectedByPath.get(projection.path);
     if (projectedPaths.has(projection.path) || !Buffer.isBuffer(original)
@@ -433,13 +491,15 @@ export async function assertTrackedWorkspaceMatchesHead(
     projectedPaths.add(projection.path);
     expectedByPath.set(projection.path, Buffer.from(projection.projectedBytes));
   }
-  const assertWorkingTreePass = async orderedPaths => {
+  const assertWorkingTreePass = async (orderedPaths: readonly string[]): Promise<void> => {
     for (const path of orderedPaths) {
       const workingTree = await readWorkingTreeRegularFile(path, repositoryRoot);
-      const expectedExecutable = snapshot.entries.get(path).mode === "100755";
+      const expectedExecutable = snapshot.entries.get(path)?.mode === "100755";
+      const expected = expectedByPath.get(path);
       if (workingTree.kind !== "regular"
         || workingTree.executable !== expectedExecutable
-        || !workingTree.bytes.equals(expectedByPath.get(path))) {
+        || !Buffer.isBuffer(expected)
+        || !workingTree.bytes.equals(expected)) {
         throw new Error(
           `TRACKED_FILE_CUSTODY_FAILED: working-tree bytes or mode differ from HEAD: ${path} `
           + `(${workingTree.kind})`,
@@ -457,7 +517,7 @@ export async function assertTrackedWorkspaceMatchesHead(
   }
 }
 
-export async function untrackedPathsInScope(snapshot, pathspecs) {
+export async function untrackedPathsInScope(snapshot: GitIndexSnapshot, pathspecs: readonly string[]): Promise<string[]> {
   const { stdout } = await runGit(snapshot.repositoryRoot, [
     "ls-files",
     "--others",
@@ -470,10 +530,10 @@ export async function untrackedPathsInScope(snapshot, pathspecs) {
 }
 
 export async function inspectIndexSnapshotFile(
-  snapshot,
-  relativePath,
-  { afterIndexLookup } = {},
-) {
+  snapshot: GitIndexSnapshot,
+  relativePath: string,
+  { afterIndexLookup }: IndexReadOptions = {},
+): Promise<IndexFileReadResult> {
   if (!safeRepositoryPath(relativePath)) return { kind: "unsafe" };
   const indexEntry = snapshot?.entries?.get(relativePath);
   if (!indexEntry) {
@@ -498,7 +558,7 @@ export async function inspectIndexSnapshotFile(
   };
 }
 
-export async function readIndexSnapshotFile(snapshot, relativePath, label, options) {
+export async function readIndexSnapshotFile(snapshot: GitIndexSnapshot, relativePath: string, label: string, options?: IndexReadOptions): Promise<Buffer> {
   const file = await inspectIndexSnapshotFile(snapshot, relativePath, options);
   if (file.kind !== "regular" || file.tracked !== true) {
     throw new Error(
@@ -511,7 +571,7 @@ export async function readIndexSnapshotFile(snapshot, relativePath, label, optio
 }
 
 // Source fact only: this does not admit any working-tree representation.
-export async function readIndexSnapshotBlob(snapshot, relativePath) {
+export async function readIndexSnapshotBlob(snapshot: GitIndexSnapshot, relativePath: string): Promise<Buffer> {
   indexSnapshotPaths(snapshot);
   const entry = snapshot.entries.get(relativePath);
   if (!safeRepositoryPath(relativePath) || entry?.kind !== "regular") {
@@ -521,7 +581,7 @@ export async function readIndexSnapshotBlob(snapshot, relativePath) {
   return stdout;
 }
 
-export async function historicalFileVersions(relativePath, repositoryRoot) {
+export async function historicalFileVersions(relativePath: string, repositoryRoot: string): Promise<Buffer[]> {
   if (!safeRepositoryPath(relativePath)) throw new TypeError("unsafe historical file path");
   const { stdout: shallowBytes } = await runGit(repositoryRoot, [
     "rev-parse",
@@ -549,7 +609,7 @@ export async function historicalFileVersions(relativePath, repositoryRoot) {
   if (commits.length === 0) {
     throw new Error(`historical custody file has no committed history: ${relativePath}`);
   }
-  const oids = [];
+  const oids: string[] = [];
   for (const commit of commits) {
     const { stdout: entryBytes } = await runGit(repositoryRoot, [
       "ls-tree",
@@ -567,7 +627,7 @@ export async function historicalFileVersions(relativePath, repositoryRoot) {
     const header = tab < 0 ? "" : record.subarray(0, tab).toString("ascii");
     const match = /^(\S+) (\S+) (\S+)$/u.exec(header);
     const pathBytes = tab < 0 ? Buffer.alloc(0) : record.subarray(tab + 1);
-    if (!match
+    if (!match || match[1] === undefined || match[3] === undefined
       || !REGULAR_FILE_MODE.test(match[1])
       || match[2] !== "blob"
       || !GIT_OBJECT_ID.test(match[3])
@@ -586,10 +646,10 @@ export async function historicalFileVersions(relativePath, repositoryRoot) {
 // below fails loudly instead. The promise settles only in "close", so the function never returns
 // while git is alive (on Windows a live git.exe still holds the working directory).
 export async function readBlobBatch(
-  repositoryRoot,
-  oids,
-  { maxOutputBytes = MAX_BLOB_BATCH_BYTES } = {},
-) {
+  repositoryRoot: string,
+  oids: readonly string[],
+  { maxOutputBytes = MAX_BLOB_BATCH_BYTES }: { readonly maxOutputBytes?: number | undefined } = {},
+): Promise<Buffer[]> {
   if (oids.length === 0) return [];
   const child = spawn("git", [
     "--no-replace-objects", "cat-file", "--batch=%(objectname) %(objecttype) %(objectsize)",
@@ -598,13 +658,13 @@ export async function readBlobBatch(
     env: hermeticGitEnvironment(),
     stdio: ["pipe", "pipe", "pipe"],
   });
-  const finished = new Promise((resolveOutput, reject) => {
-    const chunks = [];
+  const finished = new Promise<Buffer>((resolveOutput, reject) => {
+    const chunks: Buffer[] = [];
     let received = 0;
-    let overflow = null;
-    let stdinError = null;
-    let stderrTail = Buffer.alloc(0);
-    child.stdout.on("data", chunk => {
+    let overflow: Error | null = null;
+    let stdinError: Error | null = null;
+    let stderrTail: Buffer = Buffer.alloc(0);
+    child.stdout.on("data", (chunk: Buffer) => {
       if (overflow) return;
       received += chunk.length;
       if (received > maxOutputBytes) {
@@ -617,7 +677,7 @@ export async function readBlobBatch(
       }
       chunks.push(chunk);
     });
-    child.stderr.on("data", chunk => {
+    child.stderr.on("data", (chunk: Buffer) => {
       stderrTail = Buffer.concat([stderrTail, chunk]).subarray(-STDERR_TAIL_BYTES);
     });
     // A spawn failure leaves no process to wait for.
@@ -640,8 +700,8 @@ export async function readBlobBatch(
   return parseBlobBatchOutput(await finished, oids);
 }
 
-export function parseBlobBatchOutput(output, oids) {
-  const versions = [];
+export function parseBlobBatchOutput(output: Buffer, oids: readonly string[]): Buffer[] {
+  const versions: Buffer[] = [];
   let offset = 0;
   for (const oid of oids) {
     const newline = output.indexOf(0x0a, offset);
@@ -680,7 +740,7 @@ export function parseBlobBatchOutput(output, oids) {
 
 // Navigation reads intentionally observe the working tree so local edits are visible.
 // They prove only that the path is a tracked, in-repository regular file.
-export async function inspectTrackedWorkingTreeRegularFile(relativePath, repositoryRoot) {
+export async function inspectTrackedWorkingTreeRegularFile(relativePath: string, repositoryRoot: string): Promise<TrackedFileReadResult> {
   const workingTree = await readWorkingTreeRegularFile(relativePath, repositoryRoot);
   if (workingTree.kind !== "regular") return workingTree;
   const indexEntry = await exactIndexEntry(relativePath, repositoryRoot);
@@ -692,7 +752,7 @@ export async function inspectTrackedWorkingTreeRegularFile(relativePath, reposit
   };
 }
 
-export async function readTrackedWorkingTreeRegularFile(relativePath, repositoryRoot, label) {
+export async function readTrackedWorkingTreeRegularFile(relativePath: string, repositoryRoot: string, label: string): Promise<Buffer> {
   const file = await inspectTrackedWorkingTreeRegularFile(relativePath, repositoryRoot);
   if (file.kind !== "regular" || file.tracked !== true) {
     throw new Error(
@@ -706,10 +766,10 @@ export async function readTrackedWorkingTreeRegularFile(relativePath, repository
 // Accepted authority reads use the exact blob named by the index, never pathname bytes.
 // The callback is a narrow test seam for deterministic replacement-race regression evidence.
 export async function inspectAcceptedAuthorityFile(
-  relativePath,
-  repositoryRoot,
-  { afterIndexLookup } = {},
-) {
+  relativePath: string,
+  repositoryRoot: string,
+  { afterIndexLookup }: IndexReadOptions = {},
+): Promise<IndexFileReadResult> {
   const workingTree = await readWorkingTreeRegularFile(relativePath, repositoryRoot);
   if (workingTree.kind !== "regular") return workingTree;
   const indexEntry = await exactIndexEntry(relativePath, repositoryRoot);
@@ -725,7 +785,7 @@ export async function inspectAcceptedAuthorityFile(
   };
 }
 
-export async function readAcceptedAuthorityFile(relativePath, repositoryRoot, label, options) {
+export async function readAcceptedAuthorityFile(relativePath: string, repositoryRoot: string, label: string, options?: IndexReadOptions): Promise<Buffer> {
   const file = await inspectAcceptedAuthorityFile(relativePath, repositoryRoot, options);
   if (file.kind !== "regular" || file.tracked !== true) {
     throw new Error(

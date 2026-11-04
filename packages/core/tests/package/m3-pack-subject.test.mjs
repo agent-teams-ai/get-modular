@@ -66,7 +66,7 @@ async function fixture(t) {
   }));
   // Only this disposable repository runs this fixture build. It intentionally
   // cannot pass the real generated closure audit and cannot produce a subject.
-  await file('architecture/tooling/build-core.mjs', [
+  await file('architecture/tooling/build-core.ts', [
     "import { mkdir, writeFile } from 'node:fs/promises';",
     "await mkdir('packages/core/dist', { recursive: true });",
     "await mkdir('packages/core/src/composition/generated', { recursive: true });",
@@ -174,5 +174,5 @@ test('replacement commit cannot supply bytes under the original exact SHA', asyn
   assert.equal(result.status, 'failed');
   assert.equal(result.failure.code, 'pack.dirty-source');
   assert.equal(result.packInvocations, 0);
-  assert.equal(result.commands.some(row => row.args.some(arg => arg.endsWith('build-core.mjs'))), false);
+  assert.equal(result.commands.some(row => row.args.some(arg => arg.endsWith('build-core.ts'))), false);
 });

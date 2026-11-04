@@ -10,7 +10,7 @@ import { validateAssemblyAdmission, createHistoricalM2EvidenceReader } from '../
 import { M2_EVIDENCE_LEDGER, validateM2StartAuthority } from '../architecture/checks/m2-evidence.mjs';
 import { M2_LOCK_DECISION, M2_LOCK_WITNESS, M2_ORIGINAL_DECISION,
   M2_LEDGER_DIGEST, m2Digest, readCurrentM2Authority } from '../architecture/checks/m2-lock-witness.mjs';
-import { captureGitIndexSnapshot, assertGitIndexSnapshotCurrent } from '../architecture/checks/tracked-file-custody.mjs';
+import { captureGitIndexSnapshot, assertGitIndexSnapshotCurrent } from '../architecture/checks/tracked-file-custody.ts';
 import { readRuntimeIndexSnapshotFile as readIndexSnapshotFile } from '../architecture/tooling/runtime/projection-custody.ts';
 import { prepareM2EvidenceFixture, validateM2FixtureEvents } from './qualification/support/m2-evidence-fixture.mjs';
 
@@ -130,7 +130,7 @@ test('both frozen suites execute verbatim and fixture or terminal-result substit
     assert.throws(() => validateM2FixtureEvents(events, fixture.directory));
     assert.throws(() => validateM2FixtureEvents(receipt.events, join(fixture.directory, 'substituted')));
     for (const path of ['pnpm-lock.yaml', 'architecture/checks/private-core-start.mjs',
-      'architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.mjs',
+      'architecture/checks/assembly-admission.mjs', 'architecture/checks/leaf-packages.ts',
       'architecture/tooling/runtime/projection-custody.ts', 'architecture/tooling/runtime/policy.ts',
       'tests/m2-start.test.mjs', 'm2-reporter.mjs', 'node_modules/canonicalize/lib/canonicalize.js']) {
       const target = join(fixture.directory, path), bytes = await readFile(target);

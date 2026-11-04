@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { parse } from "yaml";
-import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.mjs";
+import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.ts";
 import {
   manifestCarrierViolations,
   packageManifestInventory,
 } from "./production-artifacts.mjs";
-import { safeRepositoryPath } from "./tracked-file-custody.mjs";
+import { safeRepositoryPath } from "./tracked-file-custody.ts";
 
 export const ASSEMBLY_MANIFEST_PATH = "packages/assembly/package.json";
 export const ASSEMBLY_DECISION_PATH =

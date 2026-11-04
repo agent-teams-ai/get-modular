@@ -46,12 +46,12 @@ Full runtime conformance and release custody remain separate claims.
 
 Generated production assembly is implemented in the atomic M3 checkpoint
 authorized by the product owner on 2026-09-07. The
-[production generator](../../architecture/tooling/generate-core.mjs) connects the
+[production generator](../../architecture/tooling/generate-core.ts) connects the
 existing [finite emitter](../../packages/core/self-composition/emit.ts) and
-[construction witness](../../tests/qualification/support/construction-witness.mjs)
+[construction witness](../../tests/qualification/support/construction-witness.ts)
 to the production build. The
-[construction tests](../../packages/core/tests/qualification/construction-witness.test.mjs)
-and [production generation tests](../../packages/core/tests/qualification/production-generation.test.mjs)
+[construction tests](../../packages/core/tests/qualification/construction-witness.test.ts)
+and [production generation tests](../../packages/core/tests/qualification/production-generation.test.ts)
 cover the verification seams and generated build integration. Full M3 cold
 recovery, retained-archive qualification and runtime proof remain pending;
 neither `self-composed-qualified` nor `release-eligible` is claimed.
@@ -1006,7 +1006,7 @@ the generated TypeScript would compile and W0/W1 would agree with each other.
 ## Construction witness and checkpoint A
 
 The M1 executable checks are in
-[construction-witness.test.mjs](../../packages/core/tests/qualification/construction-witness.test.mjs)
+[construction-witness.test.ts](../../packages/core/tests/qualification/construction-witness.test.ts)
 and [canonicalizer-replacement.test.mjs](../../packages/core/tests/qualification/canonicalizer-replacement.test.mjs).
 Their finite source reader uses the pinned development TypeScript scanner and
 the matching freshly built feature namespaces. Source/build custody remains the

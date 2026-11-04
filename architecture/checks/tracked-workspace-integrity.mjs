@@ -1,4 +1,4 @@
-import { assertTrackedWorkspaceMatchesHead } from "./tracked-file-custody.mjs";
+import { assertTrackedWorkspaceMatchesHead } from "./tracked-file-custody.ts";
 
 await assertTrackedWorkspaceMatchesHead(process.cwd(), {
   expectedHeadCommit: process.env.EXPECTED_HEAD_SHA,

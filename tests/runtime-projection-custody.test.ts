@@ -4,7 +4,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile, chmod } fro
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
-import { captureGitIndexSnapshot, readIndexSnapshotFile, assertTrackedWorkspaceMatchesHead } from "../architecture/checks/tracked-file-custody.mjs";
+import { captureGitIndexSnapshot, readIndexSnapshotFile, assertTrackedWorkspaceMatchesHead } from "../architecture/checks/tracked-file-custody.ts";
 import { productionArtifactPaths } from "../architecture/checks/production-artifacts.mjs";
 import { readRuntimeIndexSnapshotFile, verifyRuntimeWorkspace } from "../architecture/tooling/runtime/projection-custody.ts";
 import { markerPath, project, projectionPaths } from "../architecture/tooling/runtime/policy.ts";
@@ -32,7 +32,7 @@ async function fixture(body: (root: string) => Promise<void>): Promise<void> {
     await put(source, "architecture/foundation/dependency-declarations.yaml", "schemaVersion: 2\npackageManager:\n  kind: bun\n");
     for (const path of [".gitattributes", "architecture/tooling/runtime/policy.ts", "architecture/tooling/runtime/dev.ts",
       "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/projection-custody.ts",
-      "architecture/checks/tracked-file-custody.mjs", "architecture/checks/node-version.mjs"]) {
+      "architecture/checks/tracked-file-custody.ts", "architecture/checks/node-version.mjs"]) {
       await mkdir(dirname(join(source, path)), { recursive: true });
       await copyFile(join(repository, path), join(source, path));
     }

@@ -3,9 +3,10 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   core, cleanProductionAfterFailure, generateCore, runTypeScript,
-} from "./generate-core.mjs";
+} from "./generate-core.ts";
+import type { GeneratedCore, GenerationOptions } from "./generate-core.ts";
 
-export async function buildCore({ snapshot } = {}) {
+export async function buildCore({ snapshot }: GenerationOptions = {}): Promise<GeneratedCore> {
   // Generation owns initial cleanup and rejects indexed generated source first.
   const capability = await generateCore({ snapshot });
   try {
@@ -19,7 +20,7 @@ export async function buildCore({ snapshot } = {}) {
     }
     return capability;
   } catch (error) {
-    await cleanProductionAfterFailure(error);
+    return cleanProductionAfterFailure(error);
   }
 }
 

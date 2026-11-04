@@ -62,7 +62,7 @@ async function fixture(body: (root: string, temporary: string) => Promise<void>)
       "architecture/tooling/runtime/dev.ts", "architecture/tooling/runtime/admission.ts",
       "architecture/tooling/runtime/projection-custody.ts",
       "architecture/checks/node-version.mjs", "architecture/checks/tracked-workspace-integrity.mjs",
-      "architecture/checks/tracked-file-custody.mjs"]) {
+      "architecture/checks/tracked-file-custody.ts"]) {
       await mkdir(dirname(join(root, path)), { recursive: true });
       await copyFile(join(repository, path), join(root, path));
     }

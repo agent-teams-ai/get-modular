@@ -887,7 +887,7 @@ boundaries:
       - packages/core/self-composition/emit.ts
       - packages/core/tests/features/canonicalization/witness-variant/declaration.ts
       - packages/core/tests/features/canonicalization/witness-variant/factory.ts
-      - packages/core/tests/package/build-closure.test.mjs
+      - packages/core/tests/package/build-closure.test.ts
     allow:
       boundaries:
         - core-authoring
@@ -984,7 +984,7 @@ boundaries:
     entrypoints:
       - architecture/checks/assembly-admission.mjs
       - architecture/checks/feature-module-standard-profile.mjs
-      - architecture/checks/generated-production-source.mjs
+      - architecture/checks/generated-production-source.ts
       - architecture/checks/governance.mjs
       - architecture/checks/implementation-clarifications.mjs
       - architecture/checks/m2-evidence.mjs
@@ -995,11 +995,11 @@ boundaries:
       - architecture/checks/production-artifacts.mjs
       - architecture/checks/release-owned-files.mjs
       - architecture/checks/retained-descriptor-source.mjs
-      - architecture/checks/tracked-file-custody.mjs
+      - architecture/checks/tracked-file-custody.ts
       - architecture/checks/v1-contract.mjs
       - architecture/checks/v1-qualification.mjs
-      - architecture/tooling/build-assembly.mjs
-      - architecture/tooling/build-core.mjs
+      - architecture/tooling/build-assembly.ts
+      - architecture/tooling/build-core.ts
       - architecture/tooling/codemods/run.mjs
       - architecture/tooling/codemods/project.ts
       - architecture/tooling/first-core-release.mjs
@@ -1012,7 +1012,7 @@ boundaries:
       - architecture/tooling/runtime/retained-history.ts
       - architecture/tooling/runtime/projection-check.ts
       - architecture/tooling/runtime/projection-custody.ts
-      - architecture/tooling/generate-core.mjs
+      - architecture/tooling/generate-core.ts
       - architecture/tooling/test-assembly-types.mjs
       - tests/qualification/m2-candidate/combined-case-inventory.mjs
       - tests/qualification/m2-candidate/generation-two-artifacts.mjs
@@ -1023,6 +1023,7 @@ boundaries:
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts
       - tests/qualification/support/pinned-pnpm.ts
+      - tests/qualification/support/construction-witness.ts
     allow:
       boundaries:
         - assembly-examples

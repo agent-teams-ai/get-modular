@@ -45,7 +45,22 @@
     "../architecture/tooling/runtime/retained-history.ts",
     "qualification/support/forged-changesets-status.ts",
     "release-candidate.test.ts",
-    "qualification/metadata-patch-pack.ts"
+    "qualification/metadata-patch-pack.ts",
+    "../architecture/checks/tracked-file-custody.ts",
+    "../architecture/checks/generated-production-source.ts",
+    "../architecture/checks/leaf-packages.ts",
+    "../architecture/tooling/generate-core.ts",
+    "../architecture/tooling/build-core.ts",
+    "../architecture/tooling/build-assembly.ts",
+    "../architecture/tooling/build-leaf-package.ts",
+    "../architecture/tooling/typescript-build.ts",
+    "qualification/support/construction-witness.ts",
+    "generated-production-source.test.ts",
+    "tracked-file-custody.test.ts",
+    "build-custody-contract.test.ts",
+    "../packages/core/tests/qualification/construction-witness.test.ts",
+    "../packages/core/tests/qualification/production-generation.test.ts",
+    "../packages/core/tests/package/build-closure.test.ts"
   ],
   "include": []
 }

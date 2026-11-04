@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
-import { LEAF_PACKAGES } from "./leaf-packages.mjs";
+import { LEAF_PACKAGES } from "./leaf-packages.ts";
 import {
   ACCEPTED_PACKAGE_NAMES,
   assemblyManifestViolations,
@@ -14,7 +14,7 @@ import {
   productionArtifactSymlinkPaths,
   productionArtifactsOutsidePackages,
 } from "./production-artifacts.mjs";
-import { safeRepositoryPath } from "./tracked-file-custody.mjs";
+import { safeRepositoryPath } from "./tracked-file-custody.ts";
 
 export const PROFILE_PATH = "architecture/feature-module-standard-profile.json";
 export const PROFILE_DOCUMENT_PATH = "docs/architecture/feature-module-standard.md";
@@ -45,12 +45,12 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "architecture:feature-module-profile:test":
     "node architecture/tooling/runtime/command.ts run quality:critical:test && node --test tests/feature-module-standard-profile.test.mjs tests/release-owned-files.test.mjs tests/public-api-compatibility.test.mjs tests/required-quality-tests.test.mjs tests/compiler-floor.test.ts tests/native-tooling.test.ts",
   "core:typecheck":
-    "node architecture/tooling/generate-core.mjs --typecheck",
+    "node architecture/tooling/generate-core.ts --typecheck",
   "core:typecheck:prepared":
     "node node_modules/typescript/bin/tsc -p packages/core/tsconfig.typecheck.json --noEmit",
-  "core:build": "node architecture/tooling/build-core.mjs",
-  "core:test": 'node --test "packages/core/tests/**/*.test.mjs"',
-  "assembly:build": "node architecture/tooling/runtime/command.ts run core:build && node architecture/tooling/build-assembly.mjs",
+  "core:build": "node architecture/tooling/build-core.ts",
+  "core:test": 'node --test "packages/core/tests/**/*.test.mjs" "packages/core/tests/**/*.test.ts"',
+  "assembly:build": "node architecture/tooling/runtime/command.ts run core:build && node architecture/tooling/build-assembly.ts",
   "assembly:typecheck": "node node_modules/typescript/bin/tsc -p packages/assembly/tsconfig.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.consumer-fixtures.json --noEmit && node node_modules/typescript/bin/tsc -p tests/tsconfig.assembly-tooling.json --noEmit",
   "assembly:test": "node --test \"tests/assembly/**/*.test.mjs\" \"packages/assembly/tests/**/*.test.mjs\" \"tests/assembly/**/*.test.ts\" \"packages/assembly/tests/**/*.test.ts\"",
   "contracts:check": "node architecture/tooling/runtime/command.ts tool architecture/checks/v1-contract.mjs",
@@ -69,7 +69,7 @@ const REQUIRED_SCRIPT_DEFINITIONS = Object.freeze({
   "lint:typed": "node architecture/tooling/runtime/command.ts tool agent-teams-foundation quality check --consumer .",
   "prelint:typed": "node architecture/checks/compiler-floor.ts",
   "governance:check": "node architecture/checks/governance.mjs",
-  "governance:test": "node --test tests/governance.test.mjs tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.mjs tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
+  "governance:test": "node --test tests/governance.test.mjs tests/tracked-file-custody.test.ts tests/build-custody-contract.test.ts tests/node-runtime-compatibility.test.mjs tests/assembly-admission.test.mjs tests/private-core-start.test.mjs tests/m3-start.test.mjs tests/generated-production-source.test.ts tests/leaf-package-admission.test.mjs tests/ci-check-lanes.test.mjs tests/codemods/codemods.test.mjs",
   "qualification:resource-profile": "node tests/qualification/v1-resource-profile.mjs",
   "qualification:v1-diagnostics-protocol":
     "node --test tests/qualification/v1-diagnostics-protocol.mjs",

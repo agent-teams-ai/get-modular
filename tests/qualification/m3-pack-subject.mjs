@@ -214,7 +214,7 @@ export async function runPackSubject(options) {
     metadata.source = snapshot;
     await put(join(output, 'source-inputs.json'), json(snapshot));
     await sourceDirectories(root);
-    await command(node, [join(root, 'architecture/tooling/build-core.mjs')], root, 600000);
+    await command(node, [join(root, 'architecture/tooling/build-core.ts')], root, 600000);
     need(same(await tracked(), snapshot), 'pack.source-changed');
     const generatedBytes = await bytes(join(root, GENERATED));
     metadata.generatedWiring = { path: GENERATED, bytes: generatedBytes.length, sha256: hash(generatedBytes) };

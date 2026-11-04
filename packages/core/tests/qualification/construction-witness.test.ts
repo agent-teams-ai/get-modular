@@ -6,12 +6,73 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 import canonicalize from 'canonicalize';
-import { compileComposition as direct } from '../../dist-stage0/self-composition/stage0-entry.js';
-import { ownDeclarations, ownProfile } from '../../dist-stage0/self-composition/own-profile.js';
-import { ownDeclarations as variantDeclarations, ownProfile as variantProfile } from '../../dist-seed/self-composition/own-profile.variant.js';
-import { verifyConstruction, verifyGeneratedConstruction } from '../qualification-support/support/construction-witness.mjs';
+import { verifyConstruction, verifyGeneratedConstruction, type ConstructionTuple, type WitnessInput } from '../../../../tests/qualification/support/construction-witness.ts';
+
+// Mutable views of the fields these tests inspect and deliberately corrupt.
+// They retain the original records, including fields outside this test's view.
+interface SelectionFixture extends Record<string, unknown> { moduleId: string; implementationId: string }
+interface BindingFixture extends Record<string, unknown> { consumerImplementationId: string; slotId: string; providerImplementationIds: string[] }
+interface SlotFixture extends Record<string, unknown> { slotId: string }
+interface DeclarationFixture extends Record<string, unknown> { implementationId: string; slots: SlotFixture[] }
+interface ProfileFixture extends Record<string, unknown> { roots: string[]; selections: SelectionFixture[]; bindings: BindingFixture[] }
+interface PlanFixture extends ProfileFixture { dependencyOrder: string[] }
+interface Fixture extends WitnessInput { plan: PlanFixture }
+type SourceMutation = [name: string, mutate: (source: string) => string, reason?: string];
+function record(value: unknown): asserts value is Record<string, unknown> {
+  assert.ok(value !== null && typeof value === 'object' && !Array.isArray(value));
+}
+function array(value: unknown): asserts value is unknown[] { assert.ok(Array.isArray(value)); }
+function strings(value: unknown): asserts value is string[] {
+  array(value); assert.ok(value.every(item => typeof item === 'string'));
+}
+function selection(value: unknown): asserts value is SelectionFixture {
+  record(value); assert.equal(typeof value.moduleId, 'string'); assert.equal(typeof value.implementationId, 'string');
+}
+function binding(value: unknown): asserts value is BindingFixture {
+  record(value); assert.equal(typeof value.consumerImplementationId, 'string'); assert.equal(typeof value.slotId, 'string'); strings(value.providerImplementationIds);
+}
+function declaration(value: unknown): asserts value is DeclarationFixture {
+  record(value); assert.equal(typeof value.implementationId, 'string'); array(value.slots);
+  for (const slot of value.slots) { record(slot); assert.equal(typeof slot.slotId, 'string'); }
+}
+function declarations(value: unknown): DeclarationFixture[] {
+  array(value); const rows: DeclarationFixture[] = [];
+  for (const row of value) { declaration(row); rows.push(row); }
+  return rows;
+}
+function profile(value: unknown): asserts value is ProfileFixture {
+  record(value); strings(value.roots); array(value.selections); array(value.bindings);
+  for (const row of value.selections) selection(row);
+  for (const row of value.bindings) binding(row);
+}
+function plan(value: unknown): asserts value is PlanFixture { profile(value); strings(value.dependencyOrder); }
+function member<T>(value: T | undefined): T { assert.ok(value !== undefined); return value; }
+async function namespace(path: string): Promise<Record<string, unknown>> {
+  const value: unknown = await import(new URL(path, import.meta.url).href);
+  record(value);
+  return value;
+}
+const directNamespace = await namespace('../../dist-stage0/self-composition/stage0-entry.js');
+function successfulResult(value: unknown): asserts value is { ok: true; plan: PlanFixture } {
+  record(value);
+  assert.equal(value.ok, true);
+  plan(value.plan);
+}
+async function direct(input: unknown): Promise<{ ok: true; plan: PlanFixture }> {
+  const compile = directNamespace.compileComposition;
+  assert.ok(typeof compile === 'function');
+  const result: unknown = await compile(input);
+  successfulResult(result);
+  return result;
+}
+const ownInputs = await namespace('../../dist-stage0/self-composition/own-profile.js');
+const ownDeclarations = declarations(ownInputs.ownDeclarations);
+const ownProfile = ownInputs.ownProfile; profile(ownProfile);
+const variantInputs = await namespace('../../dist-seed/self-composition/own-profile.variant.js');
+const variantDeclarations = declarations(variantInputs.ownDeclarations);
+const variantProfile = variantInputs.ownProfile; profile(variantProfile);
 
 const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
 const buildRoot = join(packageRoot, 'dist-stage0');
@@ -30,7 +91,7 @@ const compatibleFactory = 'src/features/canonicalization/compatible/factory.js';
 
 // Literal construction expectations for the accepted six-node M2 scanner graph.
 // The subject plan supplies the obligation; it never supplies expected tuples.
-const expectedTuples = [
+const expectedTuples: ConstructionTuple[] = [
   [canon, 0, []],
   [semantics, 1, [['canonicalizer', canon]]],
   [output, 2, [['canonicalizer', canon]]],
@@ -38,10 +99,12 @@ const expectedTuples = [
   [admission, 4, [['scanner', scanner]]],
   [facade, 5, [['admission', admission], ['output', output], ['semantics', semantics]]],
 ];
-function expectedWitness(tuples = expectedTuples) {
-  return { tuples, digest: `sha256:${createHash('sha256').update(canonicalize(tuples), 'utf8').digest('hex')}` };
+function expectedWitness(tuples: ConstructionTuple[] = expectedTuples) {
+  const bytes = canonicalize(tuples);
+  assert.ok(typeof bytes === 'string');
+  return { tuples, digest: `sha256:${createHash('sha256').update(bytes, 'utf8').digest('hex')}` };
 }
-let planned;
+let planned: Promise<PlanFixture> | undefined;
 async function ownPlan() {
   planned ??= direct({ declarations: ownDeclarations, profile: ownProfile }).then(result => {
     assert.equal(result.ok, true);
@@ -49,7 +112,7 @@ async function ownPlan() {
   });
   return planned;
 }
-async function fixture(t) {
+async function fixture(t: TestContext): Promise<Fixture> {
   const temporary = await mkdtemp(join(tmpdir(), 'gm-construction-witness-'));
   t.after(() => rm(temporary, { recursive: true, force: true }));
   for (const path of ['src', 'self-composition']) {
@@ -57,20 +120,21 @@ async function fixture(t) {
   }
   return { packageRoot: temporary, buildRoot, compositionPath, allowlistPath, plan: await ownPlan() };
 }
-async function write(root, path, source) {
+async function write(root: string, path: string, source: string | Uint8Array) {
   const target = join(root, path);
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, source);
 }
-async function rewrite(f, path, change) {
+async function rewrite(f: WitnessInput, path: string, change: (source: string) => string) {
   const before = await readFile(join(f.packageRoot, path), 'utf8');
   const after = change(before);
   assert.notEqual(after, before, 'fixture mutation must change source');
   await write(f.packageRoot, path, after);
 }
-async function rejected(f, code, expectedContext) {
+async function rejected(f: WitnessInput, code: string, expectedContext?: unknown) {
   await assert.rejects(() => verifyConstruction(f), error => {
-    assert.equal(error instanceof Error, true);
+    assert.ok(error instanceof Error);
+    assert.ok('code' in error && 'context' in error);
     assert.equal(error.code, code);
     if (expectedContext) assert.deepEqual(error.context, expectedContext);
     const context = JSON.stringify(error.context);
@@ -80,7 +144,7 @@ async function rejected(f, code, expectedContext) {
     return true;
   });
 }
-function correspondence(field, actualModule, actualExport, expectedModule = canonicalFactory, expectedExport = 'createOwnedJcs') {
+function correspondence(field: string, actualModule: string | null, actualExport: string, expectedModule = canonicalFactory, expectedExport = 'createOwnedJcs') {
   return {
     implementationId: canon, field,
     expected: { module: expectedModule, export: expectedExport },
@@ -117,11 +181,11 @@ test('factory, identity, declaration and provided-port import aliases resolve to
   assert.deepEqual(await verifyConstruction(f), expectedWitness());
 });
 
-const scannerRootMutations = [
+const scannerRootMutations: SourceMutation[] = [
   ['missing required scanner', source => source.replace('createInputAdmission({ scanner })', 'createInputAdmission({})'), 'construction-slots'],
   ['miswired required scanner', source => source.replace('createInputAdmission({ scanner })', 'createInputAdmission({ scanner: output })'), 'construction-provider'],
 ];
-const rootMutations = [
+const rootMutations: SourceMutation[] = [
   ['missing factory import', source => source.replace(/^import \{ createOwnedJcs \}[^\n]*\n/mu, '')],
   ['missing scanner import', source => source.replace(/^import \{ createOwnedRawScanner \}[^\n]*\n/mu, ''), 'construction-count'],
   ['extra factory import', source => 'import { createOwnedJcs as spareFactory } from "../features/canonicalization/owned-jcs/factory.js";\n' + source],
@@ -161,7 +225,7 @@ for (const [name, mutate, reason] of rootMutations) {
 }
 
 const firstEntry = /\[ownedJcsImplementation, \{[\s\S]*?localName: "canonicalizer" \}\]/u;
-const allowlistMutations = [
+const allowlistMutations: SourceMutation[] = [
   ['duplicate identity', source => source.replace(firstEntry, entry => `${entry},\n${entry}`)],
   ['duplicate field', source => source.replace('factory: createOwnedJcs,', 'factory: createOwnedJcs, factory: createOwnedJcs,')],
   ['duplicate local name', source => source.replace('localName: "semantics"', 'localName: "canonicalizer"')],
@@ -177,7 +241,7 @@ for (const [name, mutate] of allowlistMutations) {
   });
 }
 
-const correspondenceMutations = [
+const correspondenceMutations: [string, (source: string) => string, ReturnType<typeof correspondence>][] = [
   ['textual factory export', source => source.replace('factoryExport: "createOwnedJcs"', 'factoryExport: "createCompatible"'),
     correspondence('factoryExport', canonicalFactory, 'createCompatible')],
   ['textual factory path', source => source.replace('importPath: "../../features/canonicalization/owned-jcs/factory.js"', 'importPath: "../../features/plan-output/factory.js"'),
@@ -201,13 +265,13 @@ for (const [name, mutate, context] of correspondenceMutations) {
 // Copy the original built feature namespace tree, never its roots/allowlists.
 // The synthetic source and JavaScript pair below are authored fixture inputs;
 // this test does not claim that it ran TypeScript over the temporary source.
-async function compatibleFixture(f, id = 'get-modular/canonicalization/compatible', slots = []) {
+async function compatibleFixture(f: Fixture, id = 'get-modular/canonicalization/compatible', slots: unknown[] = []) {
   f.buildRoot = join(f.packageRoot, 'built');
   await mkdir(join(f.buildRoot, 'src'), { recursive: true });
   await cp(join(buildRoot, 'src/features'), join(f.buildRoot, 'src/features'), { recursive: true });
   await write(f.buildRoot, 'package.json', '{"type":"module"}\n');
   const directory = 'src/features/canonicalization/compatible';
-  const original = ownDeclarations.find(declaration => declaration.implementationId === canon);
+  const original = member(ownDeclarations.find(declaration => declaration.implementationId === canon));
   const declaration = { ...structuredClone(original), implementationId: id, slots };
   const source = await readFile(join(packageRoot, 'src/features/canonicalization/owned-jcs/declaration.ts'), 'utf8');
   await write(f.packageRoot, `${directory}/declaration.ts`, source.replaceAll('ownedJcs', 'compatible').replaceAll('owned-jcs', 'compatible')
@@ -359,8 +423,8 @@ for (const token of ['constructor', 'prototype', 'then']) {
   });
 }
 
-const planMutations = [
-  ['duplicate binding records', plan => plan.bindings.push(structuredClone(plan.bindings[0]))],
+const planMutations: [string, (plan: PlanFixture) => void, string?][] = [
+  ['duplicate binding records', plan => plan.bindings.push(structuredClone(member(plan.bindings[0])))],
   ['missing binding', plan => plan.bindings.pop()],
   ['missing required scanner binding', plan => {
     const index = plan.bindings.findIndex(binding => binding.consumerImplementationId === admission && binding.slotId === 'scanner');
@@ -372,11 +436,11 @@ const planMutations = [
     assert.ok(binding, 'scanner binding must exist before miswiring');
     binding.providerImplementationIds = [canon];
   }, 'binding-correspondence'],
-  ['multiple providers', plan => plan.bindings[0].providerImplementationIds.push(canon)],
-  ['empty required binding', plan => { plan.bindings[0].providerImplementationIds = []; }],
-  ['duplicate selection', plan => plan.selections.push(structuredClone(plan.selections[0]))],
+  ['multiple providers', plan => member(plan.bindings[0]).providerImplementationIds.push(canon)],
+  ['empty required binding', plan => { member(plan.bindings[0]).providerImplementationIds = []; }],
+  ['duplicate selection', plan => plan.selections.push(structuredClone(member(plan.selections[0])))],
   ['unselected root', plan => { plan.roots = ['x/missing']; }],
-  ['duplicate order member', plan => { plan.dependencyOrder[1] = plan.dependencyOrder[0]; }],
+  ['duplicate order member', plan => { plan.dependencyOrder[1] = member(plan.dependencyOrder[0]); }],
   ['unknown plan field', plan => { plan.extra = true; }],
 ];
 for (const [name, mutate, reason] of planMutations) {
@@ -401,7 +465,7 @@ for (const cardinality of [{ kind: 'optional' }, { kind: 'many', min: 0, max: 1,
 
 const variantId = 'get-modular/canonicalization/witness-variant';
 const variantFactory = 'tests/features/canonicalization/witness-variant/factory.js';
-async function variantFixture(t) {
+async function variantFixture(t: TestContext) {
   const f = await fixture(t);
   await cp(join(packageRoot, 'tests/features/canonicalization/witness-variant'),
     join(f.packageRoot, 'tests/features/canonicalization/witness-variant'), { recursive: true });
@@ -413,7 +477,7 @@ async function variantFixture(t) {
 }
 test('the real qualification variant replaces only canonicalization and retains the scanner edge', async t => {
   const f = await variantFixture(t);
-  const tuples = [
+  const tuples: ConstructionTuple[] = [
     [variantId, 0, []],
     [semantics, 1, [['canonicalizer', variantId]]],
     [output, 2, [['canonicalizer', variantId]]],
@@ -472,7 +536,7 @@ for (const name of ['constructor', 'async', 'get']) {
   });
 }
 
-async function compileIdentifierFixture(f, emit = false) {
+async function compileIdentifierFixture(f: Fixture, emit = false) {
   await write(f.packageRoot, 'package.json', '{"type":"module"}\n');
   await write(f.packageRoot, 'tsconfig.identifiers.json', JSON.stringify({
     extends: join(packageRoot, 'tsconfig.json'),
@@ -511,13 +575,13 @@ for (const slot of ['eval', 'default']) {
     // namespace would still declare canonicalizer and cannot prove this change.
     await compileIdentifierFixture(f, true);
     f.buildRoot = join(f.packageRoot, 'built-identifiers');
-    const inputs = await import(pathToFileURL(join(f.buildRoot, 'self-composition/own-profile.js')).href);
+    const inputs: unknown = await import(pathToFileURL(join(f.buildRoot, 'self-composition/own-profile.js')).href); record(inputs);
     const declarations = structuredClone(inputs.ownDeclarations);
     const profile = structuredClone(inputs.ownProfile);
     const expectedDeclarations = structuredClone(ownDeclarations);
-    expectedDeclarations.find(row => row.implementationId === semantics).slots[0].slotId = slot;
+    member(member(expectedDeclarations.find(row => row.implementationId === semantics)).slots[0]).slotId = slot;
     const expectedProfile = structuredClone(ownProfile);
-    expectedProfile.bindings.find(row => row.consumerImplementationId === semantics).slotId = slot;
+    member(expectedProfile.bindings.find(row => row.consumerImplementationId === semantics)).slotId = slot;
     assert.deepEqual(declarations, expectedDeclarations);
     assert.deepEqual(profile, expectedProfile);
     const result = await direct({ declarations, profile });
@@ -639,22 +703,23 @@ test('escaped metadata remains outside the finite string grammar', async t => {
 
 const generatedPath = 'src/composition/generated/stage1.ts';
 
-function generatedInput(f, sourceText) {
+function generatedInput(f: WitnessInput, sourceText: unknown) {
   return {
     packageRoot: f.packageRoot, buildRoot: f.buildRoot,
     allowlistPath: f.allowlistPath, plan: f.plan, sourceText,
   };
 }
 
-async function generatedSource(f) {
+async function generatedSource(f: WitnessInput) {
   // A literal root with the emitter's relative import base. Expectations remain
   // the independent tuples above, never tuples serialized by the renderer.
   return (await readFile(join(f.packageRoot, compositionPath), 'utf8'))
     .replaceAll('"../features/', '"../../features/');
 }
 
-async function generatedRejected(f, sourceText, code = invalidCode, context) {
+async function generatedRejected(f: WitnessInput, sourceText: unknown, code = invalidCode, context?: unknown) {
   await assert.rejects(() => verifyGeneratedConstruction(generatedInput(f, sourceText)), error => {
+    assert.ok(error instanceof Error && 'code' in error && 'context' in error);
     assert.equal(error.code, code);
     if (context) assert.deepEqual(error.context, context);
     assert.equal(JSON.stringify(error.context).includes(f.packageRoot), false);
@@ -682,11 +747,13 @@ test('actual emitted text is verified before publication with absent and poisone
   assert.equal(build.signal, null);
   assert.equal(build.status, 0, build.stdout + build.stderr);
   f.buildRoot = join(f.packageRoot, 'built-witness-emitter');
-  const { emitComposition } = await import(pathToFileURL(join(f.buildRoot, 'self-composition/emit.js')).href);
-  const { allowlist } = await import(pathToFileURL(join(f.buildRoot, 'self-composition/allowlist.js')).href);
+  const emitter: unknown = await import(pathToFileURL(join(f.buildRoot, 'self-composition/emit.js')).href); record(emitter);
+  const emitComposition = emitter.emitComposition; assert.ok(typeof emitComposition === 'function');
+  const handles: unknown = await import(pathToFileURL(join(f.buildRoot, 'self-composition/allowlist.js')).href); record(handles);
+  const allowlist = handles.allowlist;
   const result = await direct({ declarations: ownDeclarations, profile: ownProfile });
   assert.equal(result.ok, true);
-  const sourceText = emitComposition(result, allowlist);
+  const sourceText: unknown = emitComposition(result, allowlist);
   const input = generatedInput(f, sourceText);
   assert.deepEqual(await verifyGeneratedConstruction(input), expectedWitness());
   await assert.rejects(readFile(join(f.packageRoot, generatedPath)), { code: 'ENOENT' });
@@ -704,7 +771,7 @@ test('actual emitted text is verified before publication with absent and poisone
   assert.deepEqual(await verifyGeneratedConstruction(input), expectedWitness());
 });
 
-const generatedMutations = [
+const generatedMutations: SourceMutation[] = [
   ['wrong provider', source => source.replace('{ admission, semantics, output }',
     '{ admission: output, semantics, output }')],
   ['fallback expression', source => source.replace('= compiler;', '= compiler || output;')],
@@ -782,7 +849,7 @@ for (const [name, sourceText, reason] of [
   test(`generated text rejects ${name} before source access`, async () => {
     await assert.rejects(() => verifyGeneratedConstruction({
       sourceText, packageRoot: null, buildRoot: null, allowlistPath, plan: null,
-    }), error => error.code === invalidCode && error.context.reason === reason);
+    }), error => { record(error); record(error.context); return error.code === invalidCode && error.context.reason === reason; });
   });
 }
 
@@ -790,6 +857,6 @@ for (const option of [{ compositionPath }, { qualification: true }, { importPoli
   test(`generated witness rejects alternate policy ${Object.keys(option)[0]}`, async () => {
     await assert.rejects(() => verifyGeneratedConstruction({
       sourceText: '', packageRoot: null, buildRoot: null, allowlistPath, plan: null, ...option,
-    }), error => error.code === invalidCode && error.context.reason === 'generated-options');
+    }), error => { record(error); record(error.context); return error.code === invalidCode && error.context.reason === 'generated-options'; });
   });
 }
