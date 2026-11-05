@@ -22,6 +22,7 @@
     "../architecture/tooling/codemods/0.2-0.3/factory-handle.ts",
     "../architecture/tooling/codemods/0.4-0.5/shared.ts",
     "../architecture/tooling/codemods/0.4-0.5/lexical-scope.ts",
+    "../architecture/tooling/codemods/0.4-0.5/import-liveness.ts",
     "qualification/support/m1-declarations-closure.ts",
     "qualification/support/m1-javascript-closure.ts",
     "../packages/core/tests/qualification-support/support/m1-declarations-closure.ts",
