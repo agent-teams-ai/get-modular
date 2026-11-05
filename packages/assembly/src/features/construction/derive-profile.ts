@@ -10,14 +10,17 @@ export type DerivedProfile =
 type Row = CompositionProfile["bindings"][number];
 
 function compareCodePoints(a: string, b: string): number {
-  const left = Array.from(a, (point) => point.codePointAt(0) ?? 0);
-  const right = Array.from(b, (point) => point.codePointAt(0) ?? 0);
-  const length = Math.min(left.length, right.length);
-  for (let index = 0; index < length; index++) {
-    const difference = (left[index] ?? 0) - (right[index] ?? 0);
-    if (difference !== 0) {return difference;}
+  // Walk code points without allocating two arrays for every sort comparison.
+  let left = 0;
+  let right = 0;
+  while (left < a.length && right < b.length) {
+    const l = a.codePointAt(left) ?? 0;
+    const r = b.codePointAt(right) ?? 0;
+    if (l !== r) { return l - r; }
+    left += l > 0xffff ? 2 : 1;
+    right += r > 0xffff ? 2 : 1;
   }
-  return left.length - right.length;
+  return Number(left < a.length) - Number(right < b.length);
 }
 function sorted<T>(values: readonly T[], compare: (a: T, b: T) => number): T[] {
   const result = [...values];
@@ -89,14 +92,20 @@ export function deriveProfile(input: {
   const profileId = identifier(input.profileId);
   const captured = input.bindings === undefined ? { rows: [], occurrences: 0 } : snapshotRows(input.bindings);
   const explicit = captured.rows;
-  const keys = new Set(explicit.map((row) => JSON.stringify([row.consumerImplementationId, row.slotId])));
+  // Key by ownership instead of serializing an ID pair for every explicit and inferred lookup.
+  const boundSlots = new Map<string, Set<string>>();
+  for (const row of explicit) {
+    let slots = boundSlots.get(row.consumerImplementationId);
+    if (slots === undefined) { slots = new Set(); boundSlots.set(row.consumerImplementationId, slots); }
+    slots.add(row.slotId);
+  }
   const candidatesFor = candidateIndex(input.byId);
   const inferred: { readonly consumerImplementationId: string; readonly slotId: string; readonly provider: string }[] = [];
   const unresolved: UnresolvedBinding[] = [];
   for (const [consumerImplementationId, metadata] of input.byId) {
     let groupPath: readonly string[] | undefined;
     for (const slot of metadata.declaration.slots) {
-      if (keys.has(JSON.stringify([consumerImplementationId, slot.slotId]))) {continue;}
+      if (boundSlots.get(consumerImplementationId)?.has(slot.slotId) === true) {continue;}
       const candidates = candidatesFor(consumerImplementationId, slot.capabilityId);
       const only = candidates.at(0);
       if (slot.cardinality.kind === "required" && candidates.length === 1 && only !== undefined) {

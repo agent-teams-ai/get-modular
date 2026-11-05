@@ -991,6 +991,20 @@ test("W7 declarations must cover the plan selections and every provided capabili
   assert.throws(() => checkWiring(composition, [oracle], {}), { code: "conformance.argument.invalid" });
 });
 
+test("W7b dense provider pins preserve membership and diagnose the one omitted implementation", async () => {
+  const Dense = defineContract()({ id: "t/wiring-dense", revision: 1 });
+  const declarations = Array.from({ length: 512 }, (_, index) =>
+    wiringDeclaration(`dense-${String(index).padStart(4, "0")}`, Dense));
+  const implementationIds = declarations.map(entry => entry.implementationId);
+  const composition = await wiringComposition(declarations, declarations.map(entry => entry.moduleId), []);
+  const oracle = { providers: { [Dense.id]: implementationIds }, roots: implementationIds };
+  check(composition, [oracle]);
+  const unpinned = { providers: { [Dense.id]: implementationIds.slice(0, -1) }, roots: implementationIds };
+  const found = differences({ composition, oracles: [unpinned] });
+  assert.deepEqual(found.map(entry => `${entry.rule} ${entry.subject}`), [`provided-capability ${Dense.id}`]);
+  assert.deepEqual(found[0]?.actual, [implementationIds.at(-1)]);
+});
+
 test("W8 a plan row must use the capability and the slot its consumer's declaration states", async () => {
   const logs = wiringDeclaration("w8-logs", Logs);
   const consumer = wiringDeclaration("w8-consumer", Orders, [Logs.slot("logs", required())]);
@@ -1051,6 +1065,16 @@ test("L1 checkModuleLayout passes a TEST-shaped tree with a sub-feature, inputs 
     featureCount: 2, moduleCount: 3, violations: [],
     modulesPerFeature: { [orders]: 1, [payments]: 1 },
   });
+});
+
+test("L1 adjacency keeps a large collected stream of type and value edges without altering ownership", () => {
+  const root = "src/composition/app.root.ts";
+  const descriptor = "src/composition/shared.contracts.ts";
+  const repeated = Array.from({ length: 2048 }, (_, index) =>
+    edge(descriptor, index % 2 === 0 ? "type" : "value"));
+  const rows = testShapedTree().map(row => row.path === root
+    ? layoutFile(row.path, [...row.imports, ...repeated], row.useCaseExports) : row);
+  assert.deepEqual(checkModuleLayout(layoutRecords(rows)).violations, []);
 });
 
 test("L1b a root may import its root module and the group of that module without owning it", () => {

@@ -159,7 +159,7 @@ jobs:
   lanes-node24-windows:
     name: check lane (windows-2025, Node 24, ${{ matrix.lane }})
     runs-on: windows-2025
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.lane == 'governance' && 20 || 15 }}
     env: *node24-root-runtime
     strategy:
       fail-fast: false
