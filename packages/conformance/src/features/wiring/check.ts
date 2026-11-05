@@ -224,6 +224,9 @@ function checkDeclarations(
   providers: ProviderMap,
   differences: WiringDifference[],
 ): void {
+  // A capability may pin thousands of implementations: index membership once per check.
+  const pinnedMembership = new Map([...providers].map(([capability, ids]) =>
+    [capability, new Set(ids)] as const));
   const declaredIds = sorted(declarations.keys());
   const selectedIds = sorted(selected);
   if (!sameIds(declaredIds, selectedIds)) {
@@ -249,7 +252,7 @@ function checkDeclarations(
     }
     for (const capability of new Set(entry.provides)) {
       const pinned = providers.get(capability);
-      if (pinned === undefined || !pinned.includes(entry.implementationId)) {
+      if (pinned === undefined || pinnedMembership.get(capability)?.has(entry.implementationId) !== true) {
         differences.push({
           rule: "provided-capability", subject: capability, expected: pinned ?? [], actual: [entry.implementationId],
           message: `${entry.implementationId} provides ${capability}, which the oracle does not pin to it`,
