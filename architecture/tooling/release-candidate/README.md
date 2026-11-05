@@ -49,10 +49,18 @@ existing shared publisher pin.
    dot-prefixed files and extensions other than lowercase `.md` are not intents.
    These files remain protected by the complete source snapshot and diff check.
    Active prerelease state remains outside the qualified route.
-3. End a real no-release state without running `version`, consuming an empty
-   housekeeping intent or waiting for a branch or PR. A real release can consume
-   its empty housekeeping intents; ignored and private intents without versioning
-   remain retained.
+3. Distinguish three states on main: `no-release` (no version changes),
+   `ready` (the admitted exact cohort), and `pending-admission` (Changesets
+   plans a future cohort not admitted by ADR-0042). The status command always
+   observes the complete installed Changesets plan and authenticated source.
+   Pending admission emits an explicit GitHub warning and step summary, but
+   **never** runs `version`, creates a release branch, changes baselines or
+   publishes. The version command and independent release-PR check still reject
+   unadmitted plans. Only the reporting route may classify this situation
+   without failing the unrelated post-merge workflow. A real no-release state
+   does not consume an empty housekeeping intent or wait for a branch or PR.
+   An admitted release can consume its empty housekeeping intents; ignored
+   and private intents without versioning remain retained.
 4. Re-observe the same execution custody and input tree, run the same installed
    engine, enumerate the whole tracked tree and generated files, including
    ignored outputs outside installed package-manager directories,
