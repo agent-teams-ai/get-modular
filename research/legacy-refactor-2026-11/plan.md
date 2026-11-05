@@ -67,7 +67,7 @@ The larger 10–20k change-envelope cannot be claimed as implemented by a plan, 
 - No `Assembly` public API, Host permission/lifecycle, loading, readiness, publication, dynamic generation or plugin ownership changes.
 - No deletion of old codemods, fixture archives, historical evidence, passed qualification or legacy aliases whose live consumers have not been ruled out.
 - No new DDD entity for a tooling script. The migration phase is the bounded context; syntax analysis and rewriting are internal collaborators.
-- No broad replacement of handwritten JavaScript, new package or dependency, new source exclusion or downscoped CI.
+- No broad replacement of handwritten JavaScript, new package or dependency, new source exclusion or reduced CI scope.
 - Do not modify accepted ADRs, pinned Consumer Module Standard, external consumer revisions, baseline snapshots, policies or permissions.
 - Do not merge on partial success, report a skipped test as passed or infer one runner profile from another.
 
@@ -82,7 +82,7 @@ The larger 10–20k change-envelope cannot be claimed as implemented by a plan, 
 | Hosted CI | Required GitHub Actions on current head; Bun + Node 24/26 rollback; Linux, macOS and Windows including package checks and governance |
 | Review | At least two rounds: architecture/scope/ownership, then precise regression/compatibility/security review; fix confirmed observations |
 | PR | Draft until valid verification/reviews; commit and push each coherent edit immediately, record SHA, do not bypass identity/protection checks |
-| Merge | Only if branch is mergeable, all required checks green on exact head, reviewed and no outstanding blockers; verify postmerge `main` |
+| Merge | Only if branch is mergeable, all required checks green on exact head, reviewed and no outstanding blockers; verify `main` after merge |
 
 Environment limitation: this Chat environment has GitHub connector writes and hosted CI, but **no local `gh` authentication, local remote clone, independent subagent runner, or selectable xhigh critic model**. Do not present internal perspectives as independent agents or hosted CI as a local run. If independent review is available via actual GitHub PR/ReviewRouter, report its exact status separately.
 
