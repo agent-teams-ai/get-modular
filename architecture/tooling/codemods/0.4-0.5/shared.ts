@@ -5,7 +5,7 @@ import { nameWouldCollide } from "./lexical-scope.ts";
 export { nameWouldCollide } from "./lexical-scope.ts";
 import { syntax as Node, syntax as ts, SyntaxKind, fileOf, lineNumber, parentOfKind,
   importedName, importNames, namespaceName, exportNames, moduleName, typeOnly, symbolDeclarations,
-  replaceNode, addNamedImport, removeNamedImports } from "../project.ts";
+  replaceNode, addNamedImport } from "../project.ts";
 
 type Manual = (message: string) => void;
 type Edit = ReturnType<typeof replaceNode>;
