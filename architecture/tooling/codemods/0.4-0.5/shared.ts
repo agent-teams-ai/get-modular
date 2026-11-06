@@ -1,7 +1,11 @@
 import type { CodemodFile } from "../project.ts";
+import { ASSEMBLY, RESOURCES } from "./import-liveness.ts";
+export { ASSEMBLY, RESOURCES, recordImports, transformImports } from "./import-liveness.ts";
+import { nameWouldCollide } from "./lexical-scope.ts";
+export { nameWouldCollide } from "./lexical-scope.ts";
 import { syntax as Node, syntax as ts, SyntaxKind, fileOf, lineNumber, parentOfKind,
   importedName, importNames, namespaceName, exportNames, moduleName, typeOnly, symbolDeclarations,
-  replaceNode, addNamedImport, removeNamedImports } from "../project.ts";
+  replaceNode, addNamedImport } from "../project.ts";
 
 type Manual = (message: string) => void;
 type Edit = ReturnType<typeof replaceNode>;
@@ -28,10 +32,7 @@ interface Method {
   property?: Node.PropertyAccessExpression;
   element?: Node.ElementAccessExpression;
 }
-type ImportTarget = Node.ImportSpecifier | Node.Identifier;
 
-export const ASSEMBLY = "@get-modular/assembly";
-export const RESOURCES = "@get-modular/resources";
 export const CONFORMANCE = "@get-modular/conformance";
 
 const TYPE_NAMES = new Map([
@@ -158,83 +159,6 @@ async function assemblyForCall(expression: Node.Node) {
 function declarationName(declaration: Node.VariableDeclaration | Node.ParameterDeclaration) {
   const name = declaration.name;
   return name && Node.isIdentifier(name) ? name.getText() : undefined;
-}
-
-function bindingNames(node: Node.Node | undefined, result = new Set<string>()) {
-  if (!node) return result;
-  if (Node.isIdentifier(node)) result.add(node.getText());
-  else if (Node.isObjectBindingPattern(node) || Node.isArrayBindingPattern(node)) {
-    for (const element of node.elements) if (Node.isBindingElement(element)) bindingNames(element.name, result);
-  }
-  return result;
-}
-
-function scopeNames(node: Node.Node, result = new Set<string>(), ignored: ReadonlySet<Node.Node> = new Set()) {
-  const add = (name: Node.Node | undefined) => {
-    const names = bindingNames(name, new Set());
-    for (const value of names) result.add(value);
-  };
-  if (Node.isVariableDeclaration(node) && !ignored.has(node)) add(node.name);
-  if (Node.isParameterDeclaration(node) && !ignored.has(node)) add(node.name);
-  if (Node.isFunctionDeclaration(node) || Node.isClassDeclaration(node) || Node.isEnumDeclaration(node)
-    || Node.isInterfaceDeclaration(node) || Node.isTypeAliasDeclaration(node)) {
-    const name = node.name;
-    if (name) add(name);
-  }
-  if (Node.isCatchClause(node)) {
-    const variable = node.variableDeclaration;
-    if (variable) add(variable.name);
-  }
-  if (Node.isImportDeclaration(node)) {
-    const defaultImport = node.importClause?.name;
-    const namespaceImport = namespaceName(node);
-    if (defaultImport) result.add(defaultImport.getText());
-    if (namespaceImport) result.add(namespaceImport.getText());
-    for (const specifier of importNames(node)) {
-      if (!ignored.has(specifier)) result.add(imported(specifier));
-    }
-  }
-  return result;
-}
-
-function scopeOwner(node: Node.Node) {
-  let current = node.parent;
-  while (current) {
-    if (Node.isSourceFile(current) || Node.isBlock(current) || Node.isFunctionDeclaration(current)
-      || Node.isFunctionExpression(current) || Node.isArrowFunction(current) || Node.isCatchClause(current)
-      || Node.isForStatement(current) || Node.isForInStatement(current) || Node.isForOfStatement(current)) return current;
-    current = current.parent;
-  }
-  return undefined;
-}
-
-function namesInScope(scope: ReturnType<typeof scopeOwner>, ignored: ReadonlySet<Node.Node>) {
-  const names = new Set<string>();
-  if (!scope) return names;
-  const nodes = Node.isSourceFile(scope) || Node.isBlock(scope) ? scope.statements : [];
-  for (const statement of nodes) {
-    if (Node.isVariableStatement(statement)) {
-      for (const declaration of statement.declarationList.declarations) scopeNames(declaration, names, ignored);
-    } else scopeNames(statement, names, ignored);
-  }
-  if (!Node.isSourceFile(scope)) {
-    if (Node.isFunctionDeclaration(scope) || Node.isFunctionExpression(scope) || Node.isArrowFunction(scope)) {
-      for (const parameter of scope.parameters) scopeNames(parameter, names, ignored);
-    }
-    if (Node.isCatchClause(scope)) scopeNames(scope, names, ignored);
-  }
-  return names;
-}
-
-export function nameWouldCollide(file: CodemodFile, name: string, at: Node.Node, ignored: ReadonlySet<Node.Node> = new Set()) {
-  let current: Node.Node | undefined = at;
-  while (current) {
-    const scope = scopeOwner(current);
-    if (!scope) break;
-    if (namesInScope(scope, ignored).has(name)) return true;
-    current = Node.isSourceFile(scope) ? undefined : scope.parent;
-  }
-  return false;
 }
 
 export async function receiver(file: CodemodFile, expression: Node.Node, { inline = true } = {}): Promise<Receiver> {
@@ -829,71 +753,6 @@ export async function transformIsolate(file: CodemodFile, manual: Manual) {
 
 export async function transformTypes(file: CodemodFile, manual: Manual) {
   return await applyInspections(file, await inspectTypes(file), manual);
-}
-
-function usedImport(file: CodemodFile, target: ImportTarget) {
-  const local = Node.isImportSpecifier(target) ? target.name.getText() : target.getText();
-  return file.descendants(SyntaxKind.Identifier).filter(Node.isIdentifier).some((identifier) => {
-    if (Node.isImportSpecifier(target) && (identifier === target.name || identifier === target.propertyName)) return false;
-    if (identifier.getText() !== local) return false;
-    return true;
-  });
-}
-
-const localName = (target: ImportTarget) => Node.isImportSpecifier(target) ? target.name.getText() : target.getText();
-// Imports that were in use before any rewrite. Only these may be dropped when the rewrite leaves them unused.
-const importsInUse = new WeakMap<CodemodFile, { names: Set<string>; bare: Set<number> }>();
-
-/** Call before the first rewrite of a file. */
-export function recordImports(file: CodemodFile) {
-  const names = new Set<string>();
-  const bare = new Set<number>();
-  file.imports.forEach((declaration, index) => {
-    if (![ASSEMBLY, RESOURCES].some(module => module === moduleName(declaration))) return;
-    const namespace = namespaceName(declaration);
-    const specifiers = [...importNames(declaration), ...(namespace ? [namespace] : [])];
-    if (specifiers.length === 0 && !declaration.importClause?.name) bare.add(index);
-    for (const specifier of specifiers) {
-      if (usedImport(file, specifier)) names.add(`${moduleName(declaration)}|${localName(specifier)}`);
-    }
-  });
-  importsInUse.set(file, { names, bare });
-}
-
-export async function transformImports(file: CodemodFile) {
-  const recorded = importsInUse.get(file);
-  if (!recorded) return 0;
-  let edits = 0;
-  const replacements: Edit[] = [];
-  for (const [index, declaration] of file.imports.entries()) {
-    const module = moduleName(declaration);
-    if (![ASSEMBLY, RESOURCES].some(name => name === module) || recorded.bare.has(index)) continue;
-    const dropped = (specifier: ImportTarget) => recorded.names.has(`${module}|${localName(specifier)}`) && !usedImport(file, specifier);
-    const names = importNames(declaration);
-    const removed = new Set(names.filter(dropped));
-    const namespace = namespaceName(declaration);
-    const dropNamespace = namespace && dropped(namespace);
-    const count = removed.size + (dropNamespace ? 1 : 0);
-    if (count === 0) continue;
-    edits += count;
-    if (removed.size === names.length && (!namespace || dropNamespace) && !declaration.importClause?.name && !typeOnly(declaration)) {
-      // Drop the complete import line, retaining the preceding comments and the
-      // following declaration's own trivia.
-      const end = file.text[declaration.end] === "\r" ? declaration.end + 2
-        : file.text[declaration.end] === "\n" ? declaration.end + 1 : declaration.end;
-      replacements.push({ start: declaration.getStart(), end, text: "" });
-      edits += 1;
-    } else if (removed.size > 0) {
-      replacements.push(...[removeNamedImports(file, declaration, removed)].flat());
-    } else if (dropNamespace) {
-      const clause = declaration.importClause;
-      const bindings = clause?.namedBindings;
-      // This branch retains a default import while dropping its namespace.
-      if (clause?.name && bindings) replacements.push({ start: clause.name.end, end: bindings.end, text: "" });
-    }
-  }
-  await file.apply(replacements);
-  return edits;
 }
 
 export async function transformExtras(file: CodemodFile, manual: Manual) {
