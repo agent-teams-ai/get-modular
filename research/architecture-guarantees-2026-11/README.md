@@ -1,6 +1,6 @@
 # Architecture guarantees: bounded improvement plans
 
-Status: four critic rounds and focused follow-ups; OpenCode/scale study 2026-11-07.
+Status: four critic rounds and focused follow-ups; six-perspective adversarial study 2026-11-07.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission
 to start every candidate. The owner requested separate bounded plans in one
@@ -63,6 +63,17 @@ consumer can retain native operation ports across GM module boundaries. The
 [large-application case study](opencode-effect-case-study.md) explains the tradeoff
 and why current OpenCode's LayerNode graph is a substantive comparison point.
 These choices do not change the six plans' admission or plugin ownership.
+
+The further adversarial review makes the default explicit: do not add GM to a
+new, adequately composed Effect-native scope merely because it is large. Preserve
+an existing adopted GM scope and justify Effect by a concrete execution need.
+Native operation ports retain composability, but do not turn Promise construction
+into Layer acquisition. A needed owner facade must bracket actual Effect execution
+or Stream consumption, not creation of the lazy value. `R = never` and a plan
+digest prove narrower facts than lifetime, context independence or executable
+identity. The assessment records the decision criteria and strongest countercase.
+The Agent Runtime consumer already selected for 02 does not by itself establish
+a need to adopt Effect there.
 
 ## Size and uncertainty
 
@@ -164,3 +175,21 @@ The case study adds two separately labeled experiments: caller Reference loss
 across a new runtime on Effect 4.1.2, and an exact extracted OpenCode bridge on
 Effect 4.1.0 with a controlled SDK Promise. OpenCode's existing suites were read,
 not run; no real provider, installed integration or performance benchmark is claimed.
+
+The subsequent six perspectives scrutinized the case for Effect alone, GM's exact
+value, lifetimes, types/source boundaries, operational cost and OpenCode evidence.
+They identified two advice/precision P2 findings: lazy admission must bracket
+execution, and `R = never` is not proof of context independence. The candidate
+corrects both, limits the OwnedFetch positive claim to its actual paths, and keeps
+all six implementation plans byte-identical. One new retained experiment uses
+actual Effect 4.1.2 and a simulated owner to check delayed admission and retention
+through interruption finalization. It does not qualify an installed GM adapter.
+Three of the reviewers completed targeted cross-review of the integrated
+corrections and found no remaining blocking/new P1/P2 in their research scopes.
+The final small disposal clarification records the runtime's reentrant exemption;
+it creates no new mechanism or probe. See [the review record](reviews.md).
+
+Fresh inspection of hosted CI on prior head `6fcdcd501ec523b990552a2131e5080af16992af`
+found the examined static lane failed on Markdown rule MD012 in the assessment.
+The extra blank line is removed in this candidate. This correction is not a claim
+that subsequent hosted gates have passed; the PR carries their actual status.

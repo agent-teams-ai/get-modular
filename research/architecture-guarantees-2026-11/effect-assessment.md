@@ -1,10 +1,10 @@
 # Effect comparison: correct the scope of the earlier rating
 
-Status: source-backed assessment, 2026-11-06; not a performance benchmark or a
+Status: source-backed assessment, updated 2026-11-07; not a performance benchmark or a
 claim that either complete implementation has been audited. Get Modular source
 is `5fb83478dd7b95216be92c4d3077eddf2774eef8`; Effect source is
 `9428e17499ee3a144f2ac73c67213fb1336d2bdf` (package manifest version 4.1.2).
-The 2026-11-07 large-application follow-up and current OpenCode evidence are in
+The 2026-11-07 large-application and adversarial follow-ups and OpenCode evidence are in
 [the case study](opencode-effect-case-study.md). That study also pins OpenCode's
 actual Effect 4.1.0 dependency; the earlier probes below remain 4.1.2 evidence.
 
@@ -28,6 +28,35 @@ requester does not leave the shared result uncompleted. Layer merging integrates
 concurrent construction with scopes. Resource acquisition exposes interruptibility
 as an explicit contract. These interacting execution guarantees account for work
 that an architecture-only composition score does not measure.
+
+## Decision after the adversarial review
+
+Keep Get Modular independent of Effect. Improve its own composition guarantees
+through the already scoped resource preflight (02) and actual source membership
+checks (03A). Effect integration is a conditional consumer choice, not the next
+mandatory library feature or evidence of overall superiority.
+
+| Consumer situation | Recommended default | What could justify a different choice |
+| --- | --- | --- |
+| New predominantly Effect-native scope with a sufficient typed graph | Native Layer composition; keep an existing LayerNode policy where needed | A required inert composition protocol, exact slot policy or repeated cross-product selection policy that GM usefully owns |
+| Existing explicitly adopted GM scope that needs Effect execution | Keep GM selection; use native operations between cooperating Effect modules, or one cohesive enclave in mixed code | A scoped architecture change supported by actual consumer evidence; this review does not remove accepted CMS adoption |
+| Existing GM and ordinary asynchronous ports meet the requirements | Continue that arrangement | A concrete execution requirement whose implementation becomes clearer or safer with Effect |
+
+OpenCode's LayerNode already validates reachable graph defects before acquisition,
+preserves replacement contracts and controls sharing. Large module count, typed
+injection and pre-acquisition checks alone therefore do not establish an advantage
+for adding GM. The [case study](opencode-effect-case-study.md) compares the actual
+mechanisms and records the stronger counterargument: if several products repeat
+the same composition policy, a common GM protocol can remove duplicated policy.
+
+A future compiler from one GM composition authority to Effect Layers is not
+inherently a second authoritative graph. It could be a valid execution backend.
+There is no qualified consumer need for building that backend in this delivery;
+current CMS only admits its existing context adapter. Revisit that option if a
+real resourceful consumer needs it and it removes repeated acquisition adapters.
+When a shared mechanism has a concrete multi-project need, follow the existing
+library-first rule and qualify one portable contract with a real consumer; do
+not proliferate local copies or require a second consumer as a ritual.
 
 ## Compare the actual responsibilities
 
@@ -71,6 +100,23 @@ The current Layer API is not the same artifact contract as Get Modular's inert
 portable input and canonical plan/digest. That is a difference in purpose, not
 proof that Effect could never implement an equivalent adapter or that its typed
 construction model is weak.
+
+The digest covers the normalized plan projection, not factories, all declaration
+metadata, runtime configuration, source imports or resource behavior. The emitted
+plan does not contain slot cardinality itself. From the source, a still-valid
+one-provider binding can retain that projection when a slot changes from required
+to many, while Assembly changes the injected shape. This is a source-derived
+example, not a new executed probe or a defect in the declared digest contract.
+Reuse a prepared template only for the same trusted entry/declaration/factory
+inventory as well as its plan; CMS already requires factory-set identity in the
+cache key and does not define that identity as callbacks alone. No new hash or
+cache subsystem is proposed. See [plan output][gm-plan-output],
+[injection derivation][gm-program] and [CMS template reuse][gm-template].
+
+Validation before selected factories also does not mean validation before any
+JavaScript runs. Static imports may already have executed, and entry creation
+invokes an admitted context adapter before preparation. GM is not an executable
+trust boundary or sandbox. See [entry construction][gm-entry].
 
 ## Can the two libraries usefully coexist?
 
@@ -120,6 +166,14 @@ Current Assembly leaves capability values opaque. A constructor can capture its
 narrow GM-injected ports and return composable Effect functions without a second
 provider graph or a runner at every method call.
 
+This is simpler for passive operation objects than for an already acquiring
+Layer graph. Native operation ports do not unify construction: current Assembly
+uses sequential Promise factories and opaque construction causes; Layer retains
+typed acquisition errors, sharing and Scope within its native construction model.
+Do not return a resourceful port from `runPromise(Effect.scoped(acquirePort))`
+and assume its captured resource stays open after that acquisition scope ends.
+The real startup/resource adaptation cost is part of the consumer decision.
+
 The case study's source probe shows why this matters: a native call retained a
 caller-local Reference, while re-entry through Promise and a separate runtime
 read its default, despite explicit signal forwarding. Cancellation signaling also
@@ -153,8 +207,14 @@ existing result/error contract and preserve defects and interruption deliberatel
 do not introduce a universal Result framework or erase failures into success.
 
 An Effect-returning port is also possible when its contract deliberately depends
-on Effect and a compatible version. `Effect<A, E, never>` closes environmental
-requirements, but **does not establish resource lifetime**. An Effect capturing a
+on Effect and a compatible version. `Effect<A, E, never>` has no remaining
+required-service parameter in its type; it **does not establish resource lifetime
+or context independence**. `Context.Reference` and `Effect.serviceOption` can
+read the current context without an additional required service in `R`. Configured
+business-provider selection still belongs to the declared composition authority;
+request/tracing/transaction context can remain legitimate execution context.
+See [Reference][effect-reference] and [optional service lookup][effect-service-option].
+An Effect capturing a
 built Context can run on the caller's fiber outside the private ManagedRuntime's
 tracked execution. Such a port needs an explicit execution/lifetime owner; a cast
 or general conversion helper cannot supply that guarantee. See [runner and
@@ -165,6 +225,11 @@ Do not require every native operation to have `R = never`. A deliberate
 undeclared business provider. Keep those requirements truthful and explicit;
 neither a cast nor capturing an unrelated long-lived Scope closes the ownership
 question. The consumer decides whether Effect belongs in its public contract.
+Check that consumer's actual dependency profile; keep pure domain rules pure and
+composition descriptors outside application code. Native signatures preserve the
+opportunity to compose execution; implementations can still introduce another
+runner, replace broad context, detach work or change failure semantics. Matching
+types and revisions do not prove behavioral substitutability or tenant affinity.
 
 At a Promise/runtime boundary, the operation's signal must reach its work: the
 consumer's cancellation contract feeds `runtime.runPromise(effect, { signal })`,
@@ -175,6 +240,28 @@ The factory's construction signal is not a universal signal for future requests.
 Use the actual module lifetime and per-operation cancellation policy, not nested
 unmanaged runners. See [Effect Promise cancellation][effect-promise] and
 [Resources signals][gm-signals].
+
+### Admit lazy work at execution time
+
+At an existing owner or replaceable-instance facade, acquire admission/borrowing
+when the Effect executes and release it after execution, including its required
+finalization, settles. A JavaScript `try/finally` around a method returning a lazy
+Effect releases too early. For a Stream, retain the owner through consumption and
+cancellation; producing an `Effect<Stream>` is not completion of that stream.
+
+The [retained counterexample](opencode-effect-case-study.md#c-lazy-operation-admission-and-finalization)
+uses real Effect 4.1.2 and a simulated owner: the unsafe wrapper executes against
+an already closed resource; execution-time admission rejects the delayed call
+after retirement; an active interrupted call retains its borrow through an
+asynchronous finalizer. This is a correction to integration advice, not an
+observed GM/OpenCode defect or installed integration proof.
+
+Keep this rule at the actual Host/owner boundary. Static native calls inside one
+already protected lifetime need no extra lease wrapper on every method. Provider
+selection, physical resource custody and active-work admission have distinct
+responsibilities, each with one explicit owner; a single disposer alone does not
+establish all three. Reuse [CMS owner facades][gm-template],
+[Effect bracketing][effect-bracket] and [scoped streams][effect-stream-scope].
 
 ### Two lifecycle obligations for the enclave adapter
 
@@ -229,16 +316,19 @@ await runtime.runPromise(Effect.void, { signal: resources.signal });
 Host policy must keep borrowed providers available while dependent work or cleanup
 needs them. Reverse registration order alone does not ensure this after a cleanup
 failure: GM continues attempting other releases. Reuse the existing owner/debt
-policy from [plan 06](06-borrowed-lifetimes.md). ManagedRuntime disposal interrupts
-and awaits its tracked work before closing private Layer resources; successful
-graceful drain remains the Host's policy. Neither runtime disposal nor GM's wait
+policy from [plan 06](06-borrowed-lifetimes.md). During normal external-owner
+disposal, ManagedRuntime interrupts and awaits its tracked work before closing
+private Layer resources. Reentrant disposal exempts the disposing fiber and its
+ancestors to avoid waiting on themselves; disposal does not revoke already
+captured port references. Successful graceful drain remains the Host's policy.
+Neither runtime disposal nor GM's wait
 abandonment forcibly stops an uncooperative external SDK or finalizer.
 
 ### When the extra layer is not justified
 
-- An Effect-first application already has sufficient typed composition and no
+- A new Effect-first scope already has sufficient typed composition and no
   need for the independent GM composition artifact or adopted module policy:
-  Effect alone can be simpler. An existing Effect Host can own a bounded GM
+  do not add GM by default. An existing Effect Host can own a bounded GM
   operation if required; do not wrap every root in another runtime.
 - GM plus ordinary asynchronous ports already meets the real requirements:
   adding Effect solely to claim stronger architecture adds a programming model.
@@ -262,7 +352,9 @@ first request to make a startup metric look better.
 Select the mixed/enclave or native-operation orientation first. For a native
 orientation, use two actual communicating GM modules and one caller-local
 reference/resource; prove context preservation and cancellation/join before owner
-release without adding a new framework. For the enclave, use one actual port.
+release without adding a new framework. At an owner facade, include delayed
+execution after retirement and retention through finalization; for a stream,
+observe actual consumption/cancellation. For the enclave, use one actual port.
 In both cases reuse existing consumer checks. Verify selected-provider
 identity and one release owner; startup failure/cancellation without lost custody
 or early port publication; result/error/abort mapping; managed-work cleanup and
@@ -271,6 +363,14 @@ second close when adapting ManagedRuntime disposal to GM cleanup. Qualify the
 actual packed public imports and Assembly factory shape
 on the repository's strict compiler floor. These are bounded adoption obligations,
 not a new integration platform or tests to add to this planning PR.
+
+Reuse existing contract cases, but execute the lazy operations with the consumer's
+test-owned Effect runner/scopes and assert their observed result. GM's current
+[contract-suite runner][gm-suite] awaits a `void | Promise<void>` case; it is not
+an Effect interpreter. Merely constructing an Effect or Stream proves no work ran.
+Use the existing actual consumer baseline to judge additional authoring, typecheck
+and startup costs. No synthetic hundred-module benchmark or separate new suite
+for every observation is required.
 
 Three one-off source probes below ran on Node 24.22.1 without installing packages
 or changing repository source. They observed the first disposal rejection/second
@@ -292,6 +392,15 @@ production integration.
 [gm-setup]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/resources/src/features/scope/scope.ts#L94-L131
 [gm-signals]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/resources/src/features/scope/types.ts#L30-L43
 [gm-cleanup]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/resources/src/features/scope/scope.ts#L315-L402
+[gm-plan-output]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/core/src/features/plan-output/factory.ts#L3-L48
+[gm-program]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/assembly/src/features/construction/prepare-program.ts#L124-L144
+[gm-template]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/docs/architecture/common-assembly.md#L365-L405
+[gm-entry]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/assembly/src/features/construction/entry.ts#L59-L85
+[gm-suite]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/conformance/src/features/suites/suite.ts#L64-L85
+[effect-reference]: https://github.com/Effect-TS/effect/blob/9428e17499ee3a144f2ac73c67213fb1336d2bdf/packages/effect/src/Context.ts#L312-L347
+[effect-service-option]: https://github.com/Effect-TS/effect/blob/9428e17499ee3a144f2ac73c67213fb1336d2bdf/packages/effect/src/Effect.ts#L6337-L6373
+[effect-bracket]: https://github.com/Effect-TS/effect/blob/9428e17499ee3a144f2ac73c67213fb1336d2bdf/packages/effect/src/internal/effect.ts#L4488-L4500
+[effect-stream-scope]: https://github.com/Effect-TS/effect/blob/9428e17499ee3a144f2ac73c67213fb1336d2bdf/packages/effect/src/Stream.ts#L1692-L1751
 
 ## Evidence needed before stronger claims
 
@@ -312,7 +421,6 @@ These are immutable one-off experiment commands and outputs, not maintained
 JavaScript tooling or a new test harness. Node used native TypeScript stripping;
 no strict typecheck, packed-package or application E2E qualification is claimed.
 The paths identify the observed checkouts at the source revisions above.
-
 
 All commands exited with code 0. The first two run from `/workspace/scratch/44ef6f5b5546/research-layers/effect`. The third runs from `/workspace/scratch/44ef6f5b5546`. No files or dependencies are created by these commands.
 

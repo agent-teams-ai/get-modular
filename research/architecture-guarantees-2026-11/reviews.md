@@ -215,6 +215,65 @@ Those six plan files retain their prior bytes. No upstream OpenCode changes,
 mandatory dependency, generic integration package or new implementation workstream
 is selected.
 
+## Six-perspective adversarial review, 2026-11-07
+
+The owner requested a deeper for/against examination and an objective action
+decision. Six independent agents received the full context in two waves. The
+starting planning head was `6fcdcd501ec523b990552a2131e5080af16992af`; all ten local
+files were snapshotted before edits. GM and Effect source revisions remained the
+same. The six-commit OpenCode refresh through `0ce87485e81705c65c1d62cc06fd82429ab73e81`
+did not change the inspected production paths/dependency inputs; the case study
+retains the original exact source references and the comparison link.
+
+| Perspective | Reviewer | Material conclusion |
+| --- | --- | --- |
+| Strongest case for Effect alone | `adversary_effect_only` | Layer/LayerNode already provides typed composition, private outputs, substitution and pre-acquisition graph checks. A new Effect-native scope needs a specific extra requirement before adding GM. |
+| Strongest source-backed GM advantage | `adversary_gm_value` | Inert profiles, explicit local slots, absence, ordered-many bounds, exact identities and a usable canonical artifact can earn the extra protocol. Digest does not identify executable behavior or all declaration metadata. |
+| Execution and resource custody | `adversary_lifetimes` | Native ports are lazy; owner admission must surround execution/consumption. Ran one bounded counterexample and correction with actual Effect and a simulated owner. |
+| Types, domain and source boundaries | `critic_types_boundaries_v2` | `R = never` does not exclude References/optional lookups. Native types require an intentional consumer dependency profile; Conformance cases must actually execute lazy work. |
+| Scale, cost and subtraction | `critic_scale_decision_v2` | Native operations do not unify startup/resource protocols. A future single-authority Layer backend is coherent but unearned scope now; 02/03A priorities and conditional 04/05 survive. |
+| OpenCode claims and counterevidence | `critic_opencode_evidence_v2` | The narrow AI SDK signal gap survives source tracing; existing timeout/stream protections remain material. OwnedFetch's normally delivered body path must be distinguished from a late handler result after abort. |
+
+| Finding | Correction in this candidate |
+| --- | --- |
+| P2 advice: a facade can release borrowing when a method merely returns a lazy Effect | Admit at execution; retain through relevant finalizers or stream consumption/cancellation. Keep this at the real owner boundary, without per-method lease machinery. |
+| P2 precision: `R = never` could imply context independence and complete provider wiring | State only the absence of required services in the type parameter. Distinguish legitimate execution context from hidden configured-provider selection. Lifetime and type reviewers independently found the same issue; it counts once. |
+| Overbroad positive lifecycle example | Limit OwnedFetch body retention to the delivered-response path; note the real Effect HTTP handler's additional signal/scope protections. No actual embedded-host failure is established. |
+| Potential overclaim from digest and preflight | State the exact projection and same entry/declaration/factory inventory for reuse; imports/adapters can execute before selected factories. No new digest, cache subsystem or demonstrated existing cache bug. |
+| Integration cost and future alternatives | Distinguish passive operation objects from acquiring Layers. Permit a future single-authority backend in principle, but select no new package or workstream without a concrete consumer need. |
+
+The six perspectives are independent analyses, not six independent runtime
+experiments or an external PR approval. They establish no new production P1/P2.
+The bounded experiment and its exact output are retained as case study C; Node
+type stripping is not strict typecheck, the owner is simulated and the Stream
+extension is source-derived. Existing OpenCode suites were read, not run.
+
+Three reviewers then cross-checked the integrated corrections against candidate
+snapshot aggregate `e04ca82af1c0e4eae0a460fa403895ac15fe442d0a71c700d92d852f3bd55831`
+(SHA-256 of compact, key-sorted JSON of the ten file hashes). Each independently
+confirmed the candidate file hashes and that the six plan files were unchanged.
+
+| Cross-reviewer | Disposition |
+| --- | --- |
+| `adversary_effect_only` | No blocking/new P1/P2. Both the strongest native-only case and the specific pro-GM case remain intact; digest, construction, future backend and library-first boundaries are accurate. |
+| `adversary_lifetimes` | Both advice P2 corrections closed. Experiment C command/output exactly match the executed evidence; no new tests needed. Requested a small precision about external-owner versus reentrant ManagedRuntime disposal, incorporated after the snapshot. |
+| `critic_opencode_evidence_v2` | No blocking/new P1/P2. OpenCode counterprotections and normal/late-response paths are distinguished; native-port and experiment claims remain bounded. |
+
+The retained C command SHA-256 is
+`bb69037bf2af31d5ea5214658eac59448b003c12dcd0042f49879ba13f250d6f`;
+its output JSON SHA-256 is
+`9227cb20d68baa99c44396ea7551c3c20eeb3119478477747e4dda6d9febed70`.
+The final disposal wording follows the source's explicit self/ancestor exemption
+and notes that disposal does not revoke captured references. The remaining final
+edits record review/validation status only. No further broad review or optional
+experiment is required by this pass.
+
+This is not another complete round over the six unchanged implementation plans.
+No production change, plugin work, consumer Effect adoption, release or
+merge is selected. The organization library-first rule still applies when a
+reusable concern is concretely expected across projects; consumer-owned policy
+does not authorize copied generic mechanics or an arbitrary second-consumer gate.
+
 ## Validation boundaries
 
 Local Docs Protocol info and the prescribed installation route stopped at
@@ -239,3 +298,14 @@ head. These document checks do not execute those scripts or qualify integration.
 ReviewRouter reported incomplete provider coverage on the initial and author
 checkpoints, without an approval or actionable code finding. Its status and
 hosted CI remain separate from these internal plan reviews.
+
+The further pass inspected prior-head hosted CI rather than assuming it was
+green. The [examined Ubuntu static lane](https://github.com/agent-teams-ai/get-modular/actions/runs/42306388550/job/128196674472)
+completed governance and Docs Protocol catalog checks, then failed Markdown
+MD012 on consecutive blank lines in `effect-assessment.md`. That local prose
+defect is corrected; no check or scope is weakened. The next head's CI remains
+separate from this evidence and from source/whitespace/link inspection.
+The final local check resolves 45 relative Markdown link occurrences to 24
+existing files, finds all 13 named Bun scripts, and passes Git whitespace and
+consecutive-blank inspection outside fenced evidence. These are supplemental
+checks, not execution of the unavailable installed documentation gate.

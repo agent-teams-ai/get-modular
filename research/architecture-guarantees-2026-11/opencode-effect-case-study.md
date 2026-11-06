@@ -15,6 +15,13 @@ selected. The current plugin work retains its separate owner.
 | OpenCode workspace Effect | Catalog/override and root lock select 4.1.0; tag `effect@4.1.0` points to `9a91b1926a5fbfaffd302a7a41a94d4d53a1154e` |
 | Earlier Effect comparison and caller-context probe | `9428e17499ee3a144f2ac73c67213fb1336d2bdf`, manifest 4.1.2 |
 
+The later adversarial pass rechecked live sources. GM and Effect retained those
+revisions. OpenCode dev advanced to `0ce87485e81705c65c1d62cc06fd82429ab73e81`.
+The [six-commit comparison][oc-refresh] lists 31 changed paths in app, TUI,
+infrastructure, code mode and an unrelated Core tool test; it does not change the
+production files or dependency inputs used below. Source line references remain
+at the inspected `de6f469a` checkpoint, not an unexamined moving branch.
+
 Manifest versions are not independent release/deployment verification. External
 dependency metadata still mentions older Effect requirements; the inspected
 resolved Effect entry and root override select 4.1.0. We did not install or audit
@@ -30,6 +37,12 @@ below. OpenCode suites, real providers, installed packages, strict types and
 production throughput were not exercised. Findings distinguish observed code,
 source-derived implications, executed narrow observations and unqualified risks.
 
+Six further independent perspectives reviewed the conclusion, types, ownership,
+cost and OpenCode counterevidence. Their findings are in the [review record](reviews.md).
+One additional experiment, C below, uses actual Effect 4.1.2 and a simulated owner
+to distinguish creating a lazy operation from executing it. It is not an
+OpenCode or installed GM integration test.
+
 ## Corrected recommendation
 
 The earlier one-module Promise facade remains a reasonable **mixed application**
@@ -42,6 +55,13 @@ Current OpenCode already adds a substantive **LayerNode graph compiler** above
 Effect. Comparing GM only with bare Context misses that application architecture.
 GM must add a specific independent composition requirement; a second copy of the
 same provider graph is not a useful default.
+
+For a new predominantly Effect-native scope with sufficient native composition,
+do not add GM by default. For an existing explicitly adopted GM scope, preserve
+that authority while selecting the bounded execution integration. See the
+[decision and counterargument](effect-assessment.md#decision-after-the-adversarial-review):
+a portable profile and exact slot policy can justify GM, especially when they
+replace repeated cross-product policy. Module count alone cannot.
 
 No overall "OpenCode versus GM modularity" score is justified by this evidence.
 The meaningful comparison is the same concrete guarantee, including its actual
@@ -155,14 +175,22 @@ Sources: [SDK Host][oc-host], [SDK instances][oc-sdk-instances],
 [Location services][oc-locations], [coordinator][oc-coordinator],
 [coordinator tests][oc-coordinator-tests], [cancelled-borrower test][oc-borrower-test].
 
-### A good external lifecycle adapter
+### An external lifecycle adapter with explicit limits
 
 `OwnedFetch` rejects new requests after closing starts, forwards caller abort,
-retains handler/response-body lifetime, aborts and awaits pending requests before
-runtime disposal, and retains its first close Promise. That is an actual owned
-bridge, not an assumption that captured Context work is tracked by ManagedRuntime.
-It still cannot force an uncooperative handler or stream to settle. Direct Effect
-SDK methods also require callers to respect the acquired Host lifetime.
+retains the handler and the body of a normally delivered response, aborts and
+awaits tracked request lifetimes before runtime disposal, and retains its first
+close Promise. If abort wins before the handler settles, its error path waits
+for that handler, but does not pass a late Response through `trackResponse`.
+The actual [Effect HTTP handler][effect-http-handler] additionally interrupts the
+request fiber and binds stream/scope lifetime to its signal; a failing embedded
+OpenCode path was not established. The helper alone is not a universal guarantee
+for arbitrary late resources or an uncooperative handler/stream.
+
+Direct Effect SDK methods also require callers to respect the acquired Host
+lifetime; several direct service methods bypass the fetch guard. Their types do
+not promise post-close revocation. That borrowing contract is not inherently a
+defect or a reason to wrap every internal operation in a lease.
 Sources: [OwnedFetch][oc-fetch], [retention tests][oc-retention],
 [Effect SDK][oc-effect-sdk].
 
@@ -208,6 +236,14 @@ whose methods compose those Effects; no runner or mirrored Layer graph is needed
 for each operation. This is source-supported API shape, not a qualified installed
 consumer integration.
 
+Native operation ports do not make GM construction native Layer acquisition.
+Current GM factories use ordinary sequential Promises and opaque construction
+causes; native Layers combine typed acquisition errors, sharing and scopes.
+Replacing an already resourceful Layer graph has a real integration cost that
+passive operation objects do not. A compiler from one authoritative GM graph
+to a Layer representation could be valid in principle, but is not qualified or
+selected here; two representations are not inherently two competing authorities.
+
 Keep the existing ownership route. GM Resources can own module resources while
 Host request/job scopes own work; stop/drain the latter under existing Host/debt
 policy before releasing their dependencies. Host-owned resources may instead be
@@ -219,11 +255,20 @@ arbitrary acquiring Layers remains unqualified and out of scope.
 
 Effect-native public ports intentionally depend on Effect and its compatible
 version. Close undeclared business-provider requirements, but keep legitimate
-operation requirements such as `Scope.Scope` truthful. `R = never` neither
-guarantees lifetime nor authorizes capturing a long-lived Scope to evade an
+operation requirements such as `Scope.Scope` truthful. `R = never` only closes
+the required-service type parameter: References and optional lookups can still
+read context. It neither guarantees lifetime nor authorizes capturing a long-lived Scope to evade an
 operation requirement. Independent Hosts/tenants/workers can have independent
 runtimes; choose those from actual ownership needs.
 Sources: [Assembly types][gm-types], [runner][gm-run], [CMS][gm-cms].
+
+At an existing owner/retirement facade, admission must occur when a lazy Effect
+executes, and its borrow must last through settlement/finalization. For Stream,
+it lasts through consumption/cancellation. Bracketing the JS method that returns
+the value releases too early; [experiment C](#c-lazy-operation-admission-and-finalization)
+demonstrates the distinction. Preserve one provider-selection authority, one
+physical-resource owner and an explicit work/admission owner. Static native calls
+inside that protected lifetime need no extra lifecycle wrapper.
 
 ## Good patterns and cautions grounded in this example
 
@@ -233,7 +278,7 @@ Sources: [Assembly types][gm-types], [runner][gm-run], [CMS][gm-cms].
 | Resolve effective replacements before acquisition | Good existing LayerNode behavior; GM already has its own preflight authority, so do not duplicate the graph |
 | Global/Location sharing with actual lifetime tests | Good deliberate ownership; shared caches are not inherently wrong when their domain is explicit |
 | Separate job owner, joined observer and cancellation acknowledgement | Good coordinator behavior for many concurrent agents; observer cancellation is not automatically business cancellation |
-| Retain the first close result and response-body lifetime | Good OwnedFetch behavior; repeated idempotent close is not physical retry |
+| Retain the first close result and normally delivered response-body lifetime | Useful OwnedFetch behavior; late results still rely on the underlying handler, and repeated idempotent close is not physical retry |
 | SDK Promise bridge without its operation signal | A specific before-response forwarding gap is confirmed below; do not copy this pattern |
 | Convert cleanup to Exit then discard every result | Source-visible loss of cleanup-cause information; continuing all releases and reporting their failures are separate responsibilities |
 | Infinite idle cache retention with unbounded sharing keys | A scale/lifetime policy to evaluate, not automatically a leak. Session count, Location count and key count are different quantities |
@@ -288,8 +333,11 @@ If a consumer later selects native integration, the smallest useful proof is two
 actual communicating GM modules, one caller-local reference and one resource,
 using installed public imports and existing checks. Cover provider identity,
 native context/error behavior, cancellation and join before resource release,
-preflight ordering, and absence of a second provider graph. Keep the current
-strict compiler and package gates. Choosing a consumer comes before a credible
+preflight ordering, and absence of a second provider graph. At an owner boundary,
+observe deferred execution after retirement and finalizer/stream retention.
+Actually execute the lazy operations in the existing consumer contract cases;
+GM Conformance awaits its case and does not interpret Effect automatically.
+Keep the current strict compiler and package gates. Choosing a consumer comes before a credible
 LOC estimate; no invented cost or reliability improvement is claimed here.
 
 [oc-node]: https://github.com/anomalyco/opencode/blob/de6f469a01df975521c9d953ec81c3fc76006636/packages/util/src/effect/layer-node.ts
@@ -327,11 +375,13 @@ LOC estimate; no invented cost or reliability improvement is claimed here.
 [effect-scope]: https://github.com/Effect-TS/effect/blob/9a91b1926a5fbfaffd302a7a41a94d4d53a1154e/packages/effect/src/internal/effect.ts
 [effect-execution]: https://github.com/Effect-TS/effect/blob/9428e17499ee3a144f2ac73c67213fb1336d2bdf/packages/effect/src/internal/effect.ts#L5600-L5879
 [effect-promise]: https://github.com/Effect-TS/effect/blob/9428e17499ee3a144f2ac73c67213fb1336d2bdf/packages/effect/src/internal/effect.ts#L1150-L1229
+[effect-http-handler]: https://github.com/Effect-TS/effect/blob/9a91b1926a5fbfaffd302a7a41a94d4d53a1154e/packages/effect/src/http/HttpEffect.ts#L226-L353
+[oc-refresh]: https://github.com/anomalyco/opencode/compare/de6f469a01df975521c9d953ec81c3fc76006636...0ce87485e81705c65c1d62cc06fd82429ab73e81
 
 ## Retained source experiments
 
 These commands are retained one-off evidence, not maintained tooling or a new
-test harness. Neither experiment is strict typecheck or package/application E2E.
+test harness. None is strict typecheck or package/application E2E.
 
 ### A. Caller context across an extra runtime boundary
 
@@ -489,3 +539,164 @@ Observed output (plus Node's expected experimental `stripTypeScriptTypes` warnin
 ```
 
 The post-resolution observation is bounded to the recorded next event-loop turn; do not turn it into a measured claim about a real SDK's eventual network cleanup. The central proof is the absence of an operation signal in the SDK options while the consumer is interrupted.
+
+### C. Lazy operation admission and finalization
+
+Working directory: `/workspace/scratch/44ef6f5b5546/research-layers/effect`.
+Exit code: 0. Wall time reported by exec: 0.195390151 seconds.
+This is executable illustrative evidence, not maintained test infrastructure. The simulated owner implements only retirement, a borrow count and a fake resource-live flag. Actual Effect controls lazy execution, interruption and finalization; no real database or GM runtime is substituted or claimed.
+
+```bash
+node --input-type=module <<'NODE'
+import assert from 'node:assert/strict';
+import * as Effect from './packages/effect/src/Effect.ts';
+import * as Deferred from './packages/effect/src/Deferred.ts';
+import * as Fiber from './packages/effect/src/Fiber.ts';
+import * as Exit from './packages/effect/src/Exit.ts';
+const watchdog = setTimeout(() => process.exit(124), 2000);
+watchdog.unref();
+
+function makeOwner() {
+  let retired = false, borrowed = 0, alive = true, uses = 0, closes = 0;
+  const events = [];
+  const closeIfIdle = () => {
+    if (retired && borrowed === 0 && alive) {
+      alive = false; closes++; events.push('resource-closed');
+    }
+  };
+  return {
+    events,
+    snapshot: () => ({ retired, borrowed, alive, uses, closes }),
+    begin: () => {
+      if (retired) throw new Error('owner-retired');
+      borrowed++; events.push('borrow');
+    },
+    end: () => { borrowed--; events.push('release'); closeIfIdle(); },
+    retire: () => { retired = true; events.push('retire'); closeIfIdle(); },
+    use: () => { uses++; return alive; }
+  };
+}
+function protectedOperation(owner, operation) {
+  return Effect.acquireUseRelease(
+    Effect.try({ try: owner.begin, catch: cause => cause }),
+    () => Effect.suspend(operation),
+    () => Effect.sync(owner.end)
+  );
+}
+
+// The unsafe facade brackets only creation of the lazy Effect value.
+const unsafeOwner = makeOwner();
+const unsafePort = { read: () => Effect.sync(unsafeOwner.use) };
+function unsafeFacade() {
+  unsafeOwner.begin();
+  try { return unsafePort.read(); } finally { unsafeOwner.end(); }
+}
+const delayedUnsafe = unsafeFacade();
+assert.equal(unsafeOwner.snapshot().uses, 0);
+unsafeOwner.retire();
+const unsafeUseSawLiveResource = await Effect.runPromise(delayedUnsafe);
+assert.equal(unsafeUseSawLiveResource, false);
+
+// A deferred facade obtains admission on execution, not when the value is made.
+const refusedOwner = makeOwner();
+const delayedSafe = protectedOperation(refusedOwner, () => Effect.sync(refusedOwner.use));
+assert.equal(refusedOwner.snapshot().borrowed, 0);
+refusedOwner.retire();
+const refusal = await Effect.runPromiseExit(delayedSafe);
+assert.equal(Exit.isFailure(refusal), true);
+assert.equal(refusedOwner.snapshot().uses, 0);
+
+// An already admitted operation retains the resource through asynchronous finalization.
+const activeOwner = makeOwner();
+const started = Deferred.makeUnsafe();
+const finalizerStarted = Deferred.makeUnsafe();
+const permitFinalizer = Deferred.makeUnsafe();
+const activeWork = Effect.gen(function* () {
+  assert.equal(activeOwner.use(), true);
+  yield* Deferred.succeed(started, undefined);
+  yield* Effect.never;
+}).pipe(Effect.ensuring(Effect.gen(function* () {
+  activeOwner.events.push('inner-finalizer-start');
+  yield* Deferred.succeed(finalizerStarted, undefined);
+  yield* Deferred.await(permitFinalizer);
+  assert.equal(activeOwner.snapshot().alive, true);
+  activeOwner.events.push('inner-finalizer-end');
+})));
+const active = Effect.runFork(protectedOperation(activeOwner, () => activeWork));
+await Effect.runPromise(Deferred.await(started));
+activeOwner.retire();
+const interruption = Effect.runPromise(Fiber.interrupt(active));
+await Effect.runPromise(Deferred.await(finalizerStarted));
+const duringFinalizer = activeOwner.snapshot();
+assert.equal(duringFinalizer.borrowed, 1);
+assert.equal(duringFinalizer.alive, true);
+assert.equal(duringFinalizer.closes, 0);
+Effect.runSync(Deferred.succeed(permitFinalizer, undefined));
+await interruption;
+assert.equal(Exit.isFailure(await Effect.runPromise(Fiber.await(active))), true);
+const afterSettlement = activeOwner.snapshot();
+assert.equal(afterSettlement.borrowed, 0);
+assert.equal(afterSettlement.alive, false);
+assert.equal(afterSettlement.closes, 1);
+assert.deepEqual(activeOwner.events, [
+  'borrow', 'retire', 'inner-finalizer-start', 'inner-finalizer-end', 'release', 'resource-closed'
+]);
+console.log(JSON.stringify({
+  node: process.version,
+  effect: '9428e17499ee3a144f2ac73c67213fb1336d2bdf / 4.1.2',
+  unsafe: { useSawLiveResource: unsafeUseSawLiveResource, ...unsafeOwner.snapshot() },
+  deferredSafe: { refused: Exit.isFailure(refusal), ...refusedOwner.snapshot() },
+  activeSafe: { duringFinalizer, afterSettlement, events: activeOwner.events }
+}, null, 2));
+clearTimeout(watchdog);
+NODE
+```
+
+Observed output:
+
+```json
+{
+  "node": "v24.22.1",
+  "effect": "9428e17499ee3a144f2ac73c67213fb1336d2bdf / 4.1.2",
+  "unsafe": {
+    "useSawLiveResource": false,
+    "retired": true,
+    "borrowed": 0,
+    "alive": false,
+    "uses": 1,
+    "closes": 1
+  },
+  "deferredSafe": {
+    "refused": true,
+    "retired": true,
+    "borrowed": 0,
+    "alive": false,
+    "uses": 0,
+    "closes": 1
+  },
+  "activeSafe": {
+    "duringFinalizer": {
+      "retired": true,
+      "borrowed": 1,
+      "alive": true,
+      "uses": 1,
+      "closes": 0
+    },
+    "afterSettlement": {
+      "retired": true,
+      "borrowed": 0,
+      "alive": false,
+      "uses": 1,
+      "closes": 1
+    },
+    "events": [
+      "borrow",
+      "retire",
+      "inner-finalizer-start",
+      "inner-finalizer-end",
+      "release",
+      "resource-closed"
+    ]
+  }
+}
+```
