@@ -11,7 +11,7 @@ The proposed first scenarios already have maintained executable coverage:
 | --- | --- |
 | [Live instance custody test](../../tests/assembly/live-instance-custody.test.ts), landed in #223 (`20c3ce8c5bb839a16fbe8dc258d6d96fd5206787`) | 1024 live runs from one prepared template, two borrowed event sources, distinct roots, close-half isolation, exact unsubscribe counts, reuse without stale listeners |
 | [Semantic lifetime L-07](../../tests/qualification/consumer-fixtures/semantic/tests/module/lifetime.test.ts), landed in #189 (`f97a9e60fedc162404658d23af679c09225d4763`) | Real file journal stays usable through failed cleanup/retry; a counterexample closes it early and observes `EBADF`; release is checked independently |
-| [Existing attempt owner](../../tests/qualification/consumer-fixtures/semantic/tests/support/attempt-owner.ts) | Stops admission, drains accepted work, retains ownership/debt and closes the borrowed journal only after owned resources close completely |
+| [Existing attempt owner](../../tests/qualification/consumer-fixtures/semantic/tests/support/attempt-owner.ts) | The test Host owns the full journal and its close right; modules borrow only `journal.port`. The Host drains work and retains inner cleanup debt, then closes its outer journal only after inner resources close completely |
 
 The [1024-instance plan](../module-communication-2026-10/live-instance-custody-plan-2026-11-01.md)
 is historical planning context for the delivered test. Do not create a second

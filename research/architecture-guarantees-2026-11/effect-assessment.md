@@ -19,6 +19,13 @@ High quality in that narrower responsibility is credible. Overall superiority,
 equivalent operational reliability, and superior performance are not established.
 Stars, contributor counts and commit volume are not inputs to this assessment.
 
+The depth is visible in concrete mechanisms: Layer's MemoMap installs completion
+handling before publishing a shared acquisition, so interruption of its first
+requester does not leave the shared result uncompleted. Layer merging integrates
+concurrent construction with scopes. Resource acquisition exposes interruptibility
+as an explicit contract. These interacting execution guarantees account for work
+that an architecture-only composition score does not measure.
+
 ## Compare the actual responsibilities
 
 | Concern | Source observation | Assessment |

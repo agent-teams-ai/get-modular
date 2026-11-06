@@ -38,9 +38,12 @@ This is a new execution guarantee, not a change to Core graph validation.
    type carries the required scope type; Assembly neither interprets the scope
    nor awaits the result. The public structural adapter contract stays narrow;
    CMS continues to admit only `scoped`.
-2. At `implement`, read and capture the validator once using a data descriptor;
+2. At `implement`, validate/capture the declaration, then read and capture the
+   validator once using an own data descriptor **before invoking the adapter**;
    reject an accessor, missing validator on an adapter, non-callable validator
-   or invalid adapted factory with `assembly.bind.invalid-factory`. Retain the
+   or invalid adapted factory with `assembly.bind.invalid-factory`. Only after
+   metadata admission invoke the adapter and validate its returned factory.
+   The bad-metadata fixture must assert zero adapter-callback calls. Retain the
    callback with the existing private entry metadata; never trust a property
    later read from a consumer-supplied entry. Resources publishes the validator
    on `scoped`; no shared global registry, symbol registry or Assembly import.
@@ -66,8 +69,20 @@ This is a new execution guarantee, not a change to Core graph validation.
    standalone `scoped(name, factory)` useful outside Assembly. Hidden arbitrary
    closures, explicit casts and undeclared resource use cannot acquire an
    automatic requirement guarantee; do not claim otherwise.
+7. Preserve these requirements through the existing Conformance smoke rebuild.
+   Its current `implement(declaration, wrap(entry.factory))` loses adapter metadata.
+   Use one narrow Assembly-owned operation, proposed `wrapEntry(entry, wrapFactory)`,
+   which authenticates an existing module entry, wraps its already adapted factory
+   once, and preserves its captured declaration, private validator and invariant
+   capability/requirement types. Reject forged entries and non-callable results.
+   This operation grants no new context, disposal right or dependency lookup.
+   Conformance uses it instead of reconstructing an entry from public fields;
+   it neither reads private metadata nor applies `scoped` again. Keep its current
+   carrier-preserving wrapper and entry-copy cache. No generic interception API,
+   hook registry or extra lifecycle layer is introduced.
 
-Confirm the inference and marker shape in one strict TS 7.0.2+ fixture before
+Confirm inference, the marker and this narrow wrapping operation in one strict
+TS 7.0.2+ fixture before
 expanding the implementation. This checks the proposed surface, not permission
 to introduce an alternate adapter framework. Keep callable metadata read-only;
 a mutable callback or post-bind replacement must not change a prepared program.
@@ -106,6 +121,10 @@ The existing Host attempt/run/close/handoff recipe remains the ownership path.
 3. Change `packages/assembly/src/features/construction/{types,entry,ports,
    prepare-program,run}.ts` and the relevant public type exports. The existing
    authenticated collection and two public prepare routes retain their limits.
+   Update Conformance `features/harness/smoke.ts` and its types in the same slice:
+   the public `compose` callback carries the requirement parameter; loose harness
+   views must not silently treat a requirement-bearing prepared value as pure.
+   Audit `isolate` and other public type consumers for this generic change only.
 4. Add one public-package integration test in
    `tests/assembly/run-context-preflight.test.ts`, include it in
    `tests/tsconfig.assembly-tooling.json`, and extend the existing
@@ -131,6 +150,7 @@ The existing Host attempt/run/close/handoff recipe remains the ownership path.
 | Pure assembly and input-only dependencies | Existing optional-scope behavior and input borrowing preserved |
 | Typed resource entry/group/annotated prepared value | Missing/undefined/wrong scope rejected where known; widening cannot restore optional run |
 | Invalid adapter data/accessor and detectable prewrapped form | Bind-time refusal, no accidental callback/getter execution |
+| Authentic entry through smoke wrapping | The same preflight and required-scope type survive; one resource adaptation/child, unchanged carrier semantics; forged copies reject |
 | Packed NodeNext/Bundler consumer and changed-copy Resources control | Same public behavior/types; no deep imports or workspace-only identity |
 
 Expected counters and outcomes are handwritten; do not generate their oracle
@@ -149,6 +169,10 @@ qualify the new archives in an isolated copy of that existing composition and
 run its current scoped construction/cleanup tests. Record new source/archive
 identities. Do not migrate unrelated contained-turn or dynamic/plugin scopes.
 Consumer qualification and adoption of this proposal remain pending.
+The isolated copy is preliminary compatibility evidence. Completion also requires
+the bounded patch in the actual consumer, its adopted source head, reviewed CMS
+and package/archive identities, and consumer-owned required checks/results. Reuse
+that one ordinary-owner delivery for plan 06; do not create a second adoption.
 
 After the repository's frozen installation and compiler floor guard:
 `bun run assembly:build`, `bun run resources:build`,
@@ -174,11 +198,14 @@ Done means the complete public-package/type/consumer matrix passes on the exact
 implementation head, and current guidance/pins reflect the changed contract.
 If the design needs an allocation during preflight, a new cleanup authority,
 scope-object introspection in Assembly or a general requirements registry,
-reduce the design before continuing. A successful preflight never promises that
+reduce the design before continuing. Likewise stop if smoke preservation needs
+a general instrumentation framework instead of the one authentic-entry wrapper.
+A successful preflight never promises that
 the Host will keep the scope open or that opaque capabilities cannot escape.
 
-**Estimated incremental code:** 300–600 production/integration lines and
-450–850 test/fixture lines; codemod and consumer migration effort depend on the
+**Estimated incremental code:** 350–700 production/integration lines and
+550–1,000 test/fixture lines, including the existing smoke integration;
+codemod and consumer migration effort depend on the
 actual affected call sites and are recorded separately. **Confidence 8/10,
 achievable reliability within this guarantee 9/10, complexity 7/10.** These are
 engineering judgments, not measured availability or completed qualification.

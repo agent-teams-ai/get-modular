@@ -136,7 +136,7 @@ Do not invent another scale or packed-consumer harness.
 | Contract behavior | Adapter passes the old contract suite, including errors/cancellation; casting does not count |
 | Package carrier | Public roots only, compatible exact Core/Assembly pair, strict supported NodeNext/Bundler projects |
 | Scale | N100/500/1000 complete maps retain parity and pass the current workload under unchanged experiment caps |
-| Consumer | One pinned real consumer migrates in a disposable checkout with its own adoption checks and smoke |
+| Consumer | Preliminary disposable-copy proof, followed by the bounded real-consumer migration patch/adopted head and its own required adoption checks and smoke |
 
 Use existing `bun run assembly:build`, `bun run assembly:typecheck`,
 `bun run assembly:test`, `bun run conformance:check` and the existing packed
@@ -183,6 +183,10 @@ the corresponding reviewed artifacts, CMS delta and adoption evidence.
 
 Accept after the full typed/packed/consumer matrix proves staged migration and
 retained same-token invariance, with an accepted successor and fresh scale data.
+Once a useful contract migration is selected and this candidate is admitted,
+completion requires the actual consumer patch/adopted source head, reviewed CMS
+and package/archive identities, and consumer-owned check results. A modified
+disposable copy alone proves compatibility, not completed product adoption.
 Stop and revise if token widening weakens a negative case, two revisions require
 Core semantics changes, measured type cost exceeds the retained budget, or the
 consumer cannot show a real migration benefit. Do not raise budgets merely to
@@ -206,4 +210,3 @@ checks target those risks directly.
 [cms]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/docs/architecture/common-assembly.md
 [adr41]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md
 [release]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/architecture/tooling/release-candidate/README.md
-
