@@ -115,8 +115,12 @@ No critical plan disagreement remains for the **first, intentionally narrow refa
 - [x] Read target repo and organization engineering guidance; inspect current `main`, tree and open PRs.
 - [x] Identify already-refactored runtime/build paths and retained historical evidence.
 - [x] Three adversarial analytic review rounds of this plan; not independent agent executions.
-- [ ] Establish first implementation diff and immediately publish its commit.
-- [ ] Run targeted codemod/strict TS checks through connected CI.
-- [ ] Inspect any failing job logs, correct only regressions confirmed on the current SHA.
-- [ ] Review final diff, including external review results if executed.
-- [ ] Complete required exact-head matrix and merge verification, or record genuine remaining blocker.
+- [x] Publish bounded implementation with immediate commits: lexical scope and import liveness are separately owned private TypeScript modules.
+- [x] Verify existing migration signatures, fixtures, second-pass idempotence and strict TypeScript with the required hosted gates.
+- [x] Inspect CI failures: fix only new documentation spelling; retry the cancelled Windows / Node 26 Assembly job, without altering code.
+- [x] Inspect the full five-file diff in two internal review rounds, with exact-move comparison.
+- [x] Verify the prior source HEAD `3472479b22ac7c23e5af1f6ae7453e2ceb61114b` through [CI run 42133422939](https://github.com/agent-teams-ai/get-modular/actions/runs/42133422939), attempt 2: successful across all required operating systems and runtime profiles.
+- [ ] Complete independent code review on the delivered head. ReviewRouter reported incomplete coverage on three attempts (0 of 4/5 files); Cubic reported exhausted monthly quota. A passing CodeQL or self-review is not an independent xhigh model review.
+- [ ] After accepted external review and all exact-head required checks, squash-merge and verify the new `main` checks. A new documentation-only commit still needs checks on its own SHA.
+
+This ledger distinguishes source qualification from external review and merge authority. Do not claim completion from the earlier CI run after a new commit.
