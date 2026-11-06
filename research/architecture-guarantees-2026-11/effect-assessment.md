@@ -4,6 +4,9 @@ Status: source-backed assessment, 2026-11-06; not a performance benchmark or a
 claim that either complete implementation has been audited. Get Modular source
 is `5fb83478dd7b95216be92c4d3077eddf2774eef8`; Effect source is
 `9428e17499ee3a144f2ac73c67213fb1336d2bdf` (package manifest version 4.1.2).
+The 2026-11-07 large-application follow-up and current OpenCode evidence are in
+[the case study](opencode-effect-case-study.md). That study also pins OpenCode's
+actual Effect 4.1.0 dependency; the earlier probes below remain 4.1.2 evidence.
 
 ## Conclusion
 
@@ -78,8 +81,10 @@ artifact and explicit module/provider policy, not the mere existence of dependen
 injection. This is a justified integration opportunity, not evidence of greater
 reliability, speed or automatic Clean Architecture/DDD conformance.
 
-The smallest first arrangement is a consumer-owned adapter in one existing,
-cohesive module that actually needs Effect's execution semantics. For example,
+For a mixed application, the smallest first arrangement is a consumer-owned
+adapter in one existing, cohesive module that needs Effect's execution semantics.
+This enclave arrangement is not a default for every internal boundary of a large
+Effect-native application. For example,
 Get Modular selects a search module's document-store and model-provider ports;
 the module supplies those already-created values to its private Effect services
 and uses Effect for its concurrent operations. Not every module needs Effect.
@@ -105,10 +110,43 @@ object identity, not arbitrary injected GM values; do not add a global shared ma
 to conceal duplicate construction or cross independent consumer lifetimes.
 See [ManagedRuntime construction][effect-build] and [Layer memoization][effect-memo].
 
+### Effect-native modules can keep native operation ports
+
+When cooperating modules already use Effect, keep their operations as Effect or
+Stream values and execute them at the Host/request/job or real foreign boundary.
+A GM construction factory still returns its ordinary Promise/product; a method
+on the published capability may return Effect. These are different phases.
+Current Assembly leaves capability values opaque. A constructor can capture its
+narrow GM-injected ports and return composable Effect functions without a second
+provider graph or a runner at every method call.
+
+The case study's source probe shows why this matters: a native call retained a
+caller-local Reference, while re-entry through Promise and a separate runtime
+read its default, despite explicit signal forwarding. Cancellation signaling also
+does not automatically reconstruct native parent/child joining. This is a real
+semantic boundary, not a measured performance claim.
+
+Keep the current construction/ownership contracts. Under CMS, `scoped` remains
+the only admitted factory context adapter; do not add a shared Effect Scope,
+Context or runtime to `FactoryContext` and call it an existing integration.
+GM Resources can own module resources while explicit Host Effect scopes own
+operations; the Host must stop/drain the work before releasing its dependencies.
+Declared Host-owned borrowed inputs are another existing boundary. If claiming
+preflight before acquisition, prepare GM before starting those acquiring Layers.
+Interpreting arbitrary Layers through a common GM acquisition backend remains
+unqualified and outside this research scope. See the [current CMS](../../docs/architecture/common-assembly.md)
+and [Assembly types](../../packages/assembly/src/features/construction/types.ts).
+
+An independent Host, tenant, worker or deliberately isolated subsystem can have
+its own runtime. Service count alone does not determine runtime count. In an
+already sufficient Effect/LayerNode application, GM may add no useful policy;
+do not maintain two authoritative graphs for the same providers and overrides.
+
 ### Public ports and cancellation
 
-Prefer an ordinary Promise port for a first integration that keeps Effect an
-implementation choice. `runPromise` is the existing bridge; `runPromiseExit`
+Prefer an ordinary Promise port at a mixed/foreign boundary that keeps Effect an
+implementation choice, not automatically between Effect-native modules.
+`runPromise` is the existing bridge; `runPromiseExit`
 retains Exit/Cause for deliberate conversion. `Promise<A>` does not carry Effect's
 typed error parameter `E`. Translate expected failures into the consumer's
 existing result/error contract and preserve defects and interruption deliberately;
@@ -122,8 +160,15 @@ tracked execution. Such a port needs an explicit execution/lifetime owner; a cas
 or general conversion helper cannot supply that guarantee. See [runner and
 provide APIs][effect-api] and [ManagedRuntime execution][effect-build].
 
-Each operation's signal must reach its work: the consumer's cancellation contract
-feeds `runtime.runPromise(effect, { signal })`, and a Promise-backed SDK is called
+Do not require every native operation to have `R = never`. A deliberate
+`Scope.Scope` or request/transaction execution requirement differs from an
+undeclared business provider. Keep those requirements truthful and explicit;
+neither a cast nor capturing an unrelated long-lived Scope closes the ownership
+question. The consumer decides whether Effect belongs in its public contract.
+
+At a Promise/runtime boundary, the operation's signal must reach its work: the
+consumer's cancellation contract feeds `runtime.runPromise(effect, { signal })`,
+and a Promise-backed SDK is called
 through the normal signal-accepting `Effect.tryPromise((signal) => ...)` form.
 An SDK that ignores the signal may continue external work after a fiber stops.
 The factory's construction signal is not a universal signal for future requests.
@@ -131,7 +176,10 @@ Use the actual module lifetime and per-operation cancellation policy, not nested
 unmanaged runners. See [Effect Promise cancellation][effect-promise] and
 [Resources signals][gm-signals].
 
-### Two lifecycle obligations at the adapter boundary
+### Two lifecycle obligations for the enclave adapter
+
+These obligations apply when a GM owner hosts a private ManagedRuntime. Native
+operation ports without such a runtime do not require an extra disposal adapter.
 
 **Register runtime custody before warmup.** ManagedRuntime builds its Layer
 lazily. Cancelling a requester awaiting the shared build need not stop the build;
@@ -211,11 +259,16 @@ first request to make a startup metric look better.
 
 ### Qualification before a consumer adopts the pair
 
-Use one actual port and existing consumer checks. Verify selected-provider
+Select the mixed/enclave or native-operation orientation first. For a native
+orientation, use two actual communicating GM modules and one caller-local
+reference/resource; prove context preservation and cancellation/join before owner
+release without adding a new framework. For the enclave, use one actual port.
+In both cases reuse existing consumer checks. Verify selected-provider
 identity and one release owner; startup failure/cancellation without lost custody
 or early port publication; result/error/abort mapping; managed-work cleanup and
 borrowed-provider lifetime; and retention of a failed disposal cause across a
-second close. Qualify the actual packed public imports and Assembly factory shape
+second close when adapting ManagedRuntime disposal to GM cleanup. Qualify the
+actual packed public imports and Assembly factory shape
 on the repository's strict compiler floor. These are bounded adoption obligations,
 not a new integration platform or tests to add to this planning PR.
 

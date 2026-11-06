@@ -1,6 +1,6 @@
 # Architecture guarantees: bounded improvement plans
 
-Status: four critic rounds plus a focused scope/interoperability review, 2026-11-06.
+Status: four critic rounds and focused follow-ups; OpenCode/scale study 2026-11-07.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission
 to start every candidate. The owner requested separate bounded plans in one
@@ -10,6 +10,9 @@ draft pull request, followed by multiple rounds of independent criticism.
 
 Reviewed Get Modular source: `5fb83478dd7b95216be92c4d3077eddf2774eef8`.
 Effect comparison source: `9428e17499ee3a144f2ac73c67213fb1336d2bdf`.
+The [OpenCode case study](opencode-effect-case-study.md) additionally pins current
+OpenCode and its Effect 4.1.0 dependency; it distinguishes those from the earlier
+Effect 4.1.2 probes.
 
 Strengthen concrete composition guarantees while preserving the existing
 semantic owners. A high score for a focused composition architecture does not
@@ -55,8 +58,11 @@ Do not multiply every case across every fixture merely to increase test volume.
 
 Optional Effect interoperability is assessed in [the comparison](effect-assessment.md).
 It adds no seventh workstream, mandatory dependency, graph converter or integration
-package. A concrete consumer may use Effect inside a cohesive module. That decision
-does not change these six plans' admission rules or the ownership of plugin work.
+package. A mixed consumer may use Effect inside a cohesive module; an Effect-native
+consumer can retain native operation ports across GM module boundaries. The
+[large-application case study](opencode-effect-case-study.md) explains the tradeoff
+and why current OpenCode's LayerNode graph is a substantive comparison point.
+These choices do not change the six plans' admission or plugin ownership.
 
 ## Size and uncertainty
 
@@ -130,6 +136,17 @@ workstream or a change to the preceding review counts; details are in the review
 record. All three completed targeted correction review of these changed sections
 and reported no blocking/new P1/P2 within their respective scopes.
 
+The subsequent large-application review found one P2 in the expanded advice:
+the mixed-code Promise/enclave recommendation must not become the default for
+every Effect-native internal boundary. The assessment now distinguishes native
+operation ports from Promise construction and retains current CMS ownership
+limits. The OpenCode study records actual graph/lifetime patterns and a narrow
+AI SDK cancellation-forwarding gap; it does not authorize an upstream fix.
+All three completed cross-review of the integrated claims. One evidence-wording
+P2 (requested versus resolved dependency versions) was corrected and rechecked;
+the final reviewed scope has no remaining blocking P1/P2. The six plan files
+remain unchanged by this follow-up.
+
 The local documentation route and the prescribed installation command were
 attempted on Node 24.22.1. Both stopped at `runtime.bun.expected:1.4.3` because
 the required Bun executable is unavailable. No older compiler, alternative
@@ -143,3 +160,7 @@ proposed changes is claimed by this planning PR. The Effect assessment separatel
 retains three one-off source-execution probes on Node 24.22.1. They observe current
 runtime semantics and an adapter debt mismatch; they are not qualification of
 the proposed APIs or of a complete installed integration.
+The case study adds two separately labeled experiments: caller Reference loss
+across a new runtime on Effect 4.1.2, and an exact extracted OpenCode bridge on
+Effect 4.1.0 with a controlled SDK Promise. OpenCode's existing suites were read,
+not run; no real provider, installed integration or performance benchmark is claimed.

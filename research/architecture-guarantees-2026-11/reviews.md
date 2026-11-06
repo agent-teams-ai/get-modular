@@ -169,6 +169,52 @@ and Effect assessment retain the substantive bytes examined in this targeted
 review. No further broad review campaign or optional runtime testing is required
 by this planning pass.
 
+## OpenCode and large Effect-native applications, 2026-11-07
+
+At the owner's request, three agents received the full conversation and challenged
+the existing interoperability recommendation at many-module scale. Planning head
+was `baafadc987d762df3c7a21d1774b12b4f864e3e2`; Get Modular source stayed at the
+index baseline. OpenCode `dev` was fixed at
+`de6f469a01df975521c9d953ec81c3fc76006636`, manifest 2.2.5 and root Effect 4.1.0.
+The case study pins the exact Effect tag and separates it from 4.1.2 evidence.
+
+| Reviewer | Investigation and required correction |
+| --- | --- |
+| `opencode_module_architecture` | Actual LayerNode compiler, typed wiring/substitutions, private outputs, Global/Location policy and package bundle boundaries. Compare GM with this real application composition, not bare Layer; do not credit proposed 03 guarantees as current implementation. |
+| `opencode_effect_lifetimes` | Current Host/Location/Session ownership and SDK bridges. Preserve native service chains, observer/job ownership and first-close results. One extracted-function experiment confirms missing operation-signal forwarding before the AI SDK response; broader network impact is not claimed. |
+| `critic_large_effect_gm` | One P2 in advice expanded to the user's new scenario: neutral Promise enclaves are not a default for every internal Effect-native edge. One source probe demonstrates caller Reference loss despite signal forwarding. Distinguish native capability operations from GM Promise construction and retain current CMS restrictions. |
+
+No P1 was found in the earlier one-enclave recipe. Terminology is narrowed to
+typed service composition, with source/domain/lifetime policies assessed
+separately. The correction permits explicit operation Scope requirements; it
+does not turn `R = never` into a universal rule or add a common Layer backend.
+
+The [case study](opencode-effect-case-study.md) records good practices and cautions
+with their evidence levels. OpenCode cleanup-cause discard is a source-visible
+reporting tradeoff; initial detached-bootstrap ownership is a qualification
+question. Neither is reported as an observed production incident. Its existing
+tests were read, not executed. The two new experiment commands/outputs are retained
+in the same document, with exact runtime versions, substitutions and limitations.
+The prior three disposal/build probes remain unchanged, separate evidence.
+
+All three completed a second, focused cross-review of the integrated claims,
+including findings originating with the other investigators:
+
+| Cross-review finding | Correction and final disposition |
+| --- | --- |
+| P2 evidence wording: old external dependency requirements were confused with resolved Effect versions | The case study now distinguishes requested rc.111 metadata from the resolved 4.1.0 entry/root override; no physical installation audit is claimed. The architecture reviewer rechecked the correction and closed it. |
+| Enclave lifecycle instructions could still be read as mandatory for native operation ports | Signal mapping is limited to a Promise/runtime boundary; runtime custody/disposal rules are explicitly for the enclave adapter; the second-close assertion is conditional on such an adapter. All three confirmed the narrowed scope. |
+| The probe's substitute description could obscure unused fail-fast sentinels | The exact proposed wording now specifies substituted behavior on the exercised pre-response path. Commands and outputs remain unchanged. |
+
+The original expanded-advice P2 is closed. All three reported no remaining
+blocking/new P1/P2 in their final reviewed scope. They independently checked
+boundaries of the AI SDK finding, native GM capability shape, source privacy,
+current CMS ownership and claimed test execution. This is a research and
+correction review, not another full round over the unchanged six plans.
+Those six plan files retain their prior bytes. No upstream OpenCode changes,
+mandatory dependency, generic integration package or new implementation workstream
+is selected.
+
 ## Validation boundaries
 
 Local Docs Protocol info and the prescribed installation route stopped at
@@ -186,6 +232,10 @@ After the focused interoperability edits, the local inspection found 33 valid
 relative Markdown file targets and the same 13 existing named Bun scripts;
 whitespace inspection passed. This does not change the unavailable installed
 documentation/runtime gates or the narrow scope of the retained source probes.
+After the OpenCode follow-up, the local inspection found 40 valid relative file
+targets and the same 13 existing named Bun scripts; whitespace inspection passed.
+All six implementation-plan files remained byte-identical to the prior published
+head. These document checks do not execute those scripts or qualify integration.
 ReviewRouter reported incomplete provider coverage on the initial and author
 checkpoints, without an approval or actionable code finding. Its status and
 hosted CI remain separate from these internal plan reviews.
