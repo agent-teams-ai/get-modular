@@ -1,6 +1,6 @@
 # Architecture guarantees: bounded improvement plans
 
-Status: plans reviewed and corrected through two critic rounds, 2026-11-06.
+Status: additional source-backed review corrections; round 4 pending, 2026-11-06.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission
 to start every candidate. The owner requested separate bounded plans in one
@@ -58,7 +58,7 @@ confidence / achievable reliability within the stated scope / complexity.
 | --- | ---: | ---: | --- |
 | 01 | 0; finish existing #213 | Already prepared there | 10 / 9 / 3 |
 | 02 | 350–700, including smoke integration | 550–1,000 | 8 / 9 / 7 |
-| 03 | Foundation 350–650 + GM 450–750 | 1,000–1,800 across both | 7 / 8 / 7 |
+| 03 | Foundation 450–800 + GM 550–900 | 1,200–2,200 across both | 7 / 8 / 7 |
 | 04 | 200–500 type changes + 100–250 migration/integration | 600–1,200 | 8 / 8 / 6 |
 | 05 | 600–1,200 only after admission | 1,200–2,400 | 6 / 8 / 8 |
 | 06 | 0 by default | 0 by default | 9 / 9 / 3 |
@@ -102,9 +102,13 @@ ordinary `.ts` files. Node type stripping is not typecheck evidence.
 
 Three author agents prepared the resource, authoring and evolution plans with
 the full conversation and fixed source baseline. Three different critic agents
-completed both rounds. The first round's one P1 and four P2 findings are closed
-at planning level. In round 2 all three critics found no remaining or new P1/P2
-within their reviewed scope. Implementation proof obligations remain pending.
+completed rounds 1 and 2; their one P1 and four P2 findings were closed at planning
+level. At the owner's request, three fresh critics performed a deeper round 3
+against the same source baseline. They identified one P1 and five distinct P2
+findings, corrected in this candidate: complete identity pairs, independent
+contract-source obligations, bounded list-use evidence, actual membership owners,
+exact export-row correlation and parallel-drain liveness. Round 4 checks those
+corrections and their scope. Implementation proof obligations remain pending.
 
 The local documentation route and the prescribed installation command were
 attempted on Node 24.22.1. Both stopped at `runtime.bun.expected:1.4.3` because

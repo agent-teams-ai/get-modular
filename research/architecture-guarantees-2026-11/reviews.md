@@ -67,11 +67,42 @@ the exact supported export occurrence with complete public origin evidence.
 No critic treated an isolated consumer copy as completed adoption or a reviewed
 plan as runtime/strict-type/packed qualification.
 
-The final documentation update records completion and validation status only;
-the six workstream plans and Effect assessment retain the reviewed round-2 bytes.
+The round-2 completion update recorded completion and validation status only;
+at that checkpoint the six plans and Effect assessment retained the reviewed bytes.
 The author round, two independent rounds with three critics each, and root
 integration are distinct activities; this is not a claim of nine independent
 reviewers or external PR approval.
+
+## Fresh deeper review, round 3
+
+At the owner's request, three new critics received the full conversation and
+reviewed the published candidate `6f699a0301dddfbb60a5fc15ffbd8e5051db76c2`.
+Source main remained `5fb83478dd7b95216be92c4d3077eddf2774eef8` when rechecked.
+All nine file hashes matched snapshot aggregate
+`de2bdc46803da7893514037bc9e220af6f6d8b62eb5dbf6948f6637f503ee580`.
+
+| Finding | Reviewer | Minimal correction |
+| --- | --- | --- |
+| P1: token alone collapses different capability IDs | `deep_plan_evolution` | 04 uses the exact `(capabilityId, compatibilityToken)` pair in one type-only key; keeps raw/manual contracts, runtime keys and Core grammar; 03's successor wording agrees |
+| P2: deleting both authored contract lists equally hides a missing source | `deep_plan_authoring` | 03 derives independent source obligations from observed definitions/ownership/declaration origins, with a synchronized-deletion negative |
+| P2: a const initializer does not prove the list stays unchanged | `deep_plan_authoring` | 03 requires bounded lexical-use coverage, rejects visible mutation/unknown calls, retains exported readonly tuples and limits the guarantee to governed authorship |
+| P2: old import-owner inference rejects legal resolved members | `deep_plan_authoring` | 03 replaces that inference with actual membership origins; raw imports remain available to FMS/privacy |
+| P2: path/line/kind cannot uniquely match an export occurrence | `deep_plan_authoring` | 03 chooses same-observation legacy-row indices with full specifier coverage; same-line and mixed-export controls reject incomplete neighbors |
+| P2: a cooperative peer can hold a failed parallel run pending | `deep_plan_resources`, independently confirmed by `deep_plan_evolution` | 05 requires independent completion or an existing Host stop path; direct public-run barrier proof, no hidden cancellation or smoke API |
+
+The shared liveness finding counts once: round 3 has one P1 and five P2 findings.
+Other small corrections clarify resource/lifecycle allocation in 02, the existing
+concurrency bound and synchronous-launch boundary in 05. No additional production
+mechanism is selected. The 03 estimate now includes the actual required use/origin
+and completeness work; it is not permission to add more syntax or a general
+analyzer. Plans 01/06 and the Effect assessment need no substantive change.
+
+## Correction review, round 4
+
+Pending: the same three fresh critics review the revised candidate and check the
+findings above, cross-plan identity/ownership consistency and remaining scope.
+No runtime, strict-type, packed-package or consumer execution is claimed by either
+of these additional design reviews.
 
 ## Validation boundaries
 

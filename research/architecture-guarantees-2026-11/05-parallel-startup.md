@@ -41,7 +41,13 @@ flags and a second sequential/parallel runner implementation.
 4. If independent I/O is insignificant, the serial critical path dominates, or
    the consumer already constructs once outside its latency-sensitive path,
    stop with the measured deferral. No new runtime option ships.
-5. Only for an admitted bottleneck, run a disposable bounded experiment at
+5. Check the consumer's completion path before admitting a prototype. Each
+   acquisition must settle independently, or the consumer must already have a
+   Host stop/deadline path that can abort while `run()` is pending. Cancellation
+   initiated only after `await run()` is insufficient. If immediate sibling
+   cancellation on failure is required, defer this candidate; do not add a new
+   timer, interim-notification API or internal cancellation authority to admit it.
+6. Only for an admitted bottleneck and completion path, run a bounded experiment at
    concurrency 1, 2 and 4 over the same useful workload. Compare total startup,
    active count, failures/cancellation, final owned-resource count and memory.
    Retain every outcome, including regressions. Do not publish the experiment as
@@ -57,8 +63,11 @@ single-failure and creation-order presentation clauses of the Assembly contract.
 Preserve accepted ADR bytes; show the exact old/new guarantees in that successor.
 
 - One execution implementation serves all runs. Add `concurrency` to run options;
-  omission means 1. Validate a finite integer in the existing admitted selection
-  bound, before any factory. No automatic concurrency inference or environment
+  omission means 1. Validate a finite integer from 1 through the existing
+  Assembly `limits.handles` maximum (4096 at this baseline), before any factory.
+  A bound greater than available work leaves idle capacity; it is not an error.
+  Reuse that owning limit, without a second registry or graph-specific setting.
+  No automatic concurrency inference or environment
   switch. A proposed stable `assembly.run.invalid-options`/phase `options`
   reports an invalid bound without overloading resource or input errors.
 - Preserve admission precedence: initially aborted signal, declared inputs,
@@ -73,6 +82,16 @@ Preserve accepted ADR bytes; show the exact old/new guarantees in that successor
   Unsupported carriers are rejected without invoking then/getters. Their
   unobservable external work is not claimed to have stopped.
 
+Failure is observable to the caller only after all started carriers settle.
+This candidate provides neither fail-fast completion nor failure-triggered
+sibling cancellation. Even a cooperative peer B that waits for caller abort
+can hold the result after peer A rejects. A Host that waits for that result
+before aborting cannot make progress. The admission check above must qualify an
+independent completion/Host-cancellation path; the sequential runner did not
+start B after A failed, so serial liveness must not be claimed for this case.
+A Host deadline initiates cancellation, not proof of completion or permission
+to discard pending work. Cleanup still follows actual drain.
+
 ### Dependency execution
 
 Derive a private ready queue from the already validated Program. Count unique
@@ -84,6 +103,11 @@ Choose the lowest plan index among currently ready entries and never exceed the
 bound. Mark an invocation before calling user code so synchronous reentrancy
 cannot launch it twice. A synchronously observed throw or unsupported carrier
 stops further launches before another capacity slot is filled.
+Separate synchronous factory invocation and carrier admission from asynchronous
+settlement observation. The current `async invokeFactory` converts a synchronous
+throw to a Promise result; enqueueing it unchanged would hide that failure until
+a microtask and could fill more slots. Refactor that existing boundary locally,
+without introducing another execution implementation.
 
 Preserve the existing required/optional/many dependency projection. In particular,
 `providerImplementationIds` order determines many injection, never completion
@@ -143,6 +167,11 @@ baseline, apart from the explicitly migrated failure representation.
    Parallel mode checks causal dependencies, at-most-once invocation, expected
    injected failure, every observed handoff and cleanup. Unexpected extra
    failures remain failures of the qualification, not silently accepted.
+   Its current internal controller does not expose an independent Host stop
+   path. Use self-settling or explicitly controlled factory fixtures for parallel
+   smoke. Prove the abort-waiting peer through public `run()` and the selected
+   consumer's existing independent stop path; do not claim smoke proves that path
+   or silently add a cancellation/timeout API to its one new setting.
 5. Qualify public packed packages and the same measured consumer. Update CMS,
    affected adoption pins, examples, the consumer's outcome handling and release
    migration together. Do not add parallel behavior to unrelated consumers.
@@ -161,6 +190,7 @@ under strict TypeScript 7.0.2+ projects; no unrelated JavaScript migration.
 | Cardinality/sharing | Explicit many order, absent optional and diamond identity are unchanged |
 | Multiple failures | Two invalid products/rejections preserve both causes and every raw product exactly once |
 | Cancellation race | Already-aborted means zero calls; late valid/invalid/rejected settlements are all accounted for |
+| Failure with abort-waiting peer | Controlled A rejects while B waits for caller abort; an independent Host stop releases B, all causes/products are retained, and cleanup begins only after drain |
 | Synchronous failure | Throw/unsupported carrier during launch prevents subsequent launches once observed |
 | Commit fault | Before/after-append faults preserve all in-flight handoffs without duplicate ownership |
 | Opaque values | Then methods/accessors are not invoked; instances and capabilities remain unfrozen |
@@ -186,8 +216,11 @@ hand migration. Include the required migration block and rejecting fixtures;
 do not write release-owned API baselines on the feature branch.
 
 Stop if no meaningful startup bottleneck is measured, any result can be lost,
-the only design requires automatic disposal/force cancellation, or the measured
-gain does not meet the recorded target. Do not weaken failure tests to ship overlap.
+the consumer lacks an independent completion/cancellation path, immediate sibling
+cancellation is required, the only design requires automatic disposal/force
+cancellation, or the measured gain does not meet the recorded target. Do not
+weaken failure tests to ship overlap. The abort-waiting-peer proof uses controlled
+barriers and an explicit Host abort, not elapsed-time guesses or a new timer.
 
 Experiment: no production API change, approximately 100–250 tooling lines and
 150–300 fixture/test lines if existing measurement hooks are insufficient.

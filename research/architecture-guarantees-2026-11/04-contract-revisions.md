@@ -17,6 +17,10 @@ Reviewed Get Modular revision:
 - Core indexes provided capabilities per implementation and checks exact tokens
   for each selected provider-to-slot edge. Its wire format already represents
   separate providers of one ID at different exact revisions.
+- A compatibility token is not a global capability identity. The current raw
+  `defineModule`/manual-map fixture gives store, filter and logger the same
+  `synthetic/v1` token with different value types. Core first resolves capability
+  ID, then compares token; preserve that complete pair for these valid forms.
 - The earlier investigative source-Core probe built a four-module graph:
   native provider r2, adapter consuming r2/providing r1, old consumer r1 and new
   consumer r2, with explicit bindings. It succeeded. This was a source execution
@@ -26,7 +30,8 @@ Reviewed Get Modular revision:
   revisions changes that guarantee deliberately; it is not merely new syntax.
 
 Sources: [Assembly types][types], [Core census][census], [Core bindings][bindings],
-[CMS][cms] and [ADR-0041][adr41].
+[raw/manual-map fixture][raw-fixture], [wire grammar][wire-grammar], [CMS][cms]
+and [ADR-0041][adr41].
 
 ## Goal and boundary
 
@@ -47,16 +52,22 @@ no implementation or lifecycle requirements to this slice.
 
 ## Selected design
 
-1. Key descriptor-derived maps by the existing exact token
-   `<capabilityId>/r<revision>`, using one key-remapped mapped type. Avoid recursive
-   intersections or a per-key search across the full descriptor union.
-2. Derive entry/group used keys from the tokens a declaration provides/consumes.
+1. Key maps by the pair `(capabilityId, compatibilityToken)`, encoded only in
+   types as `${Id}#${Token}`. Both admitted components use Core's `portableId`
+   grammar, which excludes `#`, so this is unambiguous without escaping or a
+   recursive type-level encoder. `CapabilitiesOf` supplies the descriptor's
+   generated `<id>/r<revision>` token; raw declarations keep opaque exact tokens.
+   Use one key-remapped mapped type and a small shared key alias. No per-key
+   search across the whole descriptor union or runtime key registry is needed.
+2. Derive entry/group used keys from the pairs a declaration provides/consumes.
    Keep their existing invariant brands: covariance alone would allow a consumer
-   expecting a wider value under the same token.
-3. Resolve factory value types by the declaration's exact token. Runtime product
+   expecting a wider value under the same pair.
+3. Resolve factory value types by the declaration's exact pair. Runtime product
    records remain keyed by capability ID; dependency records remain keyed by
-   slot ID. No runtime token-to-service registry is introduced.
-4. Validate literal declaration IDs/tokens and exact map-token correspondence.
+   slot ID. The combined TypeScript key is not a new wire identifier and is not
+   subject to the wire's per-component 128-byte limit. The current fixed exact
+   family/version remains unchanged; another family needs a separate successor.
+4. Validate literal declaration IDs/tokens and exact map-pair correspondence.
    Widened IDs, token unions, widened declarations and callback inference must
    not manufacture a precise dependency type or erase a failed check.
 5. Preserve `KnownCapabilities`, tuple requirements and precomputed group keys.
@@ -72,19 +83,21 @@ no implementation or lifecycle requirements to this slice.
    auto-selection is smuggled into this type change.
 8. Preserve complete descriptor unions and separate imported
    `CapabilitiesOf<SourceContracts>` bases. Conflicting values for the same
-   `(id, revision)` still reject at aggregate definition, including unused and
-   private-child contracts. Identical overlaps remain valid.
+   `(capabilityId, compatibilityToken)` still reject at aggregate definition,
+   including unused and private-child contracts. Identical overlaps remain valid.
 
 ### The deliberate contract change
 
 Different revisions of the same ID become distinct type keys and may coexist
-in a complete aggregate. The old unused-revision-conflict assertion must become
-a positive coexistence assertion, paired with negative tests for an absent token,
-wrong exact binding and conflicting values of the same token. Do not claim that
+in a complete aggregate. Different IDs sharing an opaque token also stay distinct:
+`synthetic/store#synthetic/v1` and `synthetic/filter#synthetic/v1` must never merge.
+The old unused-revision-conflict assertion must become a positive coexistence
+assertion, paired with negatives for an absent pair, wrong exact binding and
+conflicting values of the same pair. Do not claim that
 the old global same-ID revision conflict was preserved.
 
 Separate bases remain necessary: combining imported descriptors into one mapped
-base can still union conflicting values of the same exact token. The authoring
+base can still union conflicting values of the same exact pair. The authoring
 check plan must retain that distinction. An arbitrary hand-written union-valued
 map is not proof that its values satisfy a behavioral contract.
 
@@ -126,7 +139,8 @@ Do not invent another scale or packed-consumer harness.
 | Boundary | Independent expectation |
 | --- | --- |
 | Exact adapter E2E | Old root uses r1 adapter; new root uses r2; both useful results match manually stated expectations |
-| Same-token conflict | Wider/different values at identical ID/revision reject, including unused/private-child sources |
+| Same-pair conflict | Wider/different values at identical ID/token reject, including unused/private-child sources |
+| Shared opaque token | Existing raw store/filter/logger declarations sharing `synthetic/v1` retain distinct values; a wrong pair or absent Host pair rejects |
 | Different revisions | Complete aggregate retains both exact keys and value types; neither becomes a union-valued substitute |
 | Missing Host key | A used r1 entry/input/group fails against a Host with only r2, including one known plus one missing token |
 | Widening | Broad/union declarations, callback inference and annotated arrays cannot erase the check |
@@ -154,9 +168,11 @@ must be at least 7.0.2; new maintained tests/tooling use `.ts` and strict projec
 ## Breaking release and migration
 
 Descriptor-derived maps mostly migrate through the new `CapabilitiesOf`.
-Explicit maps and indexed type accesses need exact token keys. A codemod may
-rewrite only statically proven map rows/accesses; it must not rename runtime
-capability keys, choose a revision for ambiguous indexing or erase extra manual
+Explicit maps and indexed type accesses need exact pair keys. A codemod may
+rewrite only statically proven map rows/accesses, obtaining the old property ID
+and literal compatibility token from the checked map. It never parses a revision
+out of an opaque token. It must not rename runtime capability keys, choose a
+token for ambiguous indexing or erase extra manual
 map properties/call/construct/index signatures or polymorphic `this`.
 Unsupported semantic cases are printed for hand migration.
 
@@ -182,7 +198,7 @@ the corresponding reviewed artifacts, CMS delta and adoption evidence.
 ## Acceptance and stop criteria
 
 Accept after the full typed/packed/consumer matrix proves staged migration and
-retained same-token invariance, with an accepted successor and fresh scale data.
+retained same-pair invariance, with an accepted successor and fresh scale data.
 Once a useful contract migration is selected and this candidate is admitted,
 completion requires the actual consumer patch/adopted source head, reviewed CMS
 and package/archive identities, and consumer-owned check results. A modified
@@ -199,6 +215,8 @@ integration: another 100–250 lines. Tests/fixtures: approximately 600–1,200 
 excluding mechanically generated scale files and external consumer churn.
 Confidence 8/10; achievable reliability within this scope 8/10; complexity 6/10.
 These are design estimates, not measured availability.
+The pair-key correction fits this range: one small type helper and adjustments
+to existing projections/fixtures, with no production runtime mechanism.
 
 Main risks are losing invariant entry checks, silently changing unused-revision
 diagnostics, type-instantiation growth and unsafe codemod rewrites. The proposed
@@ -207,6 +225,8 @@ checks target those risks directly.
 [types]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/assembly/src/features/construction/types.ts
 [census]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/core/src/features/composition-semantics/declaration-census.ts
 [bindings]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/packages/core/src/features/composition-semantics/binding-record.ts
+[raw-fixture]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/tests/assembly/types-positive.ts
+[wire-grammar]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/architecture/contracts/v1/composition.schema.json
 [cms]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/docs/architecture/common-assembly.md
 [adr41]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md
 [release]: https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/architecture/tooling/release-candidate/README.md

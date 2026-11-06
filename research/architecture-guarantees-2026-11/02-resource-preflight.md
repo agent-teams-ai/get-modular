@@ -196,12 +196,15 @@ Do not edit released public-API baselines or weaken gates to admit the break.
 
 Done means the complete public-package/type/consumer matrix passes on the exact
 implementation head, and current guidance/pins reflect the changed contract.
-If the design needs an allocation during preflight, a new cleanup authority,
+If the design needs resource acquisition or lifecycle allocation during preflight,
+a new cleanup authority,
 scope-object introspection in Assembly or a general requirements registry,
 reduce the design before continuing. Likewise stop if smoke preservation needs
 a general instrumentation framework instead of the one authentic-entry wrapper.
 A successful preflight never promises that
 the Host will keep the scope open or that opaque capabilities cannot escape.
+Ordinary diagnostic objects and existing per-run bookkeeping are permitted;
+this is not a zero-heap-allocation requirement.
 
 **Estimated incremental code:** 350–700 production/integration lines and
 550–1,000 test/fixture lines, including the existing smoke integration;
