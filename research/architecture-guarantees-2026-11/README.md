@@ -1,6 +1,6 @@
 # Architecture guarantees: bounded improvement plans
 
-Status: plans revised after review round 1; round 2 pending, 2026-11-06.
+Status: plans reviewed and corrected through two critic rounds, 2026-11-06.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission
 to start every candidate. The owner requested separate bounded plans in one
@@ -102,8 +102,9 @@ ordinary `.ts` files. Node type stripping is not typecheck evidence.
 
 Three author agents prepared the resource, authoring and evolution plans with
 the full conversation and fixed source baseline. Three different critic agents
-completed round 1. Their one P1 and four P2 findings are addressed in the revised
-plans; round 2 now checks the corrections and their interactions.
+completed both rounds. The first round's one P1 and four P2 findings are closed
+at planning level. In round 2 all three critics found no remaining or new P1/P2
+within their reviewed scope. Implementation proof obligations remain pending.
 
 The local documentation route and the prescribed installation command were
 attempted on Node 24.22.1. Both stopped at `runtime.bun.expected:1.4.3` because
@@ -111,7 +112,8 @@ the required Bun executable is unavailable. No older compiler, alternative
 package manager in this checkout, changed lockfile or weakened check is used.
 The source/docs read-through and local relative-link checks ran. Hosted CI remains
 separate from those checks. ReviewRouter reported incomplete provider coverage
-on the first two checkpoints; that is not external approval. The final handoff
-will identify the actual PR head and current check status. No runtime, strict
+on the earlier checkpoints; that is not external approval. The actual published
+head and hosted check status are available in [draft PR #231](https://github.com/agent-teams-ai/get-modular/pull/231).
+No runtime, strict
 type, packed-package or real-consumer qualification of the proposed changes is
 claimed by this planning PR.

@@ -50,9 +50,28 @@ also does not establish that the proposed API already works.
 
 ## Independent round 2
 
-Pending on the revised snapshot. The same three independent critics will verify
-the fixes, interactions and boundedness before the final planning handoff.
-Only actual returned findings and dispositions will be recorded here.
+All three critics completed the second round against revised snapshot aggregate
+`7ebf21d61d423b027d90ece61a0c9a995034f7144f567c234bac072556dfb491`,
+published as candidate commit `0059d7b84b0843432713d162b6ebe4fc8259bda6`.
+Each confirmed all nine file hashes matched the supplied snapshot.
+
+| Critic | Round-2 disposition |
+| --- | --- |
+| `critic_resource_safety` | Both resource findings closed; no new P1/P2 or blocking ownership/cancellation contradiction |
+| `critic_types_boundaries` | Smoke metadata/type preservation and re-export coverage findings closed; no new P1/P2 across shared types, source policy and revision identity |
+| `critic_scope_evidence` | Actual-consumer delivery finding closed; no new P1/P2 in scope, estimates, Effect claims or evidence labeling |
+
+The narrow wrapper was accepted as a needed repair to the existing smoke path,
+not an instrumentation framework. The coverage transition was accepted only for
+the exact supported export occurrence with complete public origin evidence.
+No critic treated an isolated consumer copy as completed adoption or a reviewed
+plan as runtime/strict-type/packed qualification.
+
+The final documentation update records completion and validation status only;
+the six workstream plans and Effect assessment retain the reviewed round-2 bytes.
+The author round, two independent rounds with three critics each, and root
+integration are distinct activities; this is not a claim of nine independent
+reviewers or external PR approval.
 
 ## Validation boundaries
 
@@ -64,6 +83,9 @@ lockfile change, scope exclusion or gate bypass was used.
 Local file-link inspection and whitespace inspection are supplemental document
 checks, not replacements for the installed Docs Protocol or required CI. The
 initial whitespace check identified two final blank lines; those were removed.
+The final local review found 29 valid relative file targets and 13 existing
+named Bun scripts; the whitespace check passed. These results do not execute
+the referenced scripts or prove the proposed implementation.
 ReviewRouter reported incomplete provider coverage on the initial and author
 checkpoints, without an approval or actionable code finding. Its status and
 hosted CI remain separate from these internal plan reviews.
