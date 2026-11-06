@@ -99,8 +99,24 @@ analyzer. Plans 01/06 and the Effect assessment need no substantive change.
 
 ## Correction review, round 4
 
-Pending: the same three fresh critics review the revised candidate and check the
-findings above, cross-plan identity/ownership consistency and remaining scope.
+The same three fresh critics completed review of revised candidate
+`4aa6b16c9e750293acd4e9ae16b1e6dc71c603ff`, snapshot aggregate
+`69ed0e8c76144664fa13fb9186e80b8d836f4feac72539276eb7bb5613c9a9ed`.
+Each confirmed the nine supplied file hashes before reviewing the corrections,
+cross-plan identity/ownership consistency and remaining scope.
+
+| Reviewer | Round-4 disposition |
+| --- | --- |
+| `deep_plan_resources` | Shared liveness finding closed; allocation wording corrected; no remaining/new P1/P2 in resource and Host boundaries |
+| `deep_plan_authoring` | All four source-proof findings closed; pair-identity policy consistent; no remaining/new P1/P2 in authoring and source scope |
+| `deep_plan_evolution` | Pair identity P1 and shared liveness P2 closed; concurrency bound and synchronous launch clarified; no remaining/new P1/P2 in evolution scope |
+
+The additional reviews required no new runtime framework, cancellation authority,
+parser, source catalog or plugin work. Plans 01/06 and the Effect comparison stay
+unchanged. The final completion update changes only index/review status: the six
+plans and Effect assessment retain the reviewed round-4 bytes. Across this work,
+two groups of three critics each performed two rounds; do not count repeated
+passes as distinct reviewers or external approval.
 No runtime, strict-type, packed-package or consumer execution is claimed by either
 of these additional design reviews.
 

@@ -1,6 +1,6 @@
 # Architecture guarantees: bounded improvement plans
 
-Status: additional source-backed review corrections; round 4 pending, 2026-11-06.
+Status: plans reviewed and corrected through four critic rounds, 2026-11-06.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission
 to start every candidate. The owner requested separate bounded plans in one
@@ -107,8 +107,9 @@ level. At the owner's request, three fresh critics performed a deeper round 3
 against the same source baseline. They identified one P1 and five distinct P2
 findings, corrected in this candidate: complete identity pairs, independent
 contract-source obligations, bounded list-use evidence, actual membership owners,
-exact export-row correlation and parallel-drain liveness. Round 4 checks those
-corrections and their scope. Implementation proof obligations remain pending.
+exact export-row correlation and parallel-drain liveness. All three completed
+round 4, confirmed those findings closed and found no remaining or new P1/P2
+within their reviewed scope. Implementation proof obligations remain pending.
 
 The local documentation route and the prescribed installation command were
 attempted on Node 24.22.1. Both stopped at `runtime.bun.expected:1.4.3` because
