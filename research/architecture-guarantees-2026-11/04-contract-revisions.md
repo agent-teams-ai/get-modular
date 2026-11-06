@@ -75,9 +75,10 @@ no implementation or lifecycle requirements to this slice.
    entries into an annotated array must not bypass the `profileId` checks.
    The existing weaker static guarantee of the dynamic `composition` form
    remains documented; runtime Core validation still applies.
-6. Keep one capability ID per implementation's provides record. The r2 provider
-   and the r1 adapter are separate implementations. An adapter may consume r2
-   and provide r1 under the same capability ID.
+6. Within one implementation, each capability ID appears at most once in
+   `provides`; multiple different capability IDs remain supported. The r2 provider
+   and r1 adapter for the same ID are separate implementations. An adapter may
+   consume r2 and provide r1 under the same capability ID.
 7. Keep profile completion unchanged. Several providers of one capability ID
    require explicit bindings even if their tokens differ; no revision-aware
    auto-selection is smuggled into this type change.

@@ -56,6 +56,14 @@ flags and a second sequential/parallel runner implementation.
 The experiment is complete when it supports either a concrete small change or a
 documented no-go. It is not a reason to add an ongoing benchmarking subsystem.
 
+Measure the actual consumer's existing execution arrangement. If a cohesive
+subsystem already uses Effect, inspect its local Layer construction first, then
+measure the remaining delay between GM factories. Internal Layer concurrency does
+not automatically parallelize those factories. If no material inter-module
+bottleneck remains, defer 05. Do not add Effect merely for this experiment, combine
+unrelated modules to improve a benchmark, or move required initialization to the
+first request and report that changed readiness contract as faster startup.
+
 ## Candidate contract if the experiment passes
 
 Before implementation, record a scoped successor to the sequential execution,

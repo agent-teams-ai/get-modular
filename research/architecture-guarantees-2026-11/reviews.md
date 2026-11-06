@@ -112,13 +112,62 @@ cross-plan identity/ownership consistency and remaining scope.
 | `deep_plan_evolution` | Pair identity P1 and shared liveness P2 closed; concurrency bound and synchronous launch clarified; no remaining/new P1/P2 in evolution scope |
 
 The additional reviews required no new runtime framework, cancellation authority,
-parser, source catalog or plugin work. Plans 01/06 and the Effect comparison stay
-unchanged. The final completion update changes only index/review status: the six
-plans and Effect assessment retain the reviewed round-4 bytes. Across this work,
+parser, source catalog or plugin work. At the round-4 completion checkpoint,
+plans 01/06 and the Effect comparison stayed unchanged; the completion update
+changed only index/review status, retaining the reviewed substantive bytes.
+Across those four rounds,
 two groups of three critics each performed two rounds; do not count repeated
 passes as distinct reviewers or external approval.
 No runtime, strict-type, packed-package or consumer execution is claimed by either
 of these additional design reviews.
+
+## Focused scope subtraction and Effect interoperability
+
+The owner then requested another scope/overengineering check and asked whether
+Effect and Get Modular usefully complement each other. Three agents received the
+full conversation with the existing planning head
+`8a4b92c8b093180b29568ee2b002a81494352398`; all nine local files matched that head
+before edits. Snapshot aggregate was
+`4e8735d530a264503807345166c88bd36d382201b60ffd4859636333560f5a8c`.
+Live source main identities remained the Get Modular and Effect revisions named
+in the index. This pass combines one subtraction critique and two focused
+interoperability investigations; it is not another complete three-critic round
+over all previous implementation plans.
+
+| Reviewer | Finding and bounded response |
+| --- | --- |
+| `scope_subtraction_review` | No new P1/P2 in the reviewed six-plan scope. Clarify that 03A delivers actual membership/ownership through a consumer before B-only facts/rules; keep its shared producer/checker and honest A-only receipt. Clarify that 04 permits multiple distinct capability IDs. Reuse existing fixtures rather than multiply suites. |
+| `effect_architecture_interop` | Effect already supplies Layer/Context composition. GM can add its independent composition artifact and explicit module policy; the pair has a conditional benefit, not automatic superiority. Keep the first adapter consumer-owned, avoid mirrored provider graphs, and measure existing local Layer concurrency before admitting 05. |
+| `effect_lifecycle_interop` | Register cold runtime custody before warmup; cancellation of a requester need not stop the shared lazy build. Preserve the first disposal result so GM retries cannot erase a failed Effect finalizer merely because later disposal fulfills. This preserves debt, not physical retry. Retain existing Host ownership/drain policy. |
+
+The assessment records Promise/Effect public-port tradeoffs, explicit signal
+propagation, borrowed-provider ownership and the fact that `R = never` does not
+establish lifetime or tracked execution. No Core/Assembly dependency, integration
+package, runtime rewrite, new Resources mechanism or seventh workstream follows.
+01/02/06 remain substantively unchanged. 04/05 remain conditional; the estimate
+for 03 remains for A+B, not a new invented estimate for A alone.
+
+The lifecycle investigator executed three bounded source probes on Node 24.22.1
+without installs or repository source changes. Exact commands and outputs are
+retained in [the assessment](effect-assessment.md#retained-source-probes). They
+observed the native Promise, first/second disposal distinction, build surviving
+requester cancellation until disposal, and the actual GM debt difference with a
+memoized disposal Promise. They do not establish strict types, installed public
+imports, the full factory path, external resource release or production readiness.
+Effect's existing tests were read, not executed.
+
+All three completed targeted correction review of the resulting changed sections:
+
+| Reviewer | Targeted disposition |
+| --- | --- |
+| `scope_subtraction_review` | No blocking/new P1/P2. A retains its required origin/use coverage, installed pipeline and actual consumer evidence; acceptance reuse preserves independent outcomes and required gates. The Effect evidence adds no implementation workstream. |
+| `effect_architecture_interop` | No P1/P2 or new overclaim in the optional ownership split, port/error/lifetime contracts, runtime/memoization scope or 05 measurement gate. |
+| `effect_lifecycle_interop` | No P1/P2 or material overclaim in custody, disposal debt, borrowed-provider lifetime or cancellation. All three retained commands/outputs match the executed probes. |
+
+The final completion update changes review/validation status only; the six plans
+and Effect assessment retain the substantive bytes examined in this targeted
+review. No further broad review campaign or optional runtime testing is required
+by this planning pass.
 
 ## Validation boundaries
 
@@ -130,9 +179,13 @@ lockfile change, scope exclusion or gate bypass was used.
 Local file-link inspection and whitespace inspection are supplemental document
 checks, not replacements for the installed Docs Protocol or required CI. The
 initial whitespace check identified two final blank lines; those were removed.
-The final local review found 29 valid relative file targets and 13 existing
+The round-4 local review found 29 valid relative file targets and 13 existing
 named Bun scripts; the whitespace check passed. These results do not execute
 the referenced scripts or prove the proposed implementation.
+After the focused interoperability edits, the local inspection found 33 valid
+relative Markdown file targets and the same 13 existing named Bun scripts;
+whitespace inspection passed. This does not change the unavailable installed
+documentation/runtime gates or the narrow scope of the retained source probes.
 ReviewRouter reported incomplete provider coverage on the initial and author
 checkpoints, without an approval or actionable code finding. Its status and
 hosted CI remain separate from these internal plan reviews.

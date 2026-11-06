@@ -1,6 +1,6 @@
 # Architecture guarantees: bounded improvement plans
 
-Status: plans reviewed and corrected through four critic rounds, 2026-11-06.
+Status: four critic rounds plus a focused scope/interoperability review, 2026-11-06.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission
 to start every candidate. The owner requested separate bounded plans in one
@@ -31,7 +31,7 @@ decision workflow before the changed behavior is exposed.
 | --- | --- | --- |
 | [01](01-subscription-recipe.md) | Finish the safe subscription recipe already prepared in PR #213 | Reuse and verify the existing change; no duplicate implementation |
 | [02](02-resource-preflight.md) | Preserve resource requirements through entries and preparation; validate before factories | First proposed production API change, including the existing smoke instrumentation |
-| [03](03-authoring-checks.md) | Check actual static group membership and contract-map source parity | Reuse Foundation/FMS/Conformance; release and adopt the required public tooling seam |
+| [03](03-authoring-checks.md) | Check actual static group membership, then contract-map source parity | Deliver A through Foundation/FMS/Conformance and a consumer first; add B facts/rules with B, without advance scaffolding |
 | [04](04-contract-revisions.md) | Support exact contract revisions through explicit adapter modules | Candidate after an actual staged-migration need; preserve Core wire and exact bindings |
 | [05](05-parallel-startup.md) | Bound parallel construction of independent factories | Measure a real startup limitation before production admission |
 | [06](06-borrowed-lifetimes.md) | Reuse existing borrowed-lifetime proofs in the selected consumer migration | Default new production/tests: zero; no speculative lease system |
@@ -47,6 +47,16 @@ awaits a released public API and reviewed exact pins. If 04 is later admitted,
 advance 03's affected identity policy and rejecting fixtures in the same delivery.
 05 is a measured candidate, not an automatic dependency of 02/03. Reuse the one
 ordinary-owner consumer delivery for 02 and 06.
+
+The acceptance matrices list required observations, not a new test suite for
+every row. Extend existing owning fixtures and add only missing or invalidated
+proofs; retain independent outcomes and required repository/runtime gates.
+Do not multiply every case across every fixture merely to increase test volume.
+
+Optional Effect interoperability is assessed in [the comparison](effect-assessment.md).
+It adds no seventh workstream, mandatory dependency, graph converter or integration
+package. A concrete consumer may use Effect inside a cohesive module. That decision
+does not change these six plans' admission rules or the ownership of plugin work.
 
 ## Size and uncertainty
 
@@ -111,6 +121,15 @@ exact export-row correlation and parallel-drain liveness. All three completed
 round 4, confirmed those findings closed and found no remaining or new P1/P2
 within their reviewed scope. Implementation proof obligations remain pending.
 
+A further focused review checked subtraction and Effect interoperability. It
+clarifies the independently useful A delivery in 03, distinct capability IDs in
+04, reuse of acceptance fixtures, and the actual consumer measurement for 05.
+The Effect assessment records a bounded optional arrangement and the runtime
+custody/disposal obligations found in source. These are not a new implementation
+workstream or a change to the preceding review counts; details are in the review
+record. All three completed targeted correction review of these changed sections
+and reported no blocking/new P1/P2 within their respective scopes.
+
 The local documentation route and the prescribed installation command were
 attempted on Node 24.22.1. Both stopped at `runtime.bun.expected:1.4.3` because
 the required Bun executable is unavailable. No older compiler, alternative
@@ -119,6 +138,8 @@ The source/docs read-through and local relative-link checks ran. Hosted CI remai
 separate from those checks. ReviewRouter reported incomplete provider coverage
 on the earlier checkpoints; that is not external approval. The actual published
 head and hosted check status are available in [draft PR #231](https://github.com/agent-teams-ai/get-modular/pull/231).
-No runtime, strict
-type, packed-package or real-consumer qualification of the proposed changes is
-claimed by this planning PR.
+No runtime, strict-type, packed-package or real-consumer qualification of the
+proposed changes is claimed by this planning PR. The Effect assessment separately
+retains three one-off source-execution probes on Node 24.22.1. They observe current
+runtime semantics and an adapter debt mismatch; they are not qualification of
+the proposed APIs or of a complete installed integration.

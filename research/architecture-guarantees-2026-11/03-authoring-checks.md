@@ -22,6 +22,8 @@ Deliver two vertical slices through the same source observation path:
 
 The result is a development-time check of an explicitly adopted authoring recipe. It does not prove arbitrary TypeScript programs safe or change runtime composition semantics.
 
+Deliver A as the first independently useful result through the installed producer/checker and selected real consumer. Add only the provenance, selected-use and bounded type/binding facts A needs for its documented forms. Add union/base completeness facts and B semantics when delivering B; do not prebuild unused fields or general hooks. An A-only receipt explicitly leaves B pending and does not claim contract-map parity. Both stages evolve the same published producer/checker through reviewed contracts and pins, without a mode switch, competing checker or optional missing facts that silently pass an enabled rule. The total estimates below cover A+B, not the first stage alone.
+
 | Owner | Change |
 | --- | --- |
 | Engineering Foundation | Extend its existing OXC parse with a bounded, architecture-neutral syntax-fact projection and expose that projection through the existing public source-graph entry. |
@@ -100,7 +102,7 @@ This slice qualifies the currently accepted identity/revision rule. If plan 04 l
 ## Delivery sequence and target files
 
 1. Freeze the bounded syntax/proof cases above against current guide examples and the selected real consumer. Record one scoped successor/amendment for the stronger development-check contract; preserve accepted ADR-0033/0036/0041 bytes. No new runtime authority is created.
-2. In Foundation's own delivery, extend the source-dependencies OXC adapter/model/projection and `src/source-graph.ts`; add public packed tests and API documentation. Publish through its ordinary release route. The shared producer exposes facts only; it never knows GM group/module naming rules.
+2. In Foundation's own delivery, extend the source-dependencies OXC adapter/model/projection and `src/source-graph.ts` for the stage actually being delivered; add public packed tests and API documentation. Publish through its ordinary release route. The shared producer exposes facts only; it never knows GM group/module naming rules. Future B fields do not block a complete A delivery.
 3. Review the exact released Foundation delta and FMS peer compatibility, then update GM's development pin and both real locks through the normal install route. A local archive may support labeled research, never completed installed qualification. No main dependency points at an unpublished checkout.
 4. In GM, change `packages/conformance/src/features/layout/{types,check}.ts` and only small private helpers in that feature; update the root exports and README where the public type/report contract changes.
 5. Extend the existing `tests/qualification/consumer-fixtures/source/` route and its installed producer/checker integration, including the exact fact-coverage transition above. Prove the named consumer surface through producer, coverage admission, FMS and Conformance together; calling only the pure checker with hand-built facts is insufficient. New maintained helpers/tests are `.ts`, strictly checked with TypeScript 7.0.2+. If `records.mjs`/`scenarios.mjs` receive substantial new responsibilities, migrate those changed files and their callers together; retain frozen syntax/evidence files.
