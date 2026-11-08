@@ -22,6 +22,12 @@ Pure domain rules and data do not need a runtime dependency.
 Explicitly Effect-native technical ports may return real `Effect` or `Stream`.
 Do not force every internal module through a Promise facade. A `Task` type alias
 does not remove Effect coupling. Do not introduce universal Task/Fiber/Scope APIs.
+Follow the existing [composition-boundary rule](../../docs/architecture/common-assembly.md#new-composition-boundaries):
+bounded contexts, GM entries, private Effect services and Scopes are not one-to-one.
+Declarations belong in the outer adapter. A GM root is a Host entrypoint, not a
+service locator for neighboring modules; inject their narrow capabilities instead.
+These boundaries support Clean Architecture and DDD; a library cannot establish
+correct domain boundaries or SOLID compliance by itself.
 
 ## 2. Give inter-module selection one authority
 
@@ -35,6 +41,23 @@ Context bag. `R = never` proves neither context independence nor resource lifeti
 optional lookups and References can still observe context. The architectural rule
 is about ownership and declared dependencies, not banning every nonempty `R`.
 
+Use the same authority when replacing dependencies in tests:
+
+| Replacement | Where to make it |
+| --- | --- |
+| Provider of a GM slot | Choose the fake entry and a matching inventory/profile before `prepare()` |
+| Explicit ambient native R | Provide the fake with ordinary `Layer.provide` |
+| Entire root for a test of its consumer | Provide a fake root without including the live GM graph |
+| Private native service inside one implementation | Replace it in that implementation's own assembly/test |
+
+`Layer.provide` cannot replace an already closed GM-selected provider; merging a
+fake root with a live Layer can still acquire the live resources. A fake with a
+different dependency tree needs a valid new inventory/profile: Core rejects
+[unreachable selections](../../packages/core/src/features/composition-semantics/semantic-analysis.ts).
+This is not OpenCode-style automatic pruning. A new typed GM catalog may change
+construction E/R if its prepared type reports that honestly; preserve the consumed
+capability/operation contracts, without adding another override-contract API.
+
 ## 3. Preserve native construction and exact provider sharing
 
 For the proposed mapper, validate the complete composition before acquisition and
@@ -44,14 +67,18 @@ TypeScript errors or value types; use its matching declarations and factories.
 
 Two local slots of the same capability may choose different providers. Preserve
 that distinction; one global Context key cannot represent both bindings. Share one
-selected implementation within its intended build, and isolate independent builds.
+selected implementation within its intended build.
 Keep stable Layer identities within each intended memoization domain. Do not
 rebuild a diamond dependency once per incoming edge.
-In the proposed API, every `.layer()` call creates fresh implementation Layer
-identities; reuse its returned Layer when sharing is intentional. This separates
-different captured inputs and ambient factory requirements even inside one shared
-memoization domain. Caching one implementation Layer can capture the first input
+In the proposed API, every `.layer()` call creates fresh mapper-owned Layer
+identities; reuse its returned Layer when sharing those nodes is intentional.
+This prevents mapper-owned memoization from aliasing different inputs or ambient R
+even inside one shared memoization domain. Caching one implementation Layer can capture the first input
 for both branches; see the [paired experiment](spikes.md#input-identity-counterexample).
+This does not refresh private Layers captured inside a factory or clone borrowed
+or caller-owned services. Their author controls native identity, configuration and
+sharing. Distinct configuration may require distinct native Layers or deliberate
+native `Layer.fresh`; the mapper must not recursively impose its own cache policy.
 
 Current Promise Assembly wrapped in `tryPromise` remains Promise construction.
 It does not become native Layer acquisition or gain typed construction errors.
@@ -64,6 +91,11 @@ Acquire a resource and register its release together. Its native Layer/Scope own
 that resource; the Host owns ingress, shutdown policy and execution admission.
 These responsibilities can be nested without independently disposing the same
 resource from GM Resources and Effect.
+Host is an ownership role at the application's existing execution boundary;
+`Effect.provide`, `Effect.scoped` or a chosen `ManagedRuntime` can serve it. No new
+GM Host runtime is required. When carrying service context across a boundary,
+retain the active operation Scope rather than accidentally restoring a stale
+construction Scope; see [OpenCode's instance context][oc-instances].
 Borrowed inputs keep their external owner; merely injecting them does not register
 automatic release. That owner must outlive the Layer and the work using them.
 
@@ -175,6 +207,10 @@ Choose concurrency from actual workload and resource capacity. `unbounded` is a
 policy requiring a controlled work population or measured justification; module
 count alone says little about active instances or operations. Infinite idle cache
 retention similarly needs an application-owned policy.
+GM groups organize declarations. Native construction follows dependencies and
+may start independent providers concurrently; listing order is not a startup
+sequence. Host owns any additional application sequencing. Do not introduce
+fake dependency slots, a scheduler or an ordering DSL to emulate another executor.
 
 Use scope-owned work when it uses that scope's resources. A detached operation
 needs a named lifetime/observation owner and a shutdown contract. Do not label all
@@ -197,11 +233,32 @@ Effect mechanisms; no GM scheduler, retries, universal lease system or runtime.
 
 The inspected source is `dc71d5f94b1800370a6de88d107f117823d85628`. Its catalog,
 override and lock select Effect **4.1.0**; no installed-tree audit is claimed.
+The [follow-up revision][oc-followup] is
+`7d5b72250890e0e89573b4cab42a003a48c20567`; its three intervening commits leave
+the inspected LayerNode, SDK, lifecycle and dependency inputs unchanged.
 Our five paired lifetime spikes use published **Effect 4.1.2** and strict
 TypeScript **7.0.2**. The first three use disposable FileHandles; the other two
 use controlled finalizer failure and caller References. They are integration
 counterexamples, not reported OpenCode defects or proof of a complete GM mapper.
 See [receipts](spikes.md).
+
+### Where LayerNode offers more convenience
+
+| OpenCode capability | Decision for the first GM integration |
+| --- | --- |
+| [Checked replacements][oc-node-current] propagate through the graph and prune old dependencies | Select GM entries/bindings before preparation and supply a valid inventory; no second override authority |
+| [Shared tags and cache domains][oc-node-current] share a dependency closure while keeping local builds separate | Host may own global resources and pass borrowed inputs to local compositions; this is more manual, not equivalent automatic sharing |
+| [Typed tag rules][oc-tags] restrict declared dependency directions | No new lifetime DSL. These checks cover explicitly tagged direct dependencies, permit untagged nodes, and do not prove arbitrary escaped-value lifetime safety |
+| Ordered roots with parallel node dependencies | Promise only native dependency order; Host owns further sequencing |
+| Contract-preserving `mapLayer` decoration | Use native Effect functions around owned factories/Layers; no separate GM decoration API yet |
+
+For an Effect-only application requiring those specialized policies, LayerNode can
+be more convenient. The GM integration earns its additional layer from portable
+module declarations, exact local slots and shared authoring policy across the
+two executors. Module count alone does not prove a hybrid is better. Neither this
+review nor the finite spike qualifies thousand-module performance or type costs.
+
+### Source weaknesses and positive practices
 
 | Observed source | What to learn; limits |
 | --- | --- |
@@ -223,8 +280,20 @@ retaining normally delivered response bodies and its first close Promise. OwnedF
 alone is not a universal guarantee for arbitrary late responses after abort; the
 actual Effect HTTP handler has additional protections. These source and test reads
 do not establish whole-OpenCode E2E or comparative performance.
+The [instance adapter][oc-instances] also lets the active Scope win when combining
+contexts and borrows selector/map services instead of retaining their owner
+Layers; its source explains the shutdown self-retention cycle being avoided.
+Borrow the ownership discipline, not its product-specific Location/eviction model.
+
+For ordinary GM compatibility and intentional native adoption, use the one
+[migration plan](README.md#breaking-changes-and-migration); do not invent a
+second migration checklist in consumer instructions.
 
 [oc-node]: https://github.com/anomalyco/opencode/blob/dc71d5f94b1800370a6de88d107f117823d85628/packages/util/docs/layer-node.md
+[oc-node-current]: https://github.com/anomalyco/opencode/blob/7d5b72250890e0e89573b4cab42a003a48c20567/packages/util/docs/layer-node.md
+[oc-tags]: https://github.com/anomalyco/opencode/blob/7d5b72250890e0e89573b4cab42a003a48c20567/packages/util/src/effect/layer-node.ts#L154-L189
+[oc-instances]: https://github.com/anomalyco/opencode/blob/7d5b72250890e0e89573b4cab42a003a48c20567/packages/sdk/src/internal/instances.ts#L16-L103
+[oc-followup]: https://github.com/anomalyco/opencode/compare/dc71d5f94b1800370a6de88d107f117823d85628...7d5b72250890e0e89573b4cab42a003a48c20567
 [oc-transaction]: https://github.com/anomalyco/opencode/blob/dc71d5f94b1800370a6de88d107f117823d85628/packages/core/src/database/drizzle/effect-sqlite/session.ts#L132-L174
 [oc-options]: https://github.com/anomalyco/opencode/blob/dc71d5f94b1800370a6de88d107f117823d85628/packages/core/src/aisdk.ts#L479-L500
 [oc-aisdk]: https://github.com/anomalyco/opencode/blob/dc71d5f94b1800370a6de88d107f117823d85628/packages/core/src/aisdk.ts#L707-L723

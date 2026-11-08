@@ -41,16 +41,27 @@ captured entry/factory identity, exact slots/cardinality, inventory checks,
 profile completion and Core plan verification. Keep Promise and native Effect
 execution as distinct contracts. Do not add a third authoring package, abstract
 interpreter or universal factory carrier.
+The first native slice determines the smallest neutral bridge; `EntryFamily` and
+`Wiring` are candidate shapes, not an admitted extensibility API. Preserve ordinary
+Promise calls, defaults and inference, including groups and context adapters. Do
+not broaden Promise-facing entry types to admit native entries to Promise-only
+Assembly or Conformance execution; ordinary users choose no backend or E/R types.
 
 GM remains the authority for inter-module provider selection. Private native
 Layers and explicit operation context are allowed; a second undeclared global
 business-service lookup is not. Preserve construction E/R only where the typed
 entry inventory proves them. A serialized plan supplies no type-level proof.
+Replace GM providers before preparation; native provision supplies explicit
+ambient R rather than overriding closed slots. GM entries, private native
+services, DDD bounded contexts and Scopes need not correspond one-to-one.
 
 Effect owns native resource acquisition, memoization and finalization. The Host
 owns the lifetime of using roots and its execution/shutdown policy. Scope closing
 does not prove that unrelated runner work or uncooperative Promise I/O has stopped.
 Do not equate native cleanup with GM Resources debt/retry semantics.
+Fresh identities per Layer instantiation cover mapper-owned nodes; internal or
+external native Layers and borrowed values keep their owners' sharing policy.
+Native execution promises dependency order, not independent-root listing order.
 
 Before production exposure, record the exact neutral preparation API and optional
 package/dependency admission, update its governed source/package boundaries,
@@ -58,6 +69,10 @@ qualify current Promise behavior plus the native path, and update the current
 Consumer Module Standard and affected adoption evidence. Preserve accepted ADR
 bytes. A mechanical breaking change includes its migration and codemod; resource
 semantics requiring a decision are migrated explicitly by hand.
+No ordinary-user source migration has yet been shown necessary. Prefer internal
+extraction and additive exports. Any unavoidable public break must identify its
+symbols, concrete benefit and before/after migration under the single
+[migration plan](../../research/effect-integration-2026-11/README.md#breaking-changes-and-migration).
 
 The current delivery contains design, reviewed guidance and bounded qualification
 spikes. It does not publish a package, migrate an unrelated product, add plugin

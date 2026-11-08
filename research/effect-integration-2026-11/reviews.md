@@ -1,7 +1,7 @@
 # Integration design review record
 
-Status: integrated critique and closure complete, 2026-11-09. Review judgments are not
-execution evidence; see [spikes](spikes.md) for observed behavior and limits.
+Status: initial and follow-up cross-review closed, 2026-11-09. Review judgments
+are not execution evidence; see [spikes](spikes.md) for observed behavior and limits.
 
 ## Authoring and first cross-review
 
@@ -42,7 +42,10 @@ The integrating agent independently replayed strict TS 7 and the native runtime
 suite, and the five paired lifetime experiments. Critics reviewed those receipts;
 they do not claim additional independent execution themselves.
 
-### Reviewed substantive identities
+### Original reviewed substantive identities
+
+These identities record the first closure, before the follow-up below; they are
+not hashes of the subsequently revised proposal and practices.
 
 | Subject | SHA-256 |
 | --- | --- |
@@ -52,8 +55,8 @@ they do not claim additional independent execution themselves.
 | Frozen archive manifest | `4085a84d64207d3a18ae0162f4175f04c78f673882ecc10da3b91ddcbfd72cd0` |
 | Mapper runtime test source | `f41c6dcb02f66a39d87e442d45af30680ef407f74aecb5268929fa1d5da9114a` |
 
-Final status/verification bookkeeping does not change these reviewed substantive
-files. The repository spell checker also identified technical/API vocabulary in
+Initial status/verification bookkeeping did not change those substantive files.
+The repository spell checker also identified technical/API vocabulary in
 the previous research and the new guide. A bounded dictionary for these two
 research directories admits the actual terms; no files or checks are excluded.
 After closure, the archived native description's trailing blank line was
@@ -63,3 +66,38 @@ fixture or configuration changed; no additional runtime result is claimed.
 The six earlier numbered plans remain byte-identical to the prior research
 checkpoint. The integration is an explicitly newly selected direction, not a
 silent extension of any one of those plans or of plugin lifecycle ownership.
+
+## Follow-up: preserve neutral DX and challenge the OpenCode comparison
+
+The follow-up starts from draft commit `8c715eac9eca9e36550e5a40e473802f9ea48098`.
+Three fresh critics reviewed ordinary GM authoring, native Effect architecture,
+and current OpenCode design independently. The integrating agent inspected the
+relevant sources before applying the corrections. Findings below are gaps in
+the proposed contract, not new observed runtime defects or production incidents.
+
+| Finding | Integrated correction |
+| --- | --- |
+| P2: broadening `AnyEntry` for neutral groups could admit Effect entries to Promise-only `isolate` | Preserve existing Promise calls/defaults/inference and Promise-facing types. Carry concrete entry unions through shared groups; reject cross-carrier use in types and runtime. Reuse current type fixtures in implementation. |
+| P2: ordinary native provision could be mistaken for replacing a closed GM provider | Add one replacement table: GM inventory before prepare, ambient R through native provision, root fake without the live graph, private service at its owner. A changed dependency tree needs a valid new inventory; no implicit pruning. |
+| P2: fresh mapper Layers could be read as recursively isolating private native Layers or external services | Limit freshness to mapper-owned nodes. Captured private Layers, borrowed values and external native services keep their native identity/sharing policy. |
+| `EntryFamily` / `Wiring` could prematurely become a general backend framework | Retain the required shared-preparation responsibilities; defer the smallest export shape to the first working native slice. No backend registry or execution hooks. |
+| The no-Assembly-change alternative was dismissed without sufficient reason | Recognize explicit-profile-only integration as a valid smaller production scope. Recommend shared preparation for existing group/completion DX, without implementing both alternatives. |
+| Breaking changes were permitted without showing an ordinary-user benefit | State that no mandatory source migration is demonstrated. Prefer additive/internal changes; require symbols, benefit, before/after sites and migration for any unavoidable break. Separate manual ownership migration. |
+| OpenCode comparison under-described its useful extra policies | Record checked replacement/pruning, shared/local graphs, limited typed tag checks, ordered roots and decoration. Do not claim equivalent functionality in the proposed GM mapper. |
+| Module, domain and lifetime boundaries could be conflated | Apply the existing CMS composition-boundary rule; no entry per Layer/entity and no new Host runtime. |
+
+The first review found no P1. The changes add no runtime mechanism, package,
+production source, spike or maintained test suite. Existing frozen experiments
+remain unchanged: source inspection and their existing replacement/provision
+cases suffice for these documentary corrections. Future production qualification
+adds only the missing cross-carrier rejection and live-provider-not-acquired
+assertion to the relevant existing fixtures/consumer scenario.
+
+In round two, all three critics checked the corrected proposal, canonical guide,
+proposed ADR and review record together, including findings outside their original
+specialty. All confirmed closure without remaining P1/P2 in this research scope.
+The neutral-DX critic also spotted an ambiguous migration cross-reference; it now
+links to the real-consumer qualification section. The integration owner checked
+the final wording: construction dependency order is a partial order, not literal
+sequential execution of Core's full order or ordering of returned operations.
+No further review cycle or execution experiment was required for these changes.

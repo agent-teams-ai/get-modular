@@ -32,6 +32,14 @@ free of Effect types, including callbacks, error types and configuration options
 | Host / concrete facade | Admission, request context, public error mapping, active-operation and shutdown policy |
 | Product ports | Subject-specific behavior, delivery guarantees, cancellation and settlement promises |
 
+Apply the existing [composition-boundary rule](../../docs/architecture/common-assembly.md#new-composition-boundaries):
+a DDD bounded context, GM module, private Effect service and resource Scope need
+not map one-to-one. Use a GM entry for a real contract-selection or composition
+boundary; keep cohesive private services inside their owner. Domain rules stay
+independent where required, and declarations stay in the outer composition adapter.
+`Host` names that application's ownership role, not a new GM runtime. A root is
+its entrypoint; neighboring modules receive narrow capabilities through slots.
+
 ## What changes, and what does not
 
 The current Assembly public factories and `PreparedAssembly.run()` are Promise
@@ -84,6 +92,10 @@ The factory result is a real
 uses the existing exact `FactoryDependencies<C, D>` shape. A prepared Layer
 provides the typed roots under the caller's native Context key, retains `E`,
 and leaves unsatisfied `R` visible after its construction Scope is supplied.
+Native Layer provision supplies explicit ambient requirements; it does not
+replace GM-selected providers inside this closed graph. Use the
+[replacement recipe](effect-practices.md#2-give-inter-module-selection-one-authority)
+before preparation when changing those providers.
 
 Declared borrowed inputs must also be expressible. The complete type is
 `PreparedEffectAssembly<Roots, E, R, N>`: an empty input set permits the short
@@ -95,10 +107,13 @@ borrowed value references; later mutation of the supplied records cannot change
 that instantiation. Do not freeze or clone the resource objects themselves.
 Invalid shape produces a failing Layer with typed `InvalidInputs` before any
 factory, not a synchronous throw that escapes its promised E channel.
-Each `.layer()` call instantiates fresh implementation Layer identities, including
+Each `.layer()` call instantiates fresh mapper-owned Layer identities, including
 when N is empty. Reuse the returned Layer deliberately to share native memoization;
 do not cache implementation Layers at `prepare()` or compare input sets for reuse.
-This also separates calls supplied with different ambient factory R services.
+This prevents mapper-owned memoization from aliasing different inputs or ambient R.
+It does not clone borrowed values or refresh private native Layers captured by a
+factory. Their identities, configuration and sharing remain the factory owner's
+native Effect policy; previously built external services may still be shared.
 The [paired input experiment](spikes.md#input-identity-counterexample)
 demonstrates why caching one implementation Layer across input sets is unsound.
 Supplied inputs remain borrowed: the Layer does not register their release or
@@ -142,22 +157,33 @@ Effect entry authentication stays owned by the Effect executor. Any new shared
 data surface must not authenticate an arbitrary factory merely by its ID or
 permit re-resolution of a mutable factory table after verification.
 
-The concrete proposed seam is a small `EntryFamily<F>` with `capture` and
-`prepare`, where `F` is an opaque factory value. Each executor owns one private
-singleton family. `capture(declaration, factory)` retains the declaration
-snapshot, exact function and authenticated entry identity. `prepare(input)`
-returns immutable `Wiring<F>`: the composition, construction steps containing
-that same entry/declaration/factory and local injections, roots and neutral input
-metadata. There are no run, close, fork, scheduler or execution hooks.
+`EntryFamily<F>` / `Wiring<F>` is one candidate for this shared boundary, not a
+committed general-backend API. The first working native slice must establish the
+smallest public bridge the two packages require. Its contract is to capture an
+immutable declaration and authenticated entry with an opaque executable payload,
+then return verified composition, local injections, roots and input metadata tied
+to those same captured values. Retain the executable after its existing context
+adapter, not merely the original user callback. Each executor authenticates its
+own accepted family. No backend registry, stage callbacks or execution hooks.
 
-Neutral `group` and `entriesOf` preserve these entries without interpreting their
-factory carrier. The selected executor rejects the wrong family, forged entries
-and substituted factories before asynchronous Core compilation. Its typed
-catalog remains the authority for factory E/R; `Wiring` does not recreate them.
+Shared group preparation preserves concrete entry unions and used-capability
+information without interpreting their factory carrier. The selected executor
+rejects the wrong family in types and at runtime; forged entries and substituted
+factories fail before asynchronous Core compilation. Its typed catalog remains
+the authority for factory E/R; shared wiring does not recreate them.
 Inputs use one authenticated neutral declaration constructor, without a dummy
 throwing factory. Required input values are checked for each Layer instantiation.
 Reuse the existing neutral input/product-shape checks, without moving Promise
 settlement or its journal into the seam.
+
+Protect ordinary Promise authoring calls, defaults and inference: `implement<C>()`,
+`input<C>()`, `group`, `entriesOf`, `assemblyFor<C>()`, context adapters and
+`PreparedAssembly.run()`. Those users must not choose a carrier/family/executor or
+acquire Effect E/R parameters. Keep existing Promise-facing entry/factory types
+Promise-specific; introduce a separate neutral integration view only where needed.
+In particular, broadening `AnyEntry` must not make native entries typecheck in
+Promise-only `Conformance.isolate`. Additive group overloads may support the native
+workflow while preserving existing calls and rejecting mixed execution carriers.
 
 Qualify the exact export and inference in step 1. Prefer a curated public root
 export over another package. A subpath requires its own admitted public-surface
@@ -176,12 +202,11 @@ that entire plan is not a prerequisite for this research spike.
   capability key for all instances.
 - Reuse a stable implementation Layer on every incoming edge of its graph.
   Do not expand a diamond into separately acquired copies.
-- Keep memoization lifetime explicit. Independent builds use independent resource
-  lifetimes; deliberately sharing an enclosing native memoization domain follows
-  the documented native policy. Every `.layer()` call creates fresh implementation
-  Layer identities even inside a shared memoization domain; sharing requires
-  reuse of that returned Layer.
-  No process-global provider instance cache.
+- Keep memoization lifetime explicit. Each `.layer()` call creates fresh
+  mapper-owned Layer identities even inside a shared memoization domain; sharing
+  those nodes requires reuse of the returned Layer. Borrowed values, external
+  services and private native Layers keep their owner's sharing policy. Do not
+  recursively refresh arbitrary native Layers or add a process-global cache.
 - Construction E comes from native factory types. Unexpected adapter invariant
   violations are defects, not expected domain errors disguised as `unknown`.
 - Preserve full native Cause/Exit where the technical owner needs it; do not
@@ -197,6 +222,9 @@ that entire plan is not a prerequisite for this research spike.
   design promises no global startup-concurrency cap. Qualify realistic breadth
   before adoption. Do not silently import the Promise parallel-startup plan or
   introduce a scheduler to claim bounded native construction.
+- GM groups organize declarations; the native path promises dependency order,
+  not sequential startup of independent roots by listing order. Extra application
+  startup sequencing belongs in Host; do not add an ordering DSL or fake slots.
 
 ## Delivery steps and concrete stopping points
 
@@ -225,8 +253,10 @@ Record the scoped accepted successor for optional package identity/dependency an
 the neutral preparation export. Keep prior accepted ADR bytes and Core wire intact.
 Move only existing preparation mechanics; reuse existing mutation, inventory,
 profile completion and supplied-plan tests. Prove that current Promise behavior
-and failure/journal ownership are unchanged. Add rejecting tests for payload
-substitution and cross-carrier entries, rather than a second full compiler suite.
+and failure/journal ownership are unchanged. Reuse the existing type fixtures for
+groups, tuple inference, capability contracts and `isolate`; add rejecting cases
+for cross-carrier use, including native entries passed to Promise `isolate`, and
+payload substitution. Do not create a second full compiler suite.
 
 Do not ship a standalone empty preparation refactor: land it with the first
 working native construction slice and its rejecting evidence. Update the current
@@ -261,14 +291,37 @@ and shutdown scenarios before declaring the library contract ready for adoption.
 
 ## Breaking changes and migration
 
+No ordinary-user source migration has yet been shown necessary. Prefer internal
+extraction and additive integration exports. An unavoidable existing-public-API
+break must name the affected symbols, show the concrete user benefit and
+before/after call sites, and include its migration in the implementation PR.
+
 | Change | Decision |
 | --- | --- |
 | Core wire/schema/digest | No demonstrated need; keep unchanged |
-| Existing Promise execution contract | Keep separate; no silent conversion to Effect semantics |
-| Neutral entry/preparation types | May change if the shared seam improves both authoring paths; prove exact types and runtime provenance |
+| Ordinary Promise authoring and execution | Preserve calls, inference, context adapters, input shapes and execution ownership; no mandatory Effect migration |
+| Shared preparation internals | Extract existing rules and remove dummy input factories without broadening Promise-facing public types |
 | New optional integration surface | Deliberate Effect dependency; no default import into neutral packages |
 | Consumer domain ports | Remain subject-specific and neutral where replaceability is required |
 | Universal Task/Fiber/Scope aliases or interpreter | Excluded |
+
+For a consumer deliberately moving construction to the native package:
+
+1. Select one coherent composition boundary. Use native entries/factories without
+   mixing carriers in one executor. Construction migration alone need not change
+   capability/slot contracts; an intentional operation-signature change requires
+   its own contract revision and consumer migration. Native operation ports alone
+   do not require migrating existing construction.
+2. Map each owned resource to one Effect owner and keep borrowed inputs externally
+   owned. Replacing `run()` with `.layer()` is not a mechanical resource migration:
+   Promise journals and GM Resources debt/retry are different contracts.
+3. Review native construction E/R, operation E/R, independent startup order and
+   intended Layer sharing separately. Move any required extra startup sequencing
+   to the Host. Keep native calls in the caller's chain inside that boundary.
+4. Change test providers before preparation using the canonical replacement recipe.
+   Extend the consumer's existing test to prove the live provider is not acquired;
+   run the failure, cancellation and shutdown cases in
+   [real-consumer qualification](#3-prove-the-public-boundary-and-one-real-consumer).
 
 A mechanical import, call-shape or type-argument break needs the repository's
 codemod and rejecting fixtures in the same implementation PR. A resource ownership
@@ -290,8 +343,11 @@ Higher complexity means more implementation/maintenance burden.
 Achievable reliability for the bounded native-construction contract is an
 **8/10 design target after qualification**, not a rating of a shipped integration.
 Docs, admission/release controls and real consumer migration are separate work.
-The explicit-profile alternative is suitable for a spike; copying full Assembly
-policy is rejected. If the shared seam grows a generic interpreter, reduce it.
+The explicit-profile alternative is a valid smaller production scope if existing
+group/profile-completion parity is deliberately unnecessary. Shared preparation
+is recommended for the selected authoring workflow, not because every adapter
+must change Assembly. Copying full Assembly policy is rejected. Implement only
+the selected path; if the shared seam grows a generic interpreter, reduce it.
 
 ## Explicit exclusions
 
@@ -309,6 +365,10 @@ The six earlier improvement plans retain their own scope and priority.
 - Effect current source observed: `ba272c5196e353794cd35bb75954548a845c6007`.
 - OpenCode observed: `dc71d5f94b1800370a6de88d107f117823d85628`, whose dependency
   inputs select Effect `4.1.0`; do not relabel it as the spike's 4.1.2 environment.
+- Follow-up OpenCode review: `7d5b72250890e0e89573b4cab42a003a48c20567`;
+  the three intervening commits do not change the inspected LayerNode, SDK,
+  lifetime or dependency inputs. The guide records its useful extra capabilities
+  and their deliberate absence from this first integration scope.
 
 The earlier [assessment](../architecture-guarantees-2026-11/effect-assessment.md)
 and [OpenCode study](../architecture-guarantees-2026-11/opencode-effect-case-study.md)
