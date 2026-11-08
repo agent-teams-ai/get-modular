@@ -1,0 +1,219 @@
+import assert from "node:assert/strict";
+import { mkdtemp, open, rm, writeFile } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { declareModule, defineContract } from "@get-modular/assembly";
+import type { CapabilitiesOf } from "@get-modular/assembly";
+import { required } from "@get-modular/core";
+import type { CompositionProfile } from "@get-modular/core";
+import { Context, Deferred, Effect, Exit, Fiber, Layer } from "effect";
+import { effectFor, implement, PreparationError } from "./native-composition.ts";
+import { BootFailure, Config, DbContract, fixture, LogContract, Roots } from "./fixture.ts";
+import type { AppMap } from "./fixture.ts";
+
+test("native graph is lazy; local slots, diamond, optional and ordered-many remain exact", async () => {
+  const f = fixture();
+  const prepared = await f.api.prepare({ profile: f.profile, modules: f.modules, roots: { app: f.app } });
+  const layer = prepared.layer(Roots);
+  assert.deepEqual(f.stats, { acquisitions: 0, releases: 0, calls: 0 });
+  const run = Effect.gen(function*() {
+    const { app } = yield* Roots;
+    assert.equal(app.primary.label, "test/primary");
+    assert.equal(app.archive.label, "test/archive");
+    assert.notEqual(app.primary, app.archive);
+    assert.equal(app.left.db, app.primary);
+    assert.equal(app.right.db, app.primary);
+    assert.equal(app.logger, undefined);
+    assert.deepEqual(app.ordered.map((db) => db.label), ["test/archive", "test/primary"]);
+    assert.equal(app.single.length, 1);
+    assert.equal(app.single[0], app.primary);
+    assert.equal(Object.isFrozen(app.single), true);
+    assert.equal(f.stats.releases, f.stats.acquisitions - 2);
+    return [app.primary.serial, app.archive.serial];
+  }).pipe(Effect.provide(Layer.provide(layer, Layer.succeed(Config, { prefix: "test/" }))));
+  const first = await Effect.runPromise(run);
+  assert.deepEqual(f.stats, { acquisitions: 2, releases: 2, calls: 5 });
+  const second = await Effect.runPromise(run);
+  assert.deepEqual(f.stats, { acquisitions: 4, releases: 4, calls: 10 });
+  assert.equal(first.some((serial) => second.includes(serial)), false);
+});
+
+test("captured declarations and profile survive mutation before async compilation settles", async () => {
+  const f = fixture();
+  const rows = [...f.profile.bindings];
+  const pending = f.api.prepare({ profile: { ...f.profile, bindings: rows }, modules: f.modules, roots: { app: f.app } });
+  rows.length = 0;
+  f.ownerPath.push("mutated-after-entry-capture");
+  const prepared = await pending;
+  assert.deepEqual(f.modules[0].declaration.owner.path, ["example"]);
+  assert.equal(prepared.composition.plan.bindings.length, 9);
+  assert.deepEqual(f.stats, { acquisitions: 0, releases: 0, calls: 0 });
+});
+
+test("a present optional provider is injected without changing its declared slot shape", async () => {
+  const f = fixture();
+  const messages: string[] = [];
+  const logger = implement<AppMap>()(declareModule({ moduleId: "example/logger", implementationId: "example/logger-v1", owner: { authority: "example", path: ["logs"] }, provides: [LogContract.provide()], slots: [] }), () => {
+    const value = { log: (message: string) => { messages.push(message); } };
+    return Effect.succeed({ instance: value, capabilities: { [LogContract.id]: value } });
+  });
+  const profile: CompositionProfile = { ...f.profile,
+    selections: [...f.profile.selections, { moduleId: "example/logger", implementationId: "example/logger-v1" }],
+    bindings: f.profile.bindings.map((row) => row.slotId === "logger" ? { ...row, providerImplementationIds: ["example/logger-v1"] } : row),
+  };
+  const prepared = await f.api.prepare({ profile, modules: [...f.modules, logger], roots: { app: f.app } });
+  await Effect.runPromise(Effect.gen(function*() {
+    const { app } = yield* Roots;
+    assert.ok(app.logger);
+    app.logger.log("present");
+  }).pipe(Effect.provide(Layer.provide(prepared.layer(Roots), Layer.succeed(Config, { prefix: "optional/" })))));
+  assert.deepEqual(messages, ["present"]);
+});
+
+test("native Layer acquisition starts independent providers before either is released", { timeout: 5000 }, async () => {
+  const f = fixture();
+  const primaryEntered = Deferred.makeUnsafe<void>();
+  const archiveEntered = Deferred.makeUnsafe<void>();
+  const continueBuild = Deferred.makeUnsafe<void>();
+  const open = (label: string, entered: Deferred.Deferred<void>) => Effect.gen(function*() {
+    yield* Deferred.succeed(entered, undefined);
+    yield* Deferred.await(continueBuild);
+    const value = { label, serial: 1 };
+    return { instance: value, capabilities: { [DbContract.id]: value } };
+  });
+  const primary = implement<AppMap>()(f.modules[0].declaration, () => open("parallel/primary", primaryEntered));
+  const archive = implement<AppMap>()(f.modules[1].declaration, () => open("parallel/archive", archiveEntered));
+  const prepared = await f.api.prepare({ profile: f.profile, modules: [primary, archive, f.modules[2], f.modules[3], f.app], roots: { app: f.app } });
+  await Effect.runPromise(Effect.gen(function*() {
+    const fiber = yield* Effect.forkChild(Effect.provide(Roots, prepared.layer(Roots)));
+    yield* Deferred.await(primaryEntered);
+    yield* Deferred.await(archiveEntered);
+    yield* Deferred.succeed(continueBuild, undefined);
+    const result = yield* Fiber.join(fiber);
+    assert.equal(result.app.primary.label, "parallel/primary");
+    assert.equal(result.app.archive.label, "parallel/archive");
+  }));
+});
+
+test("invalid profile, inventory and roots reject before any acquisition", async () => {
+  const f = fixture();
+  await assert.rejects(f.api.prepare({ profile: { ...f.profile, bindings: [] }, modules: f.modules, roots: { app: f.app } }), PreparationError);
+  await assert.rejects(f.api.prepare({ profile: f.profile, modules: [...f.modules, f.modules[0]], roots: { app: f.app } }), PreparationError);
+  await assert.rejects(f.api.prepare({ profile: f.profile, modules: f.modules, roots: { app: f.modules[0] } }), PreparationError);
+  assert.deepEqual(f.stats, { acquisitions: 0, releases: 0, calls: 0 });
+});
+
+const Resource = defineContract<{ readonly live: () => boolean }>()({ id: "failure/resource", revision: 1 });
+interface FailureMap extends CapabilitiesOf<typeof Resource> {}
+class FailureRoots extends Context.Service<FailureRoots, { readonly app: string }>()("failure/Roots") {}
+
+function failingFixture(mode: "failure" | "cancel", entered: Deferred.Deferred<void>) {
+  const stats = { acquisitions: 0, releases: 0, live: false };
+  const resourceDeclaration = declareModule({ moduleId: "failure/resource", implementationId: "failure/resource-v1", owner: { authority: "failure", path: ["scope"] }, provides: [Resource.provide()], slots: [] });
+  const rootDeclaration = declareModule({ moduleId: "failure/app", implementationId: "failure/app-v1", owner: { authority: "failure", path: ["scope"] }, provides: [], slots: [Resource.slot("resource", required())] });
+  const resource = implement<FailureMap>()(resourceDeclaration, () => Effect.acquireRelease(
+    Effect.sync(() => { stats.acquisitions++; stats.live = true; return { live: () => stats.live }; }),
+    () => Effect.sync(() => { stats.releases++; stats.live = false; }),
+  ).pipe(Effect.map((value) => ({ instance: value, capabilities: { [Resource.id]: value } }))));
+  const app = implement<FailureMap>()(rootDeclaration, ({ resource }) => Effect.gen(function*() {
+    assert.equal(resource.live(), true);
+    yield* Deferred.succeed(entered, undefined);
+    if (mode === "failure") { return yield* Effect.fail(new BootFailure("construction")); }
+    yield* Effect.never;
+    return { instance: "not-reached", capabilities: {} };
+  }));
+  const modules = [resource, app] as const;
+  const profile: CompositionProfile = { kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "failure/default", roots: ["failure/app"],
+    selections: [{ moduleId: "failure/resource", implementationId: "failure/resource-v1" }, { moduleId: "failure/app", implementationId: "failure/app-v1" }],
+    bindings: [{ consumerImplementationId: "failure/app-v1", slotId: "resource", providerImplementationIds: ["failure/resource-v1"] }],
+  };
+  return { stats, prepare: () => effectFor<FailureMap>().prepare({ profile, modules, roots: { app } }) };
+}
+
+test("native construction preserves expected error and cleans acquired dependency", async () => {
+  const entered = Deferred.makeUnsafe<void>();
+  const f = failingFixture("failure", entered);
+  const prepared = await f.prepare();
+  const result = await Effect.runPromise(Effect.result(Effect.provide(FailureRoots, prepared.layer(FailureRoots))));
+  assert.equal(result._tag, "Failure");
+  if (result._tag === "Failure") {
+    const expected: BootFailure = result.failure;
+    assert.equal(expected._tag, "BootFailure");
+    assert.equal(expected.detail, "construction");
+  }
+  assert.deepEqual(f.stats, { acquisitions: 1, releases: 1, live: false });
+});
+
+test("interruption of pending construction cleans the acquired native resource", { timeout: 5000 }, async () => {
+  const entered = Deferred.makeUnsafe<void>();
+  const f = failingFixture("cancel", entered);
+  const prepared = await f.prepare();
+  await Effect.runPromise(Effect.gen(function*() {
+    const fiber = yield* Effect.forkChild(Effect.provide(FailureRoots, prepared.layer(FailureRoots)));
+    yield* Deferred.await(entered);
+    assert.deepEqual(f.stats, { acquisitions: 1, releases: 0, live: true });
+    yield* Fiber.interrupt(fiber);
+    const exit = yield* Fiber.await(fiber);
+    assert.equal(Exit.isFailure(exit), true);
+  }));
+  assert.deepEqual(f.stats, { acquisitions: 1, releases: 1, live: false });
+});
+
+test("native graph dependent-finalizer ordering keeps FileHandle alive until its asynchronous read completes", { timeout: 5000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-native-finalizer-"));
+  const path = join(directory, "resource.txt");
+  const events: string[] = [];
+  let opened: FileHandle | undefined;
+  let closed = false;
+  try {
+    await writeFile(path, "resource-remains-live", "utf8");
+    const entered = Deferred.makeUnsafe<void>();
+    const continueRead = Deferred.makeUnsafe<void>();
+    const File = defineContract<FileHandle>()({ id: "ordering/file", revision: 1 });
+    interface FileMap extends CapabilitiesOf<typeof File> {}
+    class FileRoots extends Context.Service<FileRoots, { readonly app: string }>()("ordering/Roots") {}
+    const provider = implement<FileMap>()(declareModule({
+      moduleId: "ordering/file", implementationId: "ordering/file-v1", owner: { authority: "ordering", path: ["file"] }, provides: [File.provide()], slots: [],
+    }), () => Effect.acquireRelease(
+      Effect.promise(async () => { opened = await open(path, "r"); events.push("provider-acquired"); return opened; }),
+      (file) => Effect.promise(async () => { await file.close(); closed = true; events.push("provider-released"); }),
+    ).pipe(Effect.map((file) => ({ instance: file, capabilities: { [File.id]: file } }))));
+    const dependent = implement<FileMap>()(declareModule({
+      moduleId: "ordering/app", implementationId: "ordering/app-v1", owner: { authority: "ordering", path: ["app"] }, provides: [], slots: [File.slot("file", required())],
+    }), ({ file }) => Effect.gen(function*() {
+      yield* Effect.addFinalizer(() => Effect.gen(function*() {
+        events.push("dependent-finalizer-started");
+        yield* Deferred.succeed(entered, undefined);
+        yield* Deferred.await(continueRead);
+        const content = yield* Effect.promise(() => file.readFile({ encoding: "utf8" }));
+        assert.equal(content, "resource-remains-live");
+        events.push("dependent-read-completed");
+      }));
+      return { instance: "ready", capabilities: {} };
+    }));
+    const profile: CompositionProfile = {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "ordering/default", roots: ["ordering/app"],
+      selections: [{ moduleId: "ordering/file", implementationId: "ordering/file-v1" }, { moduleId: "ordering/app", implementationId: "ordering/app-v1" }],
+      bindings: [{ consumerImplementationId: "ordering/app-v1", slotId: "file", providerImplementationIds: ["ordering/file-v1"] }],
+    };
+    const prepared = await effectFor<FileMap>().prepare({ profile, modules: [provider, dependent], roots: { app: dependent } });
+    assert.deepEqual(events, []);
+    await Effect.runPromise(Effect.gen(function*() {
+      const fiber = yield* Effect.forkChild(Effect.provide(FileRoots, prepared.layer(FileRoots)));
+      yield* Deferred.await(entered);
+      const liveWhileFinalizerBlocked = !closed;
+      yield* Deferred.succeed(continueRead, undefined);
+      const exit = yield* Fiber.await(fiber);
+      assert.equal(liveWhileFinalizerBlocked, true);
+      assert.equal(Exit.isSuccess(exit), true);
+    }));
+    assert.equal(closed, true);
+    assert.deepEqual(events, ["provider-acquired", "dependent-finalizer-started", "dependent-read-completed", "provider-released"]);
+  } finally {
+    // Test-project cleanup on a failed assertion does not count as provider release.
+    if (opened && !closed) { await opened.close(); }
+    await rm(directory, { recursive: true, force: true });
+  }
+});

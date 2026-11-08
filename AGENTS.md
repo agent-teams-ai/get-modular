@@ -17,6 +17,10 @@ For admission, graph or diagnostic work, also read the [compiler engineer handbo
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
 For module authoring, read docs/guides/module-authoring.md.
+For Effect integration or Effect-native consumer work, read the
+[Effect integration practices](research/effect-integration-2026-11/effect-practices.md)
+and their linked proposal and spike evidence. The proposed native package does
+not change current Core/Assembly contracts or authorize plugin lifecycle work.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
 Use `bun run check:changed` while editing, `bun run check:fast` before handoff, and

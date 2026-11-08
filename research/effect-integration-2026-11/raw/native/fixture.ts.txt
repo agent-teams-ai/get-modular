@@ -1,0 +1,76 @@
+import { declareModule, defineContract } from "@get-modular/assembly";
+import type { CapabilitiesOf } from "@get-modular/assembly";
+import { many, optional, required } from "@get-modular/core";
+import type { CompositionProfile } from "@get-modular/core";
+import { Context, Effect } from "effect";
+import { effectFor, implement } from "./native-composition.ts";
+
+export interface Db { readonly label: string; readonly serial: number }
+interface Worker { readonly db: Db }
+interface Logger { readonly log: (message: string) => void }
+export interface App { readonly primary: Db; readonly archive: Db; readonly left: Worker; readonly right: Worker; readonly logger: Logger | undefined; readonly ordered: readonly Db[]; readonly single: readonly Db[] }
+export const DbContract = defineContract<Db>()({ id: "example/db", revision: 1 });
+const WorkerContract = defineContract<Worker>()({ id: "example/worker", revision: 1 });
+export const LogContract = defineContract<Logger>()({ id: "example/logger", revision: 1 });
+export interface AppMap extends CapabilitiesOf<typeof DbContract | typeof WorkerContract | typeof LogContract> {}
+export class Config extends Context.Service<Config, { readonly prefix: string }>()("example/Config") {}
+export class Roots extends Context.Service<Roots, { readonly app: App }>()("example/Roots") {}
+export class BootFailure { readonly _tag = "BootFailure"; readonly detail: string; constructor(detail: string) { this.detail = detail; } }
+
+export function fixture() {
+  const stats = { acquisitions: 0, releases: 0, calls: 0 };
+  const ownerPath = ["example"];
+  const owner = { authority: "example", path: ownerPath };
+  const primaryDeclaration = declareModule({ moduleId: "example/primary", implementationId: "example/primary-v1", owner, provides: [DbContract.provide()], slots: [] });
+  const archiveDeclaration = declareModule({ moduleId: "example/archive", implementationId: "example/archive-v1", owner, provides: [DbContract.provide()], slots: [] });
+  const leftDeclaration = declareModule({ moduleId: "example/left", implementationId: "example/left-v1", owner, provides: [WorkerContract.provide()], slots: [DbContract.slot("db", required())] });
+  const rightDeclaration = declareModule({ moduleId: "example/right", implementationId: "example/right-v1", owner, provides: [WorkerContract.provide()], slots: [DbContract.slot("db", required())] });
+  const appDeclaration = declareModule({ moduleId: "example/app", implementationId: "example/app-v1", owner, provides: [], slots: [
+    DbContract.slot("primary", required()), DbContract.slot("archive", required()),
+    WorkerContract.slot("left", required()), WorkerContract.slot("right", required()),
+    LogContract.slot("logger", optional()), DbContract.slot("ordered", many({ min: 1, max: 2 })),
+    DbContract.slot("single", many({ min: 1, max: 1 })),
+  ] });
+  const open = (label: string) => Effect.gen(function*() {
+    stats.calls++;
+    const config = yield* Config;
+    const db = yield* Effect.acquireRelease(
+      Effect.sync(() => ({ label: `${config.prefix}${label}`, serial: ++stats.acquisitions })),
+      () => Effect.sync(() => { stats.releases++; }),
+    );
+    return { instance: db, capabilities: { [DbContract.id]: db } };
+  });
+  const primary = implement<AppMap>()(primaryDeclaration, () => open("primary"));
+  const archive = implement<AppMap>()(archiveDeclaration, () => open("archive"));
+  const left = implement<AppMap>()(leftDeclaration, ({ db }) => {
+    stats.calls++;
+    const worker = { db };
+    return Effect.succeed({ instance: worker, capabilities: { [WorkerContract.id]: worker } });
+  });
+  const right = implement<AppMap>()(rightDeclaration, ({ db }) => {
+    stats.calls++;
+    const worker = { db };
+    return Effect.succeed({ instance: worker, capabilities: { [WorkerContract.id]: worker } });
+  });
+  const app = implement<AppMap>()(appDeclaration, (dependencies) => {
+    stats.calls++;
+    return Effect.succeed({ instance: dependencies, capabilities: {} });
+  });
+  const modules = [primary, archive, left, right, app] as const;
+  const profile: CompositionProfile = {
+    kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "example/default", roots: ["example/app"],
+    selections: modules.map((entry) => ({ moduleId: entry.declaration.moduleId, implementationId: entry.declaration.implementationId })),
+    bindings: [
+      { consumerImplementationId: "example/left-v1", slotId: "db", providerImplementationIds: ["example/primary-v1"] },
+      { consumerImplementationId: "example/right-v1", slotId: "db", providerImplementationIds: ["example/primary-v1"] },
+      { consumerImplementationId: "example/app-v1", slotId: "primary", providerImplementationIds: ["example/primary-v1"] },
+      { consumerImplementationId: "example/app-v1", slotId: "archive", providerImplementationIds: ["example/archive-v1"] },
+      { consumerImplementationId: "example/app-v1", slotId: "left", providerImplementationIds: ["example/left-v1"] },
+      { consumerImplementationId: "example/app-v1", slotId: "right", providerImplementationIds: ["example/right-v1"] },
+      { consumerImplementationId: "example/app-v1", slotId: "logger", providerImplementationIds: [] },
+      { consumerImplementationId: "example/app-v1", slotId: "ordered", providerImplementationIds: ["example/archive-v1", "example/primary-v1"] },
+      { consumerImplementationId: "example/app-v1", slotId: "single", providerImplementationIds: ["example/primary-v1"] },
+    ],
+  };
+  return { stats, ownerPath, modules, app, profile, primaryDeclaration, appDeclaration, api: effectFor<AppMap>() };
+}

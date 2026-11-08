@@ -1,5 +1,10 @@
 # Effect and Get Modular at scale: the current OpenCode example
 
+Follow-up, 2026-11-09: the owner now selected [optional native Effect integration](../effect-integration-2026-11/README.md).
+The [canonical draft practices](../effect-integration-2026-11/effect-practices.md)
+refresh OpenCode evidence and separate observed weaknesses from scenario risks.
+The status below describes this earlier study, not the newly selected direction.
+
 Status: source/design research, 2026-11-07 (Europe/Kyiv). This extends the
 [Effect assessment](effect-assessment.md), not the six implementation plans.
 No production dependency, integration package, OpenCode fix or new workstream is

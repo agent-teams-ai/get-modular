@@ -1,5 +1,10 @@
 # Architecture guarantees: bounded improvement plans
 
+Follow-up, 2026-11-09: the owner selected [optional native Effect integration](../effect-integration-2026-11/README.md)
+with executable spikes and one [usage guide](../effect-integration-2026-11/effect-practices.md).
+That new direction supersedes earlier statements that no integration workstream
+was selected. The six numbered plans and their historical evidence remain unchanged.
+
 Status: four critic rounds and focused follow-ups; six-perspective adversarial study 2026-11-07.
 This directory is research,
 not accepted architecture, implemented behavior, release evidence, or permission

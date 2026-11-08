@@ -1,0 +1,18 @@
+{"probe":"native-input-memoization","bad":{"values":{"left":"left-input","right":"left-input"},"acquisitions":1,"releases":1},"good":{"values":{"left":"left-input","right":"right-input"},"acquisitions":2,"releases":2}}
+✔ paired input probe: a cached implementation Layer aliases inputs; fresh identities isolate them (9.241461ms)
+✔ native graph is lazy; local slots, diamond, optional and ordered-many remain exact (38.927182ms)
+✔ captured declarations and profile survive mutation before async compilation settles (10.069278ms)
+✔ a present optional provider is injected without changing its declared slot shape (7.956577ms)
+✔ native Layer acquisition starts independent providers before either is released (4.352753ms)
+✔ invalid profile, inventory and roots reject before any acquisition (12.733688ms)
+✔ native construction preserves expected error and cleans acquired dependency (2.790197ms)
+✔ interruption of pending construction cleans the acquired native resource (2.50245ms)
+✔ native graph dependent-finalizer ordering keeps FileHandle alive until its asynchronous read completes (6.19151ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 649.091549

@@ -26,6 +26,36 @@
   ],
   "overrides": [
     {
+      "filename": "research/{architecture-guarantees,effect-integration}-2026-11/**/*.md",
+      "words": [
+        "AISDK",
+        "anomalyco",
+        "callees",
+        "countercase",
+        "counterprotections",
+        "EBADF",
+        "extractall",
+        "fileobj",
+        "finalizer",
+        "finalizers",
+        "interprocedural",
+        "interruptibility",
+        "microtask",
+        "nonmatching",
+        "opencode",
+        "overbroad",
+        "overclaim",
+        "pathlib",
+        "prebuild",
+        "prewrapped",
+        "thenables",
+        "unadopted",
+        "unref",
+        "workstream",
+        "workstreams"
+      ]
+    },
+    {
       "filename": "tests/qualification/consumer-fixtures/growth/source-evidence/2026-10-21/**/*.json",
       "words": ["iliya"]
     },

@@ -1,5 +1,10 @@
 # Effect comparison: correct the scope of the earlier rating
 
+Follow-up, 2026-11-09: see the selected [native integration proposal](../effect-integration-2026-11/README.md)
+and its new [spike evidence](../effect-integration-2026-11/spikes.md). This assessment
+retains its historical source observations; its earlier unselected-workstream
+status does not describe the owner's later integration decision.
+
 Status: source-backed assessment, updated 2026-11-07; not a performance benchmark or a
 claim that either complete implementation has been audited. Get Modular source
 is `5fb83478dd7b95216be92c4d3077eddf2774eef8`; Effect source is

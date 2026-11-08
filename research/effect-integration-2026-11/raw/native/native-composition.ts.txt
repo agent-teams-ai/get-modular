@@ -1,0 +1,196 @@
+import { compileComposition } from "@get-modular/core";
+import type { CompositionPlan, CompositionProfile, CompileCompositionResult, Diagnostic, ModuleDeclaration } from "@get-modular/core";
+import type {
+  CapabilityBrand, CapabilitySchema, FactoryCapabilities, FactoryDependencies,
+  FactoryProduct, UsedCapability, UsedMap, ValidDeclaration,
+} from "@get-modular/assembly";
+import { Context, Effect, Layer } from "effect";
+import type { Scope } from "effect";
+
+// Qualification prototype only: trusted ordinary metadata, explicit profiles,
+// no borrowed inputs/groups/profile completion or production admission claim.
+declare const uses: unique symbol;
+declare const types: unique symbol;
+export type Entry<C, D extends ModuleDeclaration, I, E, R> = {
+  readonly declaration: D;
+  readonly [uses]: CapabilityBrand<C, UsedCapability<D> & keyof C>;
+  readonly [types]: { readonly instance: I; readonly error: E; readonly services: R; readonly used: UsedMap<C, UsedCapability<D> & keyof C> };
+};
+type Summary = {
+  readonly declaration: ModuleDeclaration;
+  readonly [types]: { readonly instance: unknown; readonly error: unknown; readonly services: unknown; readonly used: unknown };
+};
+type AcceptedEntry<C> = Summary & { readonly [uses]: { readonly [K in keyof C]?: (value: C[K]) => C[K] } };
+type UsedKeys<T> = T extends Summary ? keyof T[typeof types]["used"] : never;
+type Known<C, M extends readonly Summary[]> = Exclude<UsedKeys<M[number]>, keyof C> extends never ? unknown : never;
+type Instances<R extends Readonly<Record<string, Summary>>> = { readonly [K in keyof R]: R[K][typeof types]["instance"] };
+type RuntimeProduct = { readonly instance: unknown; readonly capabilities: Readonly<Record<string, unknown>> };
+type RuntimeModule = {
+  readonly declaration: ModuleDeclaration;
+  readonly invoke: (dependencies: Readonly<Record<string, unknown>>) => Effect.Effect<RuntimeProduct, unknown, unknown>;
+};
+const metadata = new WeakMap<object, RuntimeModule>();
+type Successful = Extract<CompileCompositionResult, { readonly ok: true }>;
+export class PreparationError extends Error {
+  readonly diagnostics: readonly Diagnostic[] | undefined;
+  constructor(message: string, diagnostics?: readonly Diagnostic[]) { super(message); this.diagnostics = diagnostics; }
+}
+
+function capture<D extends ModuleDeclaration>(declaration: D): D {
+  const copy = structuredClone(declaration);
+  Object.freeze(copy.owner.path); Object.freeze(copy.owner);
+  for (const provided of copy.provides) { Object.freeze(provided.compatibility); Object.freeze(provided); }
+  for (const slot of copy.slots) { Object.freeze(slot.compatibility); Object.freeze(slot.cardinality); Object.freeze(slot); }
+  Object.freeze(copy.provides); Object.freeze(copy.slots);
+  return Object.freeze(copy);
+}
+
+export function implement<C extends CapabilitySchema<C>>() {
+  return <const D extends ModuleDeclaration, I, E, R>(
+    declaration: D & ValidDeclaration<C, NoInfer<D>>,
+    factory: (dependencies: FactoryDependencies<C, NoInfer<D>>) =>
+      Effect.Effect<FactoryProduct<I, FactoryCapabilities<C, NoInfer<D>>>, E, R>,
+  ): Entry<C, D, I, E, R> => {
+    const captured = capture(declaration);
+    // Private brand assertion: the public type tracks this constructor's exact
+    // D/I/E/R; runtime authentication is the WeakMap, not a cast in consumer code.
+    const record: object = Object.freeze({ declaration: captured });
+    const entry = record as Entry<C, D, I, E, R>;
+    metadata.set(entry, {
+      declaration: captured,
+      // Sole dependency-record assertion. Only verified local slots from this
+      // same captured declaration reach the factory; tests exercise each shape.
+      invoke: (dependencies) => Effect.suspend(() => factory(dependencies as FactoryDependencies<C, NoInfer<D>>)),
+    });
+    return entry;
+  };
+}
+
+export interface Prepared<Roots, E, R> {
+  readonly composition: Successful;
+  readonly layer: <Id>(root: Context.Key<Id, Roots>) => Layer.Layer<Id, E, Exclude<R, Scope.Scope>>;
+}
+
+type PrivateId = { readonly _privateModule: unique symbol };
+type PrivateLayer = Layer.Layer<PrivateId, unknown, unknown>;
+type PrivateKey = Context.Key<PrivateId, RuntimeProduct>;
+let graphSequence = 0;
+
+function nullRecord(): Record<string, unknown> {
+  const record: Record<string, unknown> = {};
+  Object.setPrototypeOf(record, null);
+  return record;
+}
+
+function merge(layers: readonly PrivateLayer[]): PrivateLayer {
+  const first = layers[0];
+  if (!first) { throw new Error("prototype.empty-layer-group"); }
+  return layers.slice(1).reduce((all, next) => Layer.merge(all, next), first);
+}
+
+function dependencies(
+  declaration: ModuleDeclaration,
+  bindings: readonly CompositionPlan["bindings"][number][],
+  keys: ReadonlyMap<string, PrivateKey>,
+): Effect.Effect<Readonly<Record<string, unknown>>, never, PrivateId> {
+  return Effect.gen(function*() {
+    const result = nullRecord();
+    for (const slot of declaration.slots) {
+      const row = bindings.find((candidate) => candidate.slotId === slot.slotId);
+      if (!row) { throw new Error("prototype.missing-verified-binding"); }
+      const values: unknown[] = [];
+      for (const providerId of row.providerImplementationIds) {
+        const key = keys.get(providerId);
+        if (!key) { throw new Error("prototype.missing-verified-provider"); }
+        const product = yield* key;
+        if (!Object.hasOwn(product.capabilities, row.capabilityId)) { throw new Error("prototype.missing-capability"); }
+        values.push(product.capabilities[row.capabilityId]);
+      }
+      result[slot.slotId] = slot.cardinality.kind === "many" ? Object.freeze(values) : values[0];
+    }
+    return Object.freeze(result);
+  });
+}
+
+function lower(
+  composition: Successful,
+  modules: ReadonlyMap<string, RuntimeModule>,
+  roots: readonly { readonly alias: string; readonly implementationId: string }[],
+) {
+  const prefix = `@gm-effect-qualification/${++graphSequence}/`;
+  const keys = new Map<string, PrivateKey>();
+  const layers = new Map<string, PrivateLayer>();
+  const bindings = new Map<string, CompositionPlan["bindings"][number][]>();
+  for (const row of composition.plan.bindings) {
+    const rows = bindings.get(row.consumerImplementationId) ?? [];
+    rows.push(row); bindings.set(row.consumerImplementationId, rows);
+  }
+  for (const id of composition.plan.dependencyOrder) {
+    const module = modules.get(id);
+    if (!module) { throw new Error("prototype.missing-selected-module"); }
+    const key = Context.Service<PrivateId, RuntimeProduct>(`${prefix}${id}`);
+    keys.set(id, key);
+    const rows = bindings.get(id) ?? [];
+    const selected = new Set(rows.flatMap((row) => row.providerImplementationIds));
+    const needed = [...selected].map((providerId) => {
+      const found = layers.get(providerId);
+      if (!found) { throw new Error("prototype.invalid-dependency-order"); }
+      return found;
+    });
+    const make = Effect.flatMap(dependencies(module.declaration, rows, keys), module.invoke);
+    const layer = Layer.effect(key, make);
+    layers.set(id, needed.length > 0 ? Layer.provide(layer, merge(needed)) : layer);
+  }
+  const all = merge([...layers.values()]);
+  const readRoots = Effect.gen(function*() {
+    const result = nullRecord();
+    for (const root of roots) {
+      const key = keys.get(root.implementationId);
+      if (!key) { throw new Error("prototype.missing-root-key"); }
+      result[root.alias] = (yield* key).instance;
+    }
+    return Object.freeze(result);
+  });
+  return <Id>(root: Context.Key<Id, Readonly<Record<string, unknown>>>) =>
+    Layer.provide(Layer.effect(root, readRoots), all);
+}
+
+export function effectFor<C extends CapabilitySchema<C>>() {
+  return {
+    prepare: async <const M extends readonly AcceptedEntry<C>[], const R extends Readonly<Record<string, AcceptedEntry<C>>>>(
+      input: { readonly profile: CompositionProfile; readonly modules: M & Known<C, M>; readonly roots: R },
+    ): Promise<Prepared<Instances<R>, M[number][typeof types]["error"], M[number][typeof types]["services"]>> => {
+      const profile = structuredClone(input.profile);
+      const entries = [...input.modules];
+      const byId = new Map<string, RuntimeModule>();
+      const memberSet = new Set<object>(entries);
+      for (const entry of entries) {
+        const found = metadata.get(entry);
+        if (!found || byId.has(found.declaration.implementationId)) { throw new PreparationError("prototype.invalid-or-duplicate-entry"); }
+        byId.set(found.declaration.implementationId, found);
+      }
+      const roots = Object.entries(input.roots).map(([alias, entry]) => {
+        const found = metadata.get(entry);
+        if (!memberSet.has(entry) || !found) { throw new PreparationError("prototype.root-not-selected"); }
+        return { alias, implementationId: found.declaration.implementationId, moduleId: found.declaration.moduleId };
+      });
+      if (new Set(roots.map((root) => root.moduleId)).size !== roots.length) { throw new PreparationError("prototype.duplicate-root"); }
+      const composition = await compileComposition({ declarations: [...byId.values()].map((module) => module.declaration), profile });
+      if (!composition.ok) { throw new PreparationError("prototype.core-rejected", composition.diagnostics); }
+      if (composition.plan.selections.length !== byId.size || composition.plan.selections.some((selection) =>
+        byId.get(selection.implementationId)?.declaration.moduleId !== selection.moduleId)) {
+        throw new PreparationError("prototype.inventory-mismatch");
+      }
+      const declaredRoots = new Set(composition.plan.roots);
+      if (declaredRoots.size !== roots.length || roots.some((root) => !declaredRoots.has(root.moduleId))) {
+        throw new PreparationError("prototype.root-mismatch");
+      }
+      const makeLayer = lower(composition, byId, roots);
+      // Private existential boundary: Core checked all selections/bindings and
+      // roots against the same captured module inventory. Its type witnesses
+      // are M/R, while only this heterogeneous runtime mapping erases them.
+      const layer = makeLayer as Prepared<Instances<R>, M[number][typeof types]["error"], M[number][typeof types]["services"]>["layer"];
+      return Object.freeze({ composition, layer });
+    },
+  };
+}

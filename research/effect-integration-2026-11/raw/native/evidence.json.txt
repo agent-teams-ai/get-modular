@@ -1,0 +1,52 @@
+{
+  "observedAtUtc": "2026-11-08T22:46:21.541752+00:00",
+  "subject": "qualification-only native GM-to-Layer lowering; not production admission",
+  "gmSource": "5fb83478dd7b95216be92c4d3077eddf2774eef8",
+  "node": "v24.22.1",
+  "versions": {
+    "effect": "4.1.2",
+    "typescript": "7.0.2",
+    "@types/node": "24.19.1",
+    "@get-modular/core": "0.7.1",
+    "@get-modular/assembly": "0.7.1"
+  },
+  "sha256": {
+    "native-composition.ts": "a875ff601423785ff899bf583c9df56d6f9125d585fc4aeec4b3025e747beb7d",
+    "fixture.ts": "333aafe767fff0dbe558cf0515d37878c5ef7ad4b218e929546394553957803a",
+    "native-composition.test.ts": "f41c6dcb02f66a39d87e442d45af30680ef407f74aecb5268929fa1d5da9114a",
+    "native-composition.types.ts": "89ca1466560e013dfb710c6098ad108e4a82b52a995ea63fb97a63c974aefef4",
+    "input-memoization.test.ts": "17710ff87bee29ff80ec147c2b92b08fef9e5c996211994cdbcf81f68d4f7501",
+    "tsconfig.json": "00e34a604ffd7e95388277d171e0fd9bee4dc7d8b7b0b969f5ee809e9de9d05f",
+    "package.json": "2fc47772ba37df7cd56a8880f64ee2d7a5416f0ef94e164c11927215a06e8bd8",
+    "README.md": "78e5996388c25b26471e176077a2f69d217ecda63163c670dacbbe85832cace1"
+  },
+  "negativeTypeFixtures": 12,
+  "runtimeCases": 9,
+  "runs": [
+    {
+      "name": "typecheck",
+      "command": [
+        "node",
+        "node_modules/typescript/bin/tsc",
+        "-p",
+        "tsconfig.json",
+        "--pretty",
+        "false"
+      ],
+      "exitCode": 0,
+      "output": "typecheck.stdout.txt"
+    },
+    {
+      "name": "runtime",
+      "command": [
+        "node",
+        "--test",
+        "native-composition.test.ts",
+        "input-memoization.test.ts"
+      ],
+      "exitCode": 0,
+      "output": "runtime.stdout.txt"
+    }
+  ],
+  "documentationOnlyAmendment": "README clarified per-layer-call identity/ambient R isolation and normalized its trailing blank line after execution. All executable source, fixture and configuration hashes remain those strictly checked and executed."
+}
