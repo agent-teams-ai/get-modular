@@ -33,6 +33,17 @@ function git(args, cwd) {
   return result.error || result.status !== 0 ? null : result.stdout;
 }
 
+/** Both sides of a light doc change must be non-executable regular files. */
+function regularAt(ref, path, cwd) {
+  const entry = git(["ls-tree", "-z", ref, "--", path], cwd);
+  if (entry === null) return false;
+  if (entry.length === 0) return true;
+  const rows = entry.toString("utf8").split("\0");
+  return rows.length === 2 && rows[1] === "" &&
+    /^100644 blob [a-f0-9]{40}\t/u.test(rows[0]) &&
+    rows[0].endsWith("\t" + path);
+}
+
 /** Validate exact merge SHA and inspect both sides of any cross-scope rename. */
 export function changedPaths(base, head, cwd = process.cwd()) {
   if (!SHA.test(base) || !SHA.test(head)) return null;
@@ -45,6 +56,11 @@ export function changedPaths(base, head, cwd = process.cwd()) {
   if (output.includes("\uFFFD")) return null;
   const paths = output.split("\0");
   if (paths.at(-1) === "") paths.pop();
+  if (paths.length > 100) return null;
+  // Never grant docs-only status for symlink/gitlink/executable mode changes.
+  if (classifyChangedPaths(paths) === "docs" &&
+      paths.some((path) => !regularAt(base, path, cwd) || !regularAt(head, path, cwd)))
+    return null;
   return paths;
 }
 
