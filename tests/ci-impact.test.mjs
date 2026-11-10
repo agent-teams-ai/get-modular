@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -58,5 +58,33 @@ test("real Git diff includes both old and new paths", () => {
     assert.equal(changedPaths(base, base, cwd), null);
   } finally {
     rmSync(cwd, {recursive:true, force:true});
+  }
+});
+
+test("symlinked and executable maintained guides require full CI", (t) => {
+  if (process.platform === "win32") return t.skip("POSIX Git modes");
+  const cwd = mkdtempSync(join(tmpdir(), "get-modular-modes-"));
+  const git = (...args) => execFileSync("git", ["-C", cwd, ...args], {encoding:"utf8"}).trim();
+  const commit = (message) => {
+    git("add", "-A");
+    git("-c", "user.name=CI", "-c", "user.email=ci@example.invalid", "commit", "-q", "-m", message);
+    return git("rev-parse", "HEAD");
+  };
+  try {
+    git("init", "-q");
+    mkdirSync(join(cwd, "docs/guides"), {recursive:true});
+    const path = join(cwd, "docs/guides/guide.md");
+    writeFileSync(path, "safe\n");
+    const base = commit("regular");
+    chmodSync(path, 0o755);
+    const exec = commit("executable");
+    assert.equal(changedPaths(base, exec, cwd), null);
+    chmodSync(path, 0o644);
+    rmSync(path);
+    symlinkSync("../missing.md", path);
+    const link = commit("symlink");
+    assert.equal(changedPaths(base, link, cwd), null);
+  } finally {
+    rmSync(cwd, {recursive:true,force:true});
   }
 });
