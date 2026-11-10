@@ -26,7 +26,7 @@ const hosts = {
 };
 // Independent closed oracle: dependency keys are opaque; only every result's
 // exact success value and a nonempty collection can admit the aggregate.
-const canonicalAggregateBody = "jq -e 'to_entries | length > 0 and all(.value.result == \"success\")' <<< \"$NEEDS_JSON\"\n";
+const canonicalAggregateBody = "set -euo pipefail\njq -e --arg tier \"$IMPACT_TIER\" '\n  (.impact.result == \"success\") and\n  (.[\"ci-impact-tests\"].result == \"success\") and\n  (if $tier == \"docs\" then .[\"docs-protocol\"].result == \"success\"\n   elif $tier == \"full\" then .[\"docs-protocol\"].result == \"skipped\"\n   else false end) and\n  (to_entries | map(select(.key != \"impact\" and .key != \"ci-impact-tests\" and .key != \"docs-protocol\"))\n   | length > 0 and all(.value.result == (if $tier == \"full\" then \"success\" else \"skipped\" end)))\n' <<< \"$NEEDS_JSON\"\n";
 
 // Independent oracle retains every check/precheck obligation at 0a81957c
 // and adds the explicit root peer and runtime policy gates. Never derive it
@@ -94,8 +94,8 @@ function validateLanes(value, manifest = packageJson) {
       ? "${{ matrix.lane == 'governance' && 20 || 15 }}"
       : 15);
     assert.equal(job.strategy["fail-fast"], false);
-    assert.equal(job.needs, undefined, "lane must have an independent checkout");
-    assert.equal(job.if, undefined, "lane must not be skipped");
+    assert.equal(job.needs, "impact", "every lane waits for the trusted scope selection");
+    assert.equal(job.if, "needs.impact.outputs.tier == 'full'", "all native work is required for full tier");
     assert.equal(job["continue-on-error"], undefined);
     assert.equal(job.defaults?.run?.shell, undefined, "payload needs the platform default shell");
     assert.deepEqual(Object.keys(job.strategy.matrix), ["include"]);
@@ -200,13 +200,14 @@ function validateLanes(value, manifest = packageJson) {
     assert(gate, `${host}: missing aggregate`);
     assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : rollback ? `check (${os}, Node 26 rollback)` : `check (${os})`, "required context");
     assert.equal(gate["runs-on"], os === "macos-15" ? "ubuntu-24.04" : os, "aggregate runner");
-    assert.deepEqual(gate.needs, [`lanes-${host}`], "aggregate dependency omission");
+    assert.deepEqual(gate.needs, ["impact", "ci-impact-tests", "docs-protocol", `lanes-${host}`, ...(host === "node24-ubuntu" ? ["node-24-compatibility"] : [])], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
     assert.equal(gate["continue-on-error"], undefined);
     assert.equal(gate.steps.length, 1);
     assert.equal(gate.steps[0].shell, "bash");
     assert.equal(gate.steps[0].env.NEEDS_JSON, "${{ toJSON(needs) }}");
-    assert.equal(gate.steps[0].run, canonicalAggregateBody, `${host}: key-blind aggregate body drift`);
+    assert.equal(gate.steps[0].env.IMPACT_TIER, "${{ needs.impact.outputs.tier }}");
+    assert.equal(gate.steps[0].run, canonicalAggregateBody, `${host}: scope-qualified aggregate body drift`);
     assert.equal(gate.steps[0].if, undefined);
     assert.equal(gate.steps[0]["continue-on-error"], undefined);
   }
@@ -271,19 +272,44 @@ async function prepareLane(cwd) {
       : `#!/usr/bin/env node\n${fake}`, { mode: 0o755 });
 }
 
-function assertAggregate(step, cwd, dependency, context = dependency) {
-  const status = (needs, phase) => {
-    try { return shell(step.run, cwd, { NEEDS_JSON: typeof needs === "string" ? needs : JSON.stringify(needs) }); }
-    catch (cause) { throw new Error(`Aggregate shell for ${context} (${phase}) failed`, { cause }); }
+function assertAggregate(step, cwd, dependencies, context = dependencies.join(", ")) {
+  const successNeeds = {
+    impact: { result: "success" },
+    "ci-impact-tests": { result: "success" },
+    "docs-protocol": { result: "skipped" },
+    ...Object.fromEntries(dependencies.map(key => [key, { result: "success" }])),
   };
-  assert.equal(status({ [dependency]: { result: "success" } }, "success"), 0);
+  const status = (needs, tier, phase) => {
+    try {
+      return shell(step.run, cwd, {
+        NEEDS_JSON: typeof needs === "string" ? needs : JSON.stringify(needs),
+        IMPACT_TIER: tier,
+      });
+    } catch (cause) {
+      throw new Error(`Aggregate shell for ${context} (${phase}) failed`, { cause });
+    }
+  };
+  assert.equal(status(successNeeds, "full", "full success"), 0);
+  const docsNeeds = {
+    ...successNeeds,
+    "docs-protocol": { result: "success" },
+    ...Object.fromEntries(dependencies.map(key => [key, { result: "skipped" }])),
+  };
+  assert.equal(status(docsNeeds, "docs", "docs success"), 0);
   for (const result of ["failure", "cancelled", "skipped", "unknown", null]) {
-    assert.notEqual(status({ [dependency]: { result } }, `reject ${result}`), 0, `must reject ${result}`);
+    assert.notEqual(status({ ...successNeeds, [dependencies[0]]: { result } }, "full", `reject full ${result}`), 0, `must reject ${result}`);
   }
-  for (const [index, needs] of [{}, { [dependency]: {} }, { [dependency]: { result: "success" }, extra: { result: "skipped" } }].entries()) {
-    assert.notEqual(status(needs, `reject incomplete/mixed ${index}`), 0, "must reject incomplete/mixed needs");
+  for (const [index, needs] of [
+    {}, { ...successNeeds, impact: { result: "failure" } },
+    { ...successNeeds, "ci-impact-tests": { result: "skipped" } },
+    { ...successNeeds, "docs-protocol": { result: "success" } },
+    { ...docsNeeds, [dependencies[0]]: { result: "success" } },
+    { ...successNeeds, extra: { result: "skipped" } },
+  ].entries()) {
+    assert.notEqual(status(needs, index === 4 ? "docs" : "full", `reject incomplete/mixed ${index}`), 0, "must reject incomplete/mixed needs");
   }
-  assert.notEqual(status("invalid JSON", "reject invalid JSON"), 0);
+  assert.notEqual(status(successNeeds, "unknown", "reject tier spoof"), 0);
+  assert.notEqual(status("invalid JSON", "full", "reject invalid JSON"), 0);
 }
 
 test("every OS executes the independent baseline obligations with their prerequisites", () => validateLanes(workflow));
@@ -496,17 +522,21 @@ test("the actual aggregate shell fails closed for failure, cancellation, skips a
     for (const host of Object.keys(hosts)) {
       const step = aggregate(workflow, host).steps[0];
       if (!bodies.has(step.run)) bodies.set(step.run, { step, dependencies: [] });
-      bodies.get(step.run).dependencies.push(`lanes-${host}`);
+      const keys = [`lanes-${host}`, ...(host === "node24-ubuntu" ? ["node-24-compatibility"] : [])];
+      if (host === "node24-ubuntu") bodies.get(step.run).dependencies = keys;
+      else if (bodies.get(step.run).dependencies.length === 0) bodies.get(step.run).dependencies = keys;
     }
     for (const { step, dependencies } of bodies.values()) {
-      assertAggregate(step, cwd, dependencies[0], dependencies.join(", "));
+      assertAggregate(step, cwd, dependencies, dependencies.join(", "));
     }
     // Demonstrates rejection of the credible regression: treating skipped as green.
     const permissive = {
-      run: aggregate(workflow, "ubuntu").steps[0].run
-        .replace('== "success"', '== "success" or .value.result == "skipped"'),
+      run: aggregate(workflow, "ubuntu").steps[0].run.replace(
+        'all(.value.result == (if $tier == "full" then "success" else "skipped" end))',
+        'all((.value.result == (if $tier == "full" then "success" else "skipped" end)) or .value.result == "skipped")',
+      ),
     };
-    assert.throws(() => assertAggregate(permissive, cwd, "lanes-ubuntu"), /must reject skipped/u);
+    assert.throws(() => assertAggregate(permissive, cwd, ["lanes-ubuntu"]), /must reject skipped/u);
   });
 });
 
@@ -515,7 +545,7 @@ test("all aggregate definitions reject an identically hardcoded dependency-key p
   for (const host of Object.keys(hosts)) {
     aggregate(changed, host).steps[0].run = "jq -e '.[\"lanes-ubuntu\"].result == \"success\"' <<< \"$NEEDS_JSON\"\n";
   }
-  assert.throws(() => validateLanes(changed), /key-blind aggregate body drift/u);
+  assert.throws(() => validateLanes(changed), /scope-qualified aggregate body drift/u);
 });
 
 test("owned fixture cleanup retains the primary failure and bounded cleanup failure", async () => {
