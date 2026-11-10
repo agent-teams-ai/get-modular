@@ -91,7 +91,7 @@ jobs:
           node architecture/tooling/runtime/dev.ts install
           node architecture/tooling/runtime/dev.ts peers
       - name: Qualify maintained docs protocol and quality
-        run: pnpm docs:protocol:check
+        run: bun run docs:protocol:check
       - name: Verify tracked workspace integrity
         run: node architecture/tooling/runtime/dev.ts verify
   lanes-ubuntu:
