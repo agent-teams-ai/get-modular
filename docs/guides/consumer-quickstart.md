@@ -237,3 +237,5 @@ pin the exact reviewed standard revision, and connect its real commands to the
 consumer's fast and full gates. Installing the packages alone is not an adoption
 claim. The canonical requirements are in the
 [Consumer Module Standard](../architecture/common-assembly.md#consumer-module-standard).
+
+<!-- Disposable CI scope acceptance fixture. No released instructions change. -->
