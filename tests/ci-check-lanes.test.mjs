@@ -26,7 +26,7 @@ const hosts = {
 };
 // Independent closed oracle: dependency keys are opaque; only every result's
 // exact success value and a nonempty collection can admit the aggregate.
-const canonicalAggregateBody = "set -euo pipefail\njq -e --arg tier \"$IMPACT_TIER\" '\n  (.impact.result == \"success\") and\n  (.[\"ci-impact-tests\"].result == \"success\") and\n  (if $tier == \"docs\" then .[\"docs-protocol\"].result == \"success\"\n   elif $tier == \"full\" then .[\"docs-protocol\"].result == \"skipped\"\n   else false end) and\n  (to_entries | map(select(.key != \"impact\" and .key != \"ci-impact-tests\" and .key != \"docs-protocol\"))\n   | length > 0 and all(.value.result == (if $tier == \"full\" then \"success\" else \"skipped\" end)))\n' <<< \"$NEEDS_JSON\"\n";
+const canonicalAggregateBody = "set -euo pipefail\njq -e --arg tier \"$IMPACT_TIER\" --arg event \"$CI_EVENT_NAME\" '\n  (.impact.result == \"success\") and\n  (.[\"ci-impact-tests\"].result == \"success\") and\n  (if $tier == \"docs\" or ($tier == \"full\" and $event != \"pull_request\")\n    then .[\"docs-protocol\"].result == \"success\"\n   elif $tier == \"full\" and $event == \"pull_request\"\n    then .[\"docs-protocol\"].result == \"skipped\"\n   else false end) and\n  (to_entries | map(select(.key != \"impact\" and .key != \"ci-impact-tests\" and .key != \"docs-protocol\"))\n   | length > 0 and all(.value.result == (if $tier == \"full\" then \"success\" else \"skipped\" end)))\n' <<< \"$NEEDS_JSON\"\n";
 
 // Independent oracle retains every check/precheck obligation at 0a81957c
 // and adds the explicit root peer and runtime policy gates. Never derive it
@@ -207,6 +207,7 @@ function validateLanes(value, manifest = packageJson) {
     assert.equal(gate.steps[0].shell, "bash");
     assert.equal(gate.steps[0].env.NEEDS_JSON, "${{ toJSON(needs) }}");
     assert.equal(gate.steps[0].env.IMPACT_TIER, "${{ needs.impact.outputs.tier }}");
+    assert.equal(gate.steps[0].env.CI_EVENT_NAME, "${{ github.event_name }}");
     assert.equal(gate.steps[0].run, canonicalAggregateBody, `${host}: scope-qualified aggregate body drift`);
     assert.equal(gate.steps[0].if, undefined);
     assert.equal(gate.steps[0]["continue-on-error"], undefined);
@@ -284,6 +285,7 @@ function assertAggregate(step, cwd, dependencies, context = dependencies.join(",
       return shell(step.run, cwd, {
         NEEDS_JSON: typeof needs === "string" ? needs : JSON.stringify(needs),
         IMPACT_TIER: tier,
+        CI_EVENT_NAME: "pull_request",
       });
     } catch (cause) {
       throw new Error(`Aggregate shell for ${context} (${phase}) failed`, { cause });
@@ -296,6 +298,7 @@ function assertAggregate(step, cwd, dependencies, context = dependencies.join(",
     ...Object.fromEntries(dependencies.map(key => [key, { result: "skipped" }])),
   };
   assert.equal(status(docsNeeds, "docs", "docs success"), 0);
+  assert.equal(shell(step.run, cwd, { NEEDS_JSON: JSON.stringify({ ...successNeeds, "docs-protocol": { result: "success" } }), IMPACT_TIER: "full", CI_EVENT_NAME: "push" }), 0, "main must include docs proof");
   for (const result of ["failure", "cancelled", "skipped", "unknown", null]) {
     assert.notEqual(status({ ...successNeeds, [dependencies[0]]: { result } }, "full", `reject full ${result}`), 0, `must reject ${result}`);
   }
