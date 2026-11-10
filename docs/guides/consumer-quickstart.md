@@ -239,3 +239,4 @@ claim. The canonical requirements are in the
 [Consumer Module Standard](../architecture/common-assembly.md#consumer-module-standard).
 
 <!-- Disposable CI impact documentation qualification; never merge this PR. -->
+<!-- Second docs-only qualification after Bun correction; do not merge. -->
