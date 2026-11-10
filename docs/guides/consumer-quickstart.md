@@ -238,4 +238,4 @@ consumer's fast and full gates. Installing the packages alone is not an adoption
 claim. The canonical requirements are in the
 [Consumer Module Standard](../architecture/common-assembly.md#consumer-module-standard).
 
-<!-- Disposable CI scope acceptance fixture, revision 4. No released instructions change. -->
+<!-- Disposable CI scope acceptance fixture, revision 5. No released instructions change. -->
