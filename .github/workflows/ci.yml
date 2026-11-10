@@ -67,7 +67,7 @@ jobs:
   docs-protocol:
     name: Scoped docs protocol
     needs: [impact, ci-impact-tests]
-    if: needs.impact.result == 'success' && needs.ci-impact-tests.result == 'success' && needs.impact.outputs.tier == 'docs'
+    if: needs.impact.result == 'success' && needs.ci-impact-tests.result == 'success' && (needs.impact.outputs.tier == 'docs' || github.event_name != 'pull_request')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -205,13 +205,16 @@ jobs:
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
           IMPACT_TIER: ${{ needs.impact.outputs.tier }}
+          CI_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          jq -e --arg tier "$IMPACT_TIER" '
+          jq -e --arg tier "$IMPACT_TIER" --arg event "$CI_EVENT_NAME" '
             (.impact.result == "success") and
             (.["ci-impact-tests"].result == "success") and
-            (if $tier == "docs" then .["docs-protocol"].result == "success"
-             elif $tier == "full" then .["docs-protocol"].result == "skipped"
+            (if $tier == "docs" or ($tier == "full" and $event != "pull_request")
+              then .["docs-protocol"].result == "success"
+             elif $tier == "full" and $event == "pull_request"
+              then .["docs-protocol"].result == "skipped"
              else false end) and
             (to_entries | map(select(.key != "impact" and .key != "ci-impact-tests" and .key != "docs-protocol"))
              | length > 0 and all(.value.result == (if $tier == "full" then "success" else "skipped" end)))
