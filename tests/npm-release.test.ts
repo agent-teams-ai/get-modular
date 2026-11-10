@@ -42,8 +42,13 @@ test("release qualification requires the complete actual CI matrix and successfu
       `check (${host}${runtime})`,
       ...["core", "assembly", "packaging", "governance", "static", "observation"].map(lane => `check lane (${host}${runtime}, ${lane})`),
     ]));
-  independentNames.push("Node 24 package root compatibility");
-  assert.equal(independentNames.length, 64);
+  independentNames.push(
+    "Node 24 package root compatibility",
+    "CI impact selection",
+    "CI impact contract tests",
+    "Scoped docs protocol",
+  );
+  assert.equal(independentNames.length, 67);
   assert.deepEqual(expected, independentNames.sort());
   assertQualifiedCi(ciRun(), jobs(), expected, source);
   for (const name of independentNames.filter(name => name.includes("Node 26 rollback"))) {
