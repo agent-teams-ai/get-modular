@@ -3,7 +3,7 @@ import test from "node:test";
 import { assemblyFor, declareModule, defineContract, implement, type CapabilitiesOf } from "../dist/index.js";
 import { optional, required, type CompositionProfile, type ModuleDeclaration } from "@get-modular/core";
 import { deriveProfile } from "../dist/features/construction/derive-profile.js";
-import type { Metadata } from "../dist/features/construction/ports.js";
+import type { ExecutableFactory, Metadata } from "../dist/features/construction/ports.js";
 import { prepareConstruction } from "../dist/features/construction/prepare.js";
 
 const Value = defineContract<number>()({ id: "completion/value", revision: 1 });
@@ -97,7 +97,7 @@ test("completed row and provider occurrence ceilings include inferred required b
   }
 });
 
-const neverCalled: Metadata["factory"] = () => { throw new Error("profile analysis must not execute factories"); };
+const neverCalled: ExecutableFactory = () => { throw new Error("profile analysis must not execute factories"); };
 function metadata(id: string, provides: ModuleDeclaration["provides"], slots: ModuleDeclaration["slots"]): Metadata {
   return { factory: neverCalled, declaration: {
     kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: id, implementationId: id,

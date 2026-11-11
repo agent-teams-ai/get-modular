@@ -1,6 +1,7 @@
 import type { AssemblyOutcome, CreatedEntry, FactoryContext, ReturnedProduct, RootInstances, RunErrorCode, RunOptions } from "./types.js";
-import type { CommitCreated, Metadata, Program } from "./ports.js";
-import { SnapshotFault, data, record } from "./snapshot.js";
+import type { CommitCreated, Program } from "./ports.js";
+import { SnapshotFault } from "./snapshot.js";
+import { captureWiringInputs, injectionDependencies, snapshotFactoryProduct } from "./wiring-values.js";
 
 type Settlement =
   | { readonly kind: "returned"; readonly product: unknown }
@@ -41,31 +42,6 @@ async function observe(carrier: unknown): Promise<ObservedSettlement> {
     }
   });
 }
-function snapshotProduct(product: unknown, metadata: Metadata): CreatedEntry {
-  const result = record(product, ["instance", "capabilities"]);
-  const keys = metadata.declaration.provides.map((provided) => provided.capabilityId);
-  const supplied = record(data(result, "capabilities"), keys);
-  const capabilities = nullRecord();
-  for (const key of keys) {capabilities[key] = data(supplied, key);}
-  return Object.freeze({
-    moduleId: metadata.declaration.moduleId, implementationId: metadata.declaration.implementationId,
-    instance: data(result, "instance"), capabilities: Object.freeze(capabilities),
-  });
-}
-
-function dependenciesFor(step: Program["steps"][number], capability: (id: string, key: string) => unknown) {
-  const dependencies = nullRecord();
-  for (const injection of step.injections) {
-    if (injection.kind === "many") {
-      dependencies[injection.slotId] = Object.freeze(injection.providers.map((id) => capability(id, injection.capabilityId)));
-    } else {
-      const provider = injection.providers.at(0);
-      dependencies[injection.slotId] = provider === undefined ? undefined : capability(provider, injection.capabilityId);
-    }
-  }
-  return Object.freeze(dependencies);
-}
-
 function rootInstances<R>(program: Readonly<Program>, createdById: ReadonlyMap<string, CreatedEntry>): RootInstances<R> {
   const roots = nullRecord();
   for (const root of program.roots) {
@@ -78,19 +54,11 @@ function rootInstances<R>(program: Readonly<Program>, createdById: ReadonlyMap<s
 // Every input is checked before the first factory. Values stay opaque and borrowed:
 // only data descriptors are read, so no accessor runs and nothing is frozen.
 function admitInputs(program: Program, value: unknown): ReadonlyMap<string, CreatedEntry> | SnapshotFault {
-  const supplied = new Map<string, CreatedEntry>();
-  try {
-    if (program.inputs.length === 0 && value === undefined) {return supplied;}
-    const given = record(value, program.inputs.map((entry) => entry.alias));
-    for (const { alias, metadata } of program.inputs) {
-      const capabilities = data(given, alias);
-      supplied.set(metadata.declaration.implementationId, snapshotProduct({ instance: capabilities, capabilities }, metadata));
-    }
-  } catch (cause) {
+  try { return captureWiringInputs(program, value); }
+  catch (cause) {
     if (cause instanceof SnapshotFault) {return cause;}
     throw cause;
   }
-  return supplied;
 }
 type Invocation =
   | { readonly kind: "returned"; readonly product: unknown }
@@ -100,6 +68,7 @@ async function invokeFactory(step: Program["steps"][number], dependencies: Reado
   context: FactoryContext): Promise<Invocation> {
   let carrier: unknown;
   try {
+    if (step.metadata.input === true) {throw new Error("assembly.internal.input-invoked");}
     carrier = step.metadata.factory(dependencies, context);
   } catch (cause) {
     return { kind: "failed", code: "assembly.run.factory-threw", cause };
@@ -151,13 +120,13 @@ export async function runAttempt<R>(
       const input = supplied.get(implementationId);
       // A borrowed input provides capabilities but never enters `created`.
       if (input !== undefined) { createdById.set(implementationId, input); continue; }
-      const invoked = await invokeFactory(step, dependenciesFor(step, capability), context);
+      const invoked = await invokeFactory(step, injectionDependencies(step.injections, capability), context);
       if (invoked.kind === "failed") {return failed("factory", invoked.code, invoked.cause);}
       // Retain the raw fulfillment before inspecting any part of the product.
       returned = Object.freeze({ implementationId, product: invoked.product });
       let entry: CreatedEntry;
       try {
-        entry = snapshotProduct(invoked.product, step.metadata);
+        entry = snapshotFactoryProduct(step.metadata.declaration, invoked.product);
       } catch (cause) {
         if (cause instanceof SnapshotFault) {return failed("completion", "assembly.run.invalid-product", cause);}
         throw cause;

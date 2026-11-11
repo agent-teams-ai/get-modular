@@ -1,0 +1,121 @@
+{
+  "node": "v24.22.1",
+  "effectPackage": "effect@4.1.2",
+  "scopedWork": [
+    {
+      "mode": "child",
+      "finalizerRead": "EBADF",
+      "beforePermit": [
+        "resource-acquired",
+        "body-return",
+        "resource-released",
+        "operation-finalizer-start"
+      ],
+      "events": [
+        "resource-acquired",
+        "body-return",
+        "resource-released",
+        "operation-finalizer-start",
+        "operation-finalizer-end"
+      ]
+    },
+    {
+      "mode": "scoped",
+      "finalizerRead": "still-alive",
+      "beforePermit": [
+        "resource-acquired",
+        "body-return",
+        "operation-finalizer-start"
+      ],
+      "events": [
+        "resource-acquired",
+        "body-return",
+        "operation-finalizer-start",
+        "operation-finalizer-end",
+        "resource-released"
+      ]
+    }
+  ],
+  "runtimeOwnership": [
+    {
+      "mode": "foreign",
+      "finalizerRead": "EBADF",
+      "afterDispose": [
+        "resource-acquired",
+        "operation-start",
+        "resource-released"
+      ],
+      "events": [
+        "resource-acquired",
+        "operation-start",
+        "resource-released",
+        "operation-finalized"
+      ]
+    },
+    {
+      "mode": "managed",
+      "finalizerRead": "still-alive",
+      "afterDispose": [
+        "resource-acquired",
+        "operation-start",
+        "operation-finalized",
+        "resource-released"
+      ],
+      "events": [
+        "resource-acquired",
+        "operation-start",
+        "operation-finalized",
+        "resource-released"
+      ]
+    }
+  ],
+  "lazyStream": [
+    {
+      "mode": "escaped",
+      "success": false,
+      "beforeConsumption": [
+        "resource-acquired",
+        "resource-released"
+      ],
+      "events": [
+        "resource-acquired",
+        "resource-released",
+        "stream-read"
+      ]
+    },
+    {
+      "mode": "scoped-consumption",
+      "success": true,
+      "beforeConsumption": [],
+      "events": [
+        "resource-acquired",
+        "stream-read",
+        "resource-released"
+      ]
+    }
+  ],
+  "closeOutcome": [
+    {
+      "retainFirst": false,
+      "samePromise": false,
+      "outcomes": [
+        "original-failure",
+        "fulfilled"
+      ],
+      "finalizerCalls": 1
+    },
+    {
+      "retainFirst": true,
+      "samePromise": true,
+      "outcomes": [
+        "original-failure",
+        "original-failure"
+      ],
+      "finalizerCalls": 1
+    }
+  ],
+  "parentContext": {
+    "native": "request-42",
+    "bridged": "default"
+  }
+}

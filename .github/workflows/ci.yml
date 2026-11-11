@@ -113,17 +113,17 @@ jobs:
       matrix: &check-lane-matrix
         include:
           - lane: core
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build core:typecheck:prepared core:test
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build core:typecheck:prepared core:test
           - lane: assembly
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build assembly:typecheck assembly:test
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build assembly:typecheck assembly:test
           - lane: packaging
-            scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check conformance:check observation:build foundation:check sdk-growth:check lint:typed
+            scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check conformance:check observation:build effect:check foundation:check sdk-growth:check lint:typed
           - lane: governance
-            scripts: ownership:checkpoint:test runtime:preflight runtime:policy:typecheck runtime:policy:test governance:check release-owned-files:check assembly:build lifecycle:build resources:build conformance:build observation:build governance:test
+            scripts: ownership:checkpoint:test runtime:preflight runtime:policy:typecheck runtime:policy:test governance:check release-owned-files:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build governance:test
           - lane: static
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build docs:protocol:check architecture:feature-module-profile architecture:feature-module-profile:test contracts:check contracts:test qualification:resource-profile qualification:v1-diagnostics-protocol qualification:v1-graph-semantics qualification:self-composition-templates
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build docs:protocol:check architecture:feature-module-profile architecture:feature-module-profile:test contracts:check contracts:test qualification:resource-profile qualification:v1-diagnostics-protocol qualification:v1-graph-semantics qualification:self-composition-templates
           - lane: observation
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:check
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:check effect:build
     steps: &check-lane-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

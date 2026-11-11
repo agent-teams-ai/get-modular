@@ -63,7 +63,8 @@
     "../packages/core/tests/qualification/construction-witness.test.ts",
     "../packages/core/tests/qualification/production-generation.test.ts",
     "../packages/core/tests/package/build-closure.test.ts",
-    "construction-witness-projection.test.ts"
+    "construction-witness-projection.test.ts",
+    "effect-admission.test.ts"
   ],
   "include": []
 }

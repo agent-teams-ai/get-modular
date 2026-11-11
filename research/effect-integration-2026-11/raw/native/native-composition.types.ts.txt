@@ -1,0 +1,67 @@
+import { declareModule, defineContract } from "@get-modular/assembly";
+import type { CapabilitiesOf, FactoryProduct } from "@get-modular/assembly";
+import type { CompositionProfile, ModuleDeclaration } from "@get-modular/core";
+import { Context, Effect, Layer } from "effect";
+import type { Scope } from "effect";
+import { effectFor, implement } from "./native-composition.ts";
+import { BootFailure, Config, DbContract, fixture, Roots } from "./fixture.ts";
+import type { App, AppMap, Db } from "./fixture.ts";
+
+// Compile-only positive and intentionally rejecting consumer examples. This
+// function is not invoked. Every expected rejection must remain an actual error.
+export async function typeFixtures() {
+  const f = fixture();
+  const prepared = await f.api.prepare({ profile: f.profile, modules: f.modules, roots: { app: f.app } });
+  const native: Layer.Layer<Roots, never, Config> = prepared.layer(Roots);
+  const operation: Effect.Effect<{ readonly app: App }, never, Config> = Effect.provide(Roots, native);
+  // @ts-expect-error The required Config service must not disappear at the native boundary.
+  Effect.runPromise(operation);
+  // @ts-expect-error A Layer requiring Config is not closed over its environment.
+  const incorrectlyClosed: Layer.Layer<Roots, never, never> = native;
+  void incorrectlyClosed;
+
+  implement<AppMap>()(f.appDeclaration, (dependencies) => {
+    const required: Db = dependencies.primary;
+    const ordered: readonly Db[] = dependencies.ordered;
+    const optional = dependencies.logger;
+    // @ts-expect-error An undeclared local slot is unavailable.
+    void dependencies.hidden;
+    // @ts-expect-error A one-provider many is still an array, never one Db.
+    const wrongSingle: Db = dependencies.single;
+    // @ts-expect-error Ordered many is read-only.
+    dependencies.ordered.push(required);
+    // @ts-expect-error An optional provider must be narrowed before use.
+    dependencies.logger.log("without-narrowing");
+    void wrongSingle; void ordered; void optional;
+    return Effect.succeed({ instance: dependencies, capabilities: {} });
+  });
+  // @ts-expect-error Promise factories are not silently converted into native Effect factories.
+  implement<AppMap>()(f.primaryDeclaration, () => Promise.resolve({ instance: "x", capabilities: { [DbContract.id]: { label: "x", serial: 1 } } }));
+  // @ts-expect-error The provided capability must implement the declared value contract.
+  implement<AppMap>()(f.primaryDeclaration, () => Effect.succeed({ instance: "x", capabilities: { [DbContract.id]: { label: 3, serial: 1 } } }));
+  const widened: ModuleDeclaration = f.primaryDeclaration;
+  // @ts-expect-error Widened declarations cannot confer precise injection types.
+  implement<AppMap>()(widened, () => Effect.succeed({ instance: "x", capabilities: {} }));
+  const Revision2 = defineContract<Db>()({ id: "example/db", revision: 2 });
+  const different = declareModule({ moduleId: "example/revision", implementationId: "example/revision-v2", owner: { authority: "example", path: ["types"] }, provides: [Revision2.provide()], slots: [] });
+  // @ts-expect-error The capability map requires revision 1, not revision 2.
+  implement<AppMap>()(different, () => Effect.succeed({ instance: "x", capabilities: { [DbContract.id]: { label: "x", serial: 1 } } }));
+  const Extra = defineContract<string>()({ id: "example/extra", revision: 1 });
+  interface Extended extends AppMap, CapabilitiesOf<typeof Extra> {}
+  const extraDeclaration = declareModule({ moduleId: "example/extra", implementationId: "example/extra-v1", owner: { authority: "example", path: ["types"] }, provides: [DbContract.provide(), Extra.provide()], slots: [] });
+  const extra = implement<Extended>()(extraDeclaration, () => Effect.succeed({ instance: "x", capabilities: { [DbContract.id]: { label: "x", serial: 1 }, [Extra.id]: "extra" } }));
+  // @ts-expect-error A module using one known and one unknown capability cannot enter AppMap.
+  f.api.prepare({ profile: f.profile, modules: [...f.modules, extra], roots: { app: f.app } });
+
+  const fallible = implement<AppMap>()(f.primaryDeclaration, (): Effect.Effect<FactoryProduct<Db, { readonly "example/db": Db }>, BootFailure, Config | Scope.Scope> => Effect.gen(function*() {
+    yield* Config;
+    return yield* Effect.fail(new BootFailure("typed"));
+  }));
+  const profile: CompositionProfile = { kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "example/typed", roots: ["example/primary"], selections: [{ moduleId: "example/primary", implementationId: "example/primary-v1" }], bindings: [] };
+  class TypedRoots extends Context.Service<TypedRoots, { readonly db: Db }>()("example/TypedRoots") {}
+  const typed = await effectFor<AppMap>().prepare({ profile, modules: [fallible], roots: { db: fallible } });
+  const typedLayer: Layer.Layer<TypedRoots, BootFailure, Config> = typed.layer(TypedRoots);
+  // @ts-expect-error Expected construction errors are preserved, not changed to never.
+  const erasedError: Layer.Layer<TypedRoots, never, Config> = typedLayer;
+  void erasedError;
+}

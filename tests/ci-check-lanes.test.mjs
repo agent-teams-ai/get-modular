@@ -34,7 +34,7 @@ const canonicalAggregateBody = "set -euo pipefail\njq -e --arg tier \"$IMPACT_TI
 const baseline = [
   "runtime:preflight", "lockfile:peers:check", "runtime:policy:typecheck",
   "runtime:policy:test", "governance:check", "release-owned-files:check",
-  "assembly:build", "lifecycle:check", "resources:check", "conformance:check", "observation:check", "foundation:check", "sdk-growth:check",
+  "assembly:build", "lifecycle:check", "resources:check", "conformance:check", "observation:check", "effect:check", "foundation:check", "sdk-growth:check",
   "lint:typed", "docs:protocol:check", "architecture:feature-module-profile",
   "architecture:feature-module-profile:test", "core:typecheck:prepared", "core:test",
   "assembly:typecheck", "assembly:test", "contracts:check", "contracts:test",
@@ -46,7 +46,7 @@ const primary = {
   observation: ["observation:check"],
   core: ["core:typecheck:prepared", "core:test"],
   assembly: ["assembly:typecheck", "assembly:test"],
-  packaging: ["lifecycle:check", "resources:check", "conformance:check", "foundation:check", "sdk-growth:check", "lint:typed"],
+  packaging: ["lifecycle:check", "resources:check", "conformance:check", "effect:check", "foundation:check", "sdk-growth:check", "lint:typed"],
   governance: [
     "ownership:checkpoint:test", "runtime:policy:typecheck", "runtime:policy:test",
     "governance:check", "release-owned-files:check", "governance:test",
@@ -156,11 +156,11 @@ function validateLanes(value, manifest = packageJson) {
       const scripts = scriptsOf(row);
       assert.equal(new Set(scripts).size, scripts.length, `${host}/${row.lane}: duplicate script`);
       assert(scripts.every(script =>
-        [...baseline, "ownership:checkpoint:test", "lifecycle:build", "resources:build", "conformance:build", "observation:build"].includes(script)), "unknown script");
+        [...baseline, "ownership:checkpoint:test", "lifecycle:build", "resources:build", "conformance:build", "observation:build", "effect:build"].includes(script)), "unknown script");
       assert(scripts.every(script => typeof manifest.scripts[script] === "string"), "undefined script");
       // Shared preparation is repeated per checkout, not counted as extra obligations.
       const setup = ["runtime:preflight", "assembly:build"];
-      for (const leaf of ["lifecycle", "resources", "conformance", "observation"]) {
+      for (const leaf of ["lifecycle", "resources", "conformance", "observation", "effect"]) {
         if (!primary[row.lane].includes(`${leaf}:check`)) setup.push(`${leaf}:build`);
       }
       if (row.lane !== "governance") setup.push("governance:check");
@@ -178,9 +178,13 @@ function validateLanes(value, manifest = packageJson) {
         assert.equal(position("conformance:build"), lifecycle + 2, "conformance build follows resources build");
         assert.equal(position(row.lane === "observation" ? "observation:check" : "observation:build"),
           lifecycle + 3, "observation follows conformance build");
+        assert.equal(position("effect:build"), lifecycle + 4,
+          "native Effect build follows observation preparation");
       } else {
         assert.equal(position("observation:build"), position("conformance:check") + 1,
           "packaging prepares observation after conformance");
+        assert.equal(position("effect:check"), position("observation:build") + 1,
+          "packaging qualifies native Effect after existing leaves");
       }
       for (const script of baseline.slice(baseline.indexOf("lifecycle:check") + 1)) {
         if (scripts.includes(script)) assert(position(script) > lifecycle, `${script}: lifecycle prerequisite`);

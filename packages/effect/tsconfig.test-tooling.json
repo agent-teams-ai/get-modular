@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": false,
+    "isolatedDeclarations": false,
+    "skipLibCheck": false,
+    "noEmit": true
+  },
+  "include": ["tests/**/*.ts"],
+  "exclude": ["tests/types.ts"]
+}

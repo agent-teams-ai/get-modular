@@ -6,6 +6,7 @@
     "assembly/live-instance-custody.test.ts",
     "assembly/preparation-ownership.test.ts",
     "../packages/assembly/tests/profile-completion-bounds.test.ts",
+    "../packages/assembly/tests/wiring.test.ts",
     "assembly/preparation-census.test.ts"
   ],
   "include": []

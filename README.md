@@ -41,6 +41,11 @@ consume both.
   Host-authorized factories from a successful Core plan. It passes closed,
   typed dependency records to each factory; the Host retains lifecycle,
   readiness, permissions, and cleanup ownership.
+- [`@get-modular/effect`](packages/effect/README.md) is an optional implementation
+  candidate for native Effect factories and Layers over the same verified
+  bindings. It retains typed construction errors/environments and native resource
+  ownership. Core and ordinary Assembly need no Effect installation. The package
+  README records its qualified peer, matched candidates and publication status.
 - [`@get-modular/lifecycle-kernel`](packages/lifecycle-kernel/README.md) is an
   unreleased candidate for a dynamic Host that must revoke old generations
   while retaining calls or resources across async work and cleanup. The Host

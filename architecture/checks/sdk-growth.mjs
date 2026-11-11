@@ -21,7 +21,12 @@ const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
 const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json";
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
-const CMS_SHA256 = "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86";
+const CMS_SHA256 = "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8";
+const DESCRIPTOR_CMS = Object.freeze({
+  "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
+  "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+  "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
+});
 const PRE_DRAIN_CMS = Object.freeze({
   "commit": "a7d8db433fb3c4187fbeab4dcec4e6d69a4f70ca",
   "gitBlob": "1da86de15c6def505aa57e212154e4d5ee5d6042",
@@ -51,7 +56,7 @@ const DRAIN_EVIDENCE = Object.freeze({
   "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-previous-source.ts.txt",
   "growthPreviousReviewSha256": "511ef4cb1875f3b6cde8504a32a77e5031df3653979807f9a5212b4ee543f3d0"
 });
-const CMS_EVIDENCE = Object.freeze({
+const DESCRIPTOR_EVIDENCE = Object.freeze({
   "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
   "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
   "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
@@ -64,6 +69,37 @@ const CMS_EVIDENCE = Object.freeze({
   "growthDeltaSha256": "6e2482d1c056aec002c3e203ad5b40415c05b4fd86e24ce960a00db41ff2568f",
   "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
   "growthPreviousReviewSha256": "6dfd3cdbdaabf03439a62bca765f150c447e879ff88dc756f4b10945a1382c27"
+});
+const CMS_EVIDENCE = Object.freeze({
+  "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.txt",
+  "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
+  "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
+  "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.diff",
+  "deltaSha256": "84504a2a316d6ce93e9e02807a91a6e8f736efb12e9f9e8337a7eeb917abff1a",
+  "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/previous-review.json",
+  "previousReviewSha256": "29a20c0b9f4408bc554903fadd6c43a8c823a89ef8c96ad4de890b9a83505ff8",
+  "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
+  "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.diff",
+  "growthDeltaSha256": "84504a2a316d6ce93e9e02807a91a6e8f736efb12e9f9e8337a7eeb917abff1a",
+  "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/growth-previous-source.ts.txt",
+  "growthPreviousReviewSha256": "debec46a5590ff46106201bcd671ef1f7a25196d2cb124a16775a4d99634970f"
+});
+const CMS_NATIVE_REVIEW = Object.freeze({
+  "decision": {
+    "id": "ADR-0043",
+    "path": "docs/decisions/0043-plan-optional-native-effect-composition.md",
+    "commit": "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
+    "gitBlob": "2432140f8dc7ad513fdf083f1fb0cd553527eb0d",
+    "sha256": "0fc55d28a5b1cdedbba703fa6a438f6787b37188e2906133cdabb70d6bc07ece"
+  },
+  "neutralPreparation": "one-assembly-owner-inert-wiring",
+  "ordinaryPromise": "unchanged",
+  "resourceOwnership": "native-scope-distinct-from-promise-custody",
+  "interModuleSelection": "gm-slots-only",
+  "workLifetime": "application-owned-through-settlement",
+  "productionAdoption": "unchanged",
+  "publication": "not-claimed",
+  "qualification": "fresh-current-source-required"
 });
 const CMS_AUTHORING_REVIEW = Object.freeze({
   "decision": {
@@ -84,22 +120,21 @@ const CMS_AUTHORING_REVIEW = Object.freeze({
   "qualification": "fresh-current-source-required"
 });
 const CMS_DELTA = Object.freeze({
-  "classification": "complete-descriptor-union-authoring-successor",
+  "classification": "optional-native-effect-composition-successor",
   "fromAcceptedCurrent": {
-    "commit": "0c2ea846f11532b216520e0e84e19ea1abf58342",
-    "gitBlob": "4bd50920f9b81d9f41456ceb3df9500b497e0453",
-    "sha256": "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec"
+    "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
+    "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+    "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
   },
   "changedHunks": 5,
-  "removedLines": 9,
-  "addedLines": 42,
+  "removedLines": 8,
+  "addedLines": 52,
   "semanticChanges": [
-    "ADR-0041 succeeds direct inherited feature maps with complete descriptor unions and separate CapabilitiesOf bases for each imported union plus own descriptors; both lists use the same sources.",
-    "Complete transitive, unused and private-child contracts retain exact keys, values and compatibility tokens; each source interface remains checked. Separate bases reject unused value or revision conflicts with TS2320 before Host selection; identical overlaps remain valid.",
-    "Upward references use the ancestor descriptor rather than its aggregate; Hosts still use complete public parent interfaces. Declarations, entry brands, graph, inputs, groups, exact revisions, ownership and construction do not change.",
-    "Custom handwritten properties, index/call/construct signatures and map-level polymorphic this retain the existing complete interface until a separate compatibility proof; descriptor-owned value types are unchanged.",
-    "Existing TypeScript unions and Assembly CapabilitiesOf own the shared mechanism. CMS owns the authoring recipe; no new runtime, API alias, local type framework or selected-only map is introduced.",
-    "The merged current document retains five Bun repository verification commands relative to the descriptor-union upstream guide. SDK classification, HOLD, four authority blockers and historical evidence remain unchanged; changed growth source identities require fresh qualification."
+    "ADR-0043 admits optional native Effect construction over Assembly-owned authenticated inert preparation. Core wire, compilation, diagnostics and digest remain unchanged; ordinary consumers do not acquire an Effect dependency.",
+    "Ordinary Promise factories retain their entry brands, adapters, sequential execution, created journal and returned-product custody. Explicit native factories instead retain native construction errors, requirements and resource ownership; one resource never receives two independent disposers.",
+    "GM remains the authority for local provider selection. Native Layers preserve selected implementation sharing and fresh per-call identities; typed variants, borrowed inputs and Host-owned sequencing require no plugin runtime, scheduler, cache or lifetime language.",
+    "Resource-using work, lazy streams and asynchronous finalizers remain inside their owner lifetime. Native cleanup does not claim Promise journals, cleanup debt, retryable release, product adoption or publication.",
+    "The earlier complete descriptor-union authoring contract and historical evidence remain unchanged. SDK growth remains fixed development tooling without native Effect adoption; HOLD, four authority blockers and fresh current-source qualification remain required."
   ],
   "changesGetModularCompositionContract": true,
   "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
@@ -128,7 +163,7 @@ const DRAIN_GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
   "productionAdoption": "unchanged",
   "qualification": "pending-current-subject"
 });
-const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
+const DESCRIPTOR_GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
   "previousCurrent": {
     "commit": "b70ba39304ac71964175c42a77309406a7c30ca2",
     "gitBlob": "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
@@ -138,6 +173,20 @@ const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
   "changesSelectedFlatCompositionContract": false,
   "authoringRepresentation": "complete-descriptor-union-separate-bases",
   "observation": "not-selected",
+  "productionAdoption": "unchanged",
+  "qualification": "pending-current-subject"
+});
+const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
+  "previousCurrent": {
+    "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
+    "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+    "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
+  },
+  "classification": "optional-native-effect-guidance",
+  "changesSelectedFlatCompositionContract": false,
+  "authoringRepresentation": "complete-descriptor-union-separate-bases",
+  "observation": "not-selected",
+  "nativeEffect": "not-selected",
   "productionAdoption": "unchanged",
   "qualification": "pending-current-subject"
 });
@@ -262,6 +311,13 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     cmsDrainGrowthDeltaBytes: await readFile(join(root, DRAIN_EVIDENCE.growthDeltaPath)),
     cmsDrainGrowthReviewBytes: await readFile(join(root, DRAIN_EVIDENCE.growthPreviousReviewPath)),
     cmsAuthoringDecisionBytes: await readFile(join(root, CMS_AUTHORING_REVIEW.decision.path)),
+    cmsDescriptorPreviousBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.previousDocumentPath)),
+    cmsDescriptorDeltaBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.deltaPath)),
+    cmsDescriptorReviewBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.previousReviewPath)),
+    cmsDescriptorGrowthPreviousBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.growthPreviousDocumentPath)),
+    cmsDescriptorGrowthDeltaBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.growthDeltaPath)),
+    cmsDescriptorGrowthReviewBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.growthPreviousReviewPath)),
+    cmsNativeDecisionBytes: await readFile(join(root, CMS_NATIVE_REVIEW.decision.path)),
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
@@ -369,19 +425,23 @@ export function validateCmsGuidance(model) {
     sha256: "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
   }, "original CMS pin");
   same(cms.acceptedCurrent, {
-    commit: "b2fec1fa15fe3998f51449d7df249f302645973f",
-    gitBlob: "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+    commit: "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
+    gitBlob: "465c3645a8108205a2026c965e5ff1269f32e75e",
     sha256: CMS_SHA256,
   }, "current CMS pin");
-  same(cms.delta.fromAcceptedCurrent, PREVIOUS_CMS, "previous CMS pin");
+  same(cms.delta.fromAcceptedCurrent, DESCRIPTOR_CMS, "previous CMS pin");
   same(cms.delta, CMS_DELTA, "CMS delta review");
   same(cms.authoringReview, CMS_AUTHORING_REVIEW, "CMS authoring contract review");
+  same(cms.nativeReview, CMS_NATIVE_REVIEW, "CMS native construction review");
   same(cms.retainedEvidence, CMS_EVIDENCE, "CMS retained evidence identity");
   same(cms.scopeReview, CMS_SCOPE_REVIEW, "CMS scope review");
   same(cms.growthScopeReview, GROWTH_CMS_SCOPE_REVIEW, "growth CMS scope review");
   for (const [bytes, pin, label] of [
     [model.cmsBytes, cms.acceptedCurrent, "CMS document bytes"],
-    [model.cmsPreviousBytes, PREVIOUS_CMS, "previous CMS document bytes"],
+    [model.cmsPreviousBytes, DESCRIPTOR_CMS, "previous CMS document bytes"],
+    [model.cmsDescriptorPreviousBytes, PREVIOUS_CMS, "CMS descriptor predecessor bytes"],
+    [model.cmsDescriptorGrowthPreviousBytes, DESCRIPTOR_GROWTH_CMS_SCOPE_REVIEW.previousCurrent, "CMS descriptor growth predecessor bytes"],
+    [model.cmsNativeDecisionBytes, CMS_NATIVE_REVIEW.decision, "CMS native construction decision bytes"],
     [model.cmsDrainPreviousBytes, PRE_DRAIN_CMS, "pre-drain CMS document bytes"],
     [model.cmsDrainGrowthPreviousBytes, DRAIN_GROWTH_CMS_SCOPE_REVIEW.previousCurrent, "historical growth CMS document bytes"],
     [model.cmsAuthoringDecisionBytes, CMS_AUTHORING_REVIEW.decision, "CMS authoring decision bytes"],
@@ -412,8 +472,12 @@ export function validateCmsGuidance(model) {
     [model.cmsDrainReviewBytes, DRAIN_EVIDENCE.previousReviewSha256],
     [model.cmsDrainGrowthDeltaBytes, DRAIN_EVIDENCE.growthDeltaSha256],
     [model.cmsDrainGrowthReviewBytes, DRAIN_EVIDENCE.growthPreviousReviewSha256],
+    [model.cmsDescriptorDeltaBytes, DESCRIPTOR_EVIDENCE.deltaSha256],
+    [model.cmsDescriptorReviewBytes, DESCRIPTOR_EVIDENCE.previousReviewSha256],
+    [model.cmsDescriptorGrowthDeltaBytes, DESCRIPTOR_EVIDENCE.growthDeltaSha256],
+    [model.cmsDescriptorGrowthReviewBytes, DESCRIPTOR_EVIDENCE.growthPreviousReviewSha256],
   ]) {
-    if (createHash("sha256").update(bytes).digest("hex") !== expected) fail("CMS drain historical evidence bytes drifted");
+    if (createHash("sha256").update(bytes).digest("hex") !== expected) fail("CMS historical successor evidence bytes drifted");
   }
   const evidence = model.feasibility;
   if (evidence.schemaVersion !== 1 || evidence.kind !== "g1-p0-feasibility-not-qualification"

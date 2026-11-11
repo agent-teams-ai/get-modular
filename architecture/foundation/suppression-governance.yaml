@@ -6,5 +6,6 @@ governedRoots:
   - packages/resources/src
   - packages/conformance/src
   - packages/observation/src
+  - packages/effect/src
 nonWaivableRulePrefixes: []
 waivers: []

@@ -1,0 +1,42 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { Context, Effect, Layer } from "effect";
+
+class Input extends Context.Service<Input, string>()("input-memo/Input") {}
+class Reader extends Context.Service<Reader, { readonly captured: string }>()("input-memo/Reader") {}
+class Left extends Context.Service<Left, string>()("input-memo/Left") {}
+class Right extends Context.Service<Right, string>()("input-memo/Right") {}
+
+async function observe(reuseImplementation: boolean) {
+  const stats = { acquisitions: 0, releases: 0 };
+  const makeImplementation = () => Layer.effect(Reader, Effect.acquireRelease(
+    Effect.map(Input, (captured) => { stats.acquisitions++; return { captured }; }),
+    () => Effect.sync(() => { stats.releases++; }),
+  ));
+  const shared = makeImplementation();
+  const branch = <Id>(input: string, root: Context.Key<Id, string>) => {
+    const implementation = reuseImplementation ? shared : makeImplementation();
+    const configured = Layer.provide(implementation, Layer.succeed(Input, input));
+    return Layer.provide(Layer.effect(root, Effect.map(Reader, (reader) => reader.captured)), configured);
+  };
+  // Both branches are built in one native Layer memoization domain. Their
+  // input Layers differ, but a reused implementation Layer is the same key.
+  const composed = Layer.merge(branch("left-input", Left), branch("right-input", Right));
+  const values = await Effect.runPromise(Effect.gen(function*() {
+    return { left: yield* Left, right: yield* Right };
+  }).pipe(Effect.provide(composed)));
+  return { values, ...stats };
+}
+
+test("paired input probe: a cached implementation Layer aliases inputs; fresh identities isolate them", async () => {
+  const bad = await observe(true);
+  assert.equal(bad.acquisitions, 1);
+  assert.equal(bad.values.left, bad.values.right);
+  assert.notDeepEqual(bad.values, { left: "left-input", right: "right-input" });
+  assert.equal(bad.releases, 1);
+  const good = await observe(false);
+  assert.deepEqual(good.values, { left: "left-input", right: "right-input" });
+  assert.equal(good.acquisitions, 2);
+  assert.equal(good.releases, 2);
+  console.log(JSON.stringify({ probe: "native-input-memoization", bad, good }));
+});

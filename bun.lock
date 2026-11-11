@@ -13,6 +13,7 @@
         "@get-modular/assembly": "workspace:*",
         "@get-modular/conformance": "workspace:*",
         "@get-modular/core": "workspace:*",
+        "@get-modular/effect": "workspace:*",
         "@get-modular/lifecycle-kernel": "workspace:*",
         "@get-modular/observation": "workspace:*",
         "@get-modular/resources": "workspace:*",
@@ -20,6 +21,7 @@
         "ajv": "catalog:",
         "canonicalize": "catalog:",
         "cspell": "catalog:",
+        "effect": "catalog:",
         "json-canonicalize": "catalog:",
         "jsonc-parser": "catalog:",
         "markdownlint-cli2": "catalog:",
@@ -35,14 +37,14 @@
     },
     "packages/assembly": {
       "name": "@get-modular/assembly",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "dependencies": {
         "@get-modular/core": "workspace:*",
       },
     },
     "packages/conformance": {
       "name": "@get-modular/conformance",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "peerDependencies": {
         "@get-modular/assembly": "workspace:^",
         "@get-modular/core": "workspace:^",
@@ -51,7 +53,7 @@
     },
     "packages/core": {
       "name": "@get-modular/core",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "devDependencies": {
         "ajv": "catalog:",
         "canonicalize": "catalog:",
@@ -60,6 +62,15 @@
         "typescript": "catalog:",
         "typescript-minimum": "catalog:",
         "yaml": "catalog:",
+      },
+    },
+    "packages/effect": {
+      "name": "@get-modular/effect",
+      "version": "0.0.0",
+      "peerDependencies": {
+        "@get-modular/assembly": "workspace:^",
+        "@get-modular/core": "workspace:^",
+        "effect": "catalog:",
       },
     },
     "packages/lifecycle-kernel": {
@@ -85,6 +96,7 @@
     "ajv": "8.20.0",
     "canonicalize": "4.0.0",
     "cspell": "10.0.1",
+    "effect": "4.1.4",
     "json-canonicalize": "3.0.0",
     "jsonc-parser": "3.3.1",
     "markdownlint-cli2": "0.23.2",
@@ -298,6 +310,8 @@
     "@get-modular/conformance": ["@get-modular/conformance@workspace:packages/conformance"],
 
     "@get-modular/core": ["@get-modular/core@workspace:packages/core"],
+
+    "@get-modular/effect": ["@get-modular/effect@workspace:packages/effect"],
 
     "@get-modular/lifecycle-kernel": ["@get-modular/lifecycle-kernel@workspace:packages/lifecycle-kernel"],
 
@@ -610,6 +624,8 @@
     "dequal": ["dequal@2.0.3", "", {}, "sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA=="],
 
     "devlop": ["devlop@1.1.0", "", { "dependencies": { "dequal": "2.0.3" } }, "sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA=="],
+
+    "effect": ["effect@4.1.4", "", {}, "sha512-Tgrv/9FN+TZYyOn8XSli+fVqAfwDrDAkiX5Uu9vztINb675VTQdhD0gWI5Kzvhlh9QqzjZvw72iugqw5pwoghQ=="],
 
     "entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
 

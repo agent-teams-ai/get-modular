@@ -1,0 +1,231 @@
+import assert from "node:assert/strict";
+import { mkdtemp, open, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import * as Context from "effect/Context";
+import * as Deferred from "effect/Deferred";
+import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
+import * as Fiber from "effect/Fiber";
+import * as Layer from "effect/Layer";
+import * as ManagedRuntime from "effect/ManagedRuntime";
+import * as Stream from "effect/Stream";
+
+// A qualification probe, not the proposed GM integration implementation.
+// Uses the published effect@4.1.2 package through public subpath exports.
+// Source inspection was pinned to 9428e17499ee3a144f2ac73c67213fb1336d2bdf.
+// Node execution alone is not strict typecheck evidence; run the paired tsc gate.
+
+const root = await mkdtemp(join(tmpdir(), "gm-effect-lifetime-"));
+const filename = join(root, "owned-resource.txt");
+await writeFile(filename, "still-alive", "utf8");
+
+function codeOf(cause: unknown): string {
+  return cause instanceof Error && "code" in cause && typeof cause.code === "string"
+    ? cause.code
+    : "unknown";
+}
+
+async function scopedWork(mode: "child" | "scoped") {
+  const events: string[] = [];
+  let finalizerRead = "not-run";
+  const started = Deferred.makeUnsafe<void>();
+  const permit = Deferred.makeUnsafe<void>();
+  const program = Effect.scoped(Effect.gen(function* () {
+    const handle = yield* Effect.acquireRelease(
+      Effect.promise(async () => {
+        const value = await open(filename, "r");
+        events.push("resource-acquired");
+        return value;
+      }),
+      (value) => Effect.promise(async () => {
+        await value.close();
+        events.push("resource-released");
+      }),
+    );
+    const work = Effect.never.pipe(Effect.ensuring(Effect.gen(function* () {
+      events.push("operation-finalizer-start");
+      yield* Deferred.succeed(started, undefined);
+      yield* Deferred.await(permit);
+      yield* Effect.promise(async () => {
+        try { finalizerRead = await handle.readFile("utf8"); }
+        catch (cause) { finalizerRead = codeOf(cause); }
+        events.push("operation-finalizer-end");
+      });
+    })));
+    if (mode === "child") yield* Effect.forkChild(work, { startImmediately: true });
+    else yield* Effect.forkScoped(work, { startImmediately: true });
+    events.push("body-return");
+  }));
+  const running = Effect.runPromise(program);
+  await Effect.runPromise(Deferred.await(started));
+  const beforePermit = events.slice();
+  assert.equal(beforePermit.includes("resource-released"), mode === "child");
+  Effect.runSync(Deferred.succeed(permit, undefined));
+  await running;
+  assert.equal(finalizerRead, mode === "child" ? "EBADF" : "still-alive");
+  assert.deepEqual(events, mode === "child"
+    ? ["resource-acquired", "body-return", "resource-released", "operation-finalizer-start", "operation-finalizer-end"]
+    : ["resource-acquired", "body-return", "operation-finalizer-start", "operation-finalizer-end", "resource-released"]);
+  return { mode, finalizerRead, beforePermit, events };
+}
+
+async function runtimeOwnership(mode: "foreign" | "managed") {
+  const events: string[] = [];
+  const started = Deferred.makeUnsafe<void>();
+  let finalizerRead = "not-run";
+  const Service = Context.Service<{ readonly operation: Effect.Effect<void> }>("lifetime-probe/Service");
+  const layer = Layer.effect(Service, Effect.gen(function* () {
+    const handle = yield* Effect.acquireRelease(
+      Effect.promise(async () => {
+        const value = await open(filename, "r");
+        events.push("resource-acquired");
+        return value;
+      }),
+      (value) => Effect.promise(async () => {
+        await value.close();
+        events.push("resource-released");
+      }),
+    );
+    const operation = Effect.gen(function* () {
+      events.push("operation-start");
+      yield* Deferred.succeed(started, undefined);
+      yield* Effect.never;
+    }).pipe(Effect.ensuring(Effect.promise(async () => {
+      try { finalizerRead = await handle.readFile("utf8"); }
+      catch (cause) { finalizerRead = codeOf(cause); }
+      events.push("operation-finalized");
+    })));
+    return { operation };
+  }));
+  const runtime = ManagedRuntime.make(layer);
+  const service = await runtime.runPromise(Service);
+  const operation = mode === "foreign"
+    ? Effect.runFork(service.operation)
+    : runtime.runFork(service.operation);
+  await Effect.runPromise(Deferred.await(started));
+  await runtime.dispose();
+  const afterDispose = events.slice();
+  if (mode === "foreign") await Effect.runPromise(Fiber.interrupt(operation));
+  else assert.equal(Exit.hasInterrupts(await Effect.runPromise(Fiber.await(operation))), true);
+  assert.equal(finalizerRead, mode === "foreign" ? "EBADF" : "still-alive");
+  assert.deepEqual(events, mode === "foreign"
+    ? ["resource-acquired", "operation-start", "resource-released", "operation-finalized"]
+    : ["resource-acquired", "operation-start", "operation-finalized", "resource-released"]);
+  return { mode, finalizerRead, afterDispose, events };
+}
+
+async function lazyStream(mode: "escaped" | "scoped-consumption") {
+  const events: string[] = [];
+  const acquireFeed = Effect.gen(function* () {
+    const handle = yield* Effect.acquireRelease(
+      Effect.promise(async () => {
+        const value = await open(filename, "r");
+        events.push("resource-acquired");
+        return value;
+      }),
+      (value) => Effect.promise(async () => {
+        await value.close();
+        events.push("resource-released");
+      }),
+    );
+    return Stream.fromEffect(Effect.tryPromise({
+      try: async () => {
+        events.push("stream-read");
+        return await handle.readFile("utf8");
+      },
+      catch: codeOf,
+    }));
+  });
+  const stream = mode === "escaped"
+    ? await Effect.runPromise(Effect.scoped(acquireFeed))
+    : Stream.unwrap(acquireFeed);
+  const beforeConsumption = events.slice();
+  assert.deepEqual(beforeConsumption, mode === "escaped"
+    ? ["resource-acquired", "resource-released"]
+    : []);
+  const result = await Effect.runPromiseExit(Stream.runCollect(stream));
+  assert.equal(Exit.isFailure(result), mode === "escaped");
+  if (Exit.isSuccess(result)) assert.deepEqual(result.value, ["still-alive"]);
+  assert.deepEqual(events, mode === "escaped"
+    ? ["resource-acquired", "resource-released", "stream-read"]
+    : ["resource-acquired", "stream-read", "resource-released"]);
+  return { mode, success: Exit.isSuccess(result), beforeConsumption, events };
+}
+
+async function closeOutcome(retainFirst: boolean) {
+  const started = Deferred.makeUnsafe<void>();
+  const permit = Deferred.makeUnsafe<void>();
+  const failure = new Error("release-not-proven");
+  let finalizerCalls = 0;
+  const layer = Layer.effectDiscard(Effect.addFinalizer(() => Effect.gen(function* () {
+    finalizerCalls += 1;
+    yield* Deferred.succeed(started, undefined);
+    yield* Deferred.await(permit);
+    return yield* Effect.die(failure);
+  })));
+  const runtime = ManagedRuntime.make(layer);
+  await runtime.runPromise(Effect.void);
+  let firstClose: Promise<void> | undefined;
+  const close = () => retainFirst ? (firstClose ??= runtime.dispose()) : runtime.dispose();
+  const firstPromise = close();
+  const first = firstPromise.then(() => "fulfilled", (cause: unknown) => cause === failure ? "original-failure" : "other-failure");
+  await Effect.runPromise(Deferred.await(started));
+  const secondPromise = close();
+  let secondSettled = false;
+  const second = secondPromise.then(
+    () => { secondSettled = true; return "fulfilled"; },
+    (cause: unknown) => { secondSettled = true; return cause === failure ? "original-failure" : "other-failure"; },
+  );
+  // A microtask checkpoint records whether concurrent disposal waited.
+  await Promise.resolve();
+  assert.equal(secondSettled, false);
+  Effect.runSync(Deferred.succeed(permit, undefined));
+  const outcomes = await Promise.all([first, second]);
+  assert.deepEqual(outcomes, retainFirst
+    ? ["original-failure", "original-failure"]
+    : ["original-failure", "fulfilled"]);
+  assert.equal(finalizerCalls, 1);
+  return { retainFirst, samePromise: firstPromise === secondPromise, outcomes, finalizerCalls };
+}
+
+async function parentContext() {
+  const Request = Context.Reference("lifetime-probe/Request", { defaultValue: () => "default" });
+  const runtime = ManagedRuntime.make(Layer.empty);
+  try {
+    const native = await Effect.runPromise(
+      Effect.gen(function* () { return yield* Request; }).pipe(Effect.provideService(Request, "request-42")),
+    );
+    // This intentionally incorrect internal runner creates a new execution boundary.
+    const bridged = await Effect.runPromise(
+      Effect.promise(() => runtime.runPromise(Request)).pipe(Effect.provideService(Request, "request-42")),
+    );
+    assert.equal(native, "request-42");
+    assert.equal(bridged, "default");
+    return { native, bridged };
+  } finally {
+    await runtime.dispose();
+  }
+}
+
+const watchdog = setTimeout(() => {
+  process.stderr.write("lifetime spike watchdog expired\n");
+  process.exitCode = 124;
+  process.exit();
+}, 5000);
+
+try {
+  const results = {
+    node: process.version,
+    effectPackage: "effect@4.1.2",
+    scopedWork: [await scopedWork("child"), await scopedWork("scoped")],
+    runtimeOwnership: [await runtimeOwnership("foreign"), await runtimeOwnership("managed")],
+    lazyStream: [await lazyStream("escaped"), await lazyStream("scoped-consumption")],
+    closeOutcome: [await closeOutcome(false), await closeOutcome(true)],
+    parentContext: await parentContext(),
+  };
+  process.stdout.write(JSON.stringify(results, null, 2) + "\n");
+} finally {
+  clearTimeout(watchdog);
+  await rm(root, { recursive: true, force: true });
+}
