@@ -359,6 +359,15 @@ Use two focused cases within that consumer qualification:
 These are future combined-consumer cases, not additional results of the frozen
 spikes. Do not create a new test framework or rerun unrelated suites for prose.
 
+Where that consumer has background workers, qualify its actual failure policy:
+an essential worker's observed failure must end the related operation when that
+is the promised contract; scoped ownership alone does not propagate that failure.
+Where workers start during acquisition, use the
+[startup recipe](../../packages/effect/docs/practices.md#11-bound-fan-out-and-make-detached-work-deliberate)
+and verify that setup precedes their first dependent operation and that failed
+setup does not start them. These conditional assertions extend the same consumer
+fixture; they do not add a scheduler, startup hooks or a generic supervision API.
+
 ## Breaking changes and migration
 
 No ordinary-user source migration has yet been shown necessary. Prefer internal
@@ -446,6 +455,13 @@ The six earlier improvement plans retain their own scope and priority.
   SDK/lifetime blobs; AISDK changed elsewhere but still has the reviewed signal
   gap. Effect source `9d6b21fd80f99c7578832e9ee90562e5c5c92123` supplies the new
   LayerMap stability and RcMap ownership observations; it was not executed here.
+- Further targeted review, 2026-11-11: OpenCode
+  `63b42f6f02e4b74fae343eddbe567db2c53fcf21` changes only two provider implementations
+  and their tests from the previous checkpoint. Effect
+  `2b23262d50e5d6bec7708cab9ae738bdf7a04bdd` changes only OpenRouter workload
+  identity from its previous checkpoint. The inspected integration/lifetime
+  sources remain unchanged; native fork/race contracts support the clarified
+  worker-failure policy. These source reads add no executed spike result.
 
 The earlier [assessment](../architecture-guarantees-2026-11/effect-assessment.md)
 and [OpenCode study](../architecture-guarantees-2026-11/opencode-effect-case-study.md)

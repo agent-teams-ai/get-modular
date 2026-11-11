@@ -148,3 +148,37 @@ example. The graph review confirmed that precise E/R/N remains a future public
 API qualification requirement. The documentation review confirmed one canon,
 honest availability and explicit archived versus current source evidence.
 No further runtime experiment or review cycle was needed for these corrections.
+
+## 2026-11-11: distinguish worker outcomes from lifetime ownership
+
+The owner requested a further independent review of the complete published
+proposal and guidance at `0ca268e7a6548793522d03cde187eb06234dcdad`. Three critics
+examined actual Core/Assembly preparation and typing, native lifetime/failure
+semantics, and current OpenCode evidence plus package/agent navigation. The
+integration owner challenged the concrete startup recipe. Earlier review closure
+and green repository CI were not treated as proof of these usage semantics.
+
+| Finding | Correction |
+| --- | --- |
+| P2: the scoped-fork example discarded its Fiber handle while rule 4 required an explicit failure policy | Retain the worker handle and race its joined outcome with foreground work. State that first completion, including worker success or interruption, ends the example's lifetime. Separate scoped ownership from failure handling and from aggregation of cleanup causes. Reporting-only remains an explicit alternative for nonessential work. |
+| P2: acquire-all, then setup, then ingress can start eager workers before their prerequisites are ready | Limit that recipe to acquisition that does not start setup-dependent work. Otherwise acquire prerequisites, run the application setup use case, then construct workers with borrowed prerequisites under the same outer owner. Setup failure does not start workers or publish readiness. |
+
+The correction adds conditional assertions to the already planned real-consumer
+fixture when its actual workers require them. It adds no runtime, supervisor,
+scheduler, startup language or public API. Existing Promise/Core contracts,
+accepted ADRs, package availability, frozen experiments and the six earlier plans
+remain unchanged. No additional execution experiment was required to establish
+the source-defined fork/race behavior; the new recipe is not reported as executed.
+
+Current OpenCode `63b42f6f02e4b74fae343eddbe567db2c53fcf21` differs from the prior
+checkpoint only in two provider implementations and their tests. The inspected
+LayerNode, SDK, lifetime and AISDK sources remain unchanged. Current Effect
+`2b23262d50e5d6bec7708cab9ae738bdf7a04bdd` adds OpenRouter workload identity;
+the inspected native lifetime/memoization code is unchanged. The canonical guide
+retains exact source links and distinguishes these observations from execution.
+
+All three critics cross-reviewed the integrated corrections and confirmed closure
+without remaining P1/P2 in this documentation/design scope. The integration owner
+also clarified that the earlier FileHandle result covers resource/fork ordering,
+not execution of the newly documented outcome race. No further runtime experiment
+or broader review cycle was needed for these source-backed corrections.

@@ -226,26 +226,47 @@ creating one ManagedRuntime per source module. OpenCode's
 
 ## 6. Relate background fibers to the resource scope they use
 
+Choose a failure policy as well as a lifetime owner. A native
+[`forkScoped`][effect-scoped-fork] returns a Fiber handle; it does not automatically
+propagate the worker's failure to the foreground. For work whose lifetime must
+end when either participant completes, observe the worker explicitly:
+
 ```ts
 const program = Effect.scoped(
   Effect.gen(function* () {
     const resource = yield* Effect.acquireRelease(acquire, release);
-    yield* Effect.forkScoped(background(resource));
-    yield* foreground(resource);
+    const worker = yield* Effect.forkScoped(background(resource));
+    yield* Effect.raceFirst(Fiber.join(worker), foreground(resource));
   }),
 );
 ```
+
+This example deliberately uses the [first observed completion][effect-first-exit],
+including failure or interruption. Successful worker completion also ends the
+foreground; if that is an error for the application, represent it in the worker's
+contract. If the foreground finishes first, leaving the outer Scope interrupts
+and joins the scoped worker before releasing the resource.
 
 In a sequential scope, registering scoped work after acquiring its resource lets
 the scope interrupt and join that work before releasing the resource. An explicit
 join before leaving the scope is another valid arrangement. `forkChild` follows
 the parent fiber, whose lifetime need not match a nested resource Scope.
 
+The first outcome is not an aggregate of every losing operation's cleanup failure.
+Preserve any required worker cleanup evidence separately under
+[rule 10](#10-preserve-cleanup-evidence-without-inventing-retry-guarantees).
+A nonessential worker may instead report failure while foreground work continues;
+make that policy explicit and observe its Cause/Exit. Runtime logging alone does
+not decide whether the application should keep serving requests. No new supervisor
+or automatic retry API is needed for either policy.
+
 The FileHandle spike observed `EBADF` in a child finalizer after early resource
-release, and successful reading with the tested scoped-fork ordering. This proves
-that recipe, not arbitrary Layer-tree ordering. Parallel finalizers do not promise
-dependency order. Do not advertise automatic physical drain of foreign I/O from
-fiber completion, even when the native fiber was correctly interrupted and joined.
+release, and successful reading with the tested scoped-fork ordering. It qualifies
+that resource/fork registration order; the outcome-race sketch above was not part
+of that experiment. Neither establishes arbitrary Layer-tree ordering. Parallel
+finalizers do not promise dependency order. Do not advertise automatic physical
+drain of foreign I/O from fiber completion, even when the native fiber was
+correctly interrupted and joined.
 
 ## 7. Own streams through consumption and finalization
 
@@ -315,9 +336,14 @@ may start independent providers concurrently; listing order is not a startup
 sequence. Host owns any additional application sequencing. Do not introduce
 fake dependency slots, a scheduler or an ordering DSL to emulate another executor.
 For example, the Host can acquire the graph, invoke an application migration/setup
-action, and only then admit requests. Failure before admission must not publish
-readiness; the action's domain policy stays in its own use case. OpenCode's ordered
-root builds also allow a later root to be acquired early as another root's
+action, and only then admit requests, provided acquisition does not start work
+that depends on that setup. An ingress gate alone does not stop a worker already
+forked while building its Layer. For eager workers, acquire only prerequisite
+resources, run the setup use case, and then construct the worker/application graph
+with those prerequisites as borrowed inputs. Keep their owning outer Scope alive
+through application work. Setup failure must neither construct those workers nor
+publish readiness; the action's domain policy stays in its own use case.
+OpenCode's ordered root builds also allow a later root to be acquired early as another root's
 dependency; they do not establish an arbitrary global factory ordering.
 
 Use scope-owned work when it uses that scope's resources. A detached operation
@@ -339,7 +365,7 @@ Effect mechanisms; no GM scheduler, retries, universal lease system or runtime.
 
 ## OpenCode evidence: observations and their limits
 
-The current targeted review uses `c4bf172532b64a02142d2da9a72d57621c48423d`.
+The primary targeted review uses `c4bf172532b64a02142d2da9a72d57621c48423d`.
 Compared with [the earlier checkpoint][oc-followup], LayerNode, SDK instance/Host/
 fetch/Promise adapters and Location service files retain their inspected blobs.
 AISDK changed elsewhere; the signal-forwarding gap below remains in the current
@@ -347,6 +373,12 @@ call options and callback. Catalog/override/lock still select Effect **4.1.0**;
 no installed-tree audit is claimed. Other positive references retain their explicit
 older source pins. A repository-wide compare listing alone is not a complete
 changed-file audit.
+The [follow-up to `63b42f6f`][oc-latest-delta] changes two provider implementations
+and their tests; the inspected LayerNode, SDK, lifetime and AISDK files are
+unchanged. The [Effect follow-up][effect-latest-delta] to `2b23262d` changes
+OpenRouter workload identity, not the inspected Scope, Layer, LayerMap, RcMap or
+Effect execution code. Its native fork/race contracts also support rule 6; these
+are source observations, not new executions of the frozen spike environment.
 Our five paired lifetime spikes use published **Effect 4.1.2** and strict
 TypeScript **7.0.2**. The first three use disposable FileHandles; the other two
 use controlled finalizer failure and caller References. They are integration
@@ -406,11 +438,15 @@ second migration checklist in consumer instructions.
 [gm-input-probe]: https://github.com/agent-teams-ai/get-modular/blob/5131d8789d88816ad458f1bd381727365b962a88/research/effect-integration-2026-11/spikes.md#input-identity-counterexample
 [effect-layer-map]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/LayerMap.ts#L1-L12
 [effect-map-close]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/RcMap.ts#L265-L299
+[effect-scoped-fork]: https://github.com/Effect-TS/effect/blob/2b23262d50e5d6bec7708cab9ae738bdf7a04bdd/packages/effect/src/Effect.ts#L9000-L9038
+[effect-first-exit]: https://github.com/Effect-TS/effect/blob/2b23262d50e5d6bec7708cab9ae738bdf7a04bdd/packages/effect/src/Effect.ts#L5094-L5150
+[effect-latest-delta]: https://github.com/Effect-TS/effect/compare/9d6b21fd80f99c7578832e9ee90562e5c5c92123...2b23262d50e5d6bec7708cab9ae738bdf7a04bdd
 [oc-node]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/util/docs/layer-node.md
 [oc-node-current]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/util/docs/layer-node.md
 [oc-tags]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/util/src/effect/layer-node.ts#L154-L189
 [oc-instances]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/sdk/src/internal/instances.ts#L16-L103
 [oc-followup]: https://github.com/anomalyco/opencode/compare/7d5b72250890e0e89573b4cab42a003a48c20567...c4bf172532b64a02142d2da9a72d57621c48423d
+[oc-latest-delta]: https://github.com/anomalyco/opencode/compare/c4bf172532b64a02142d2da9a72d57621c48423d...63b42f6f02e4b74fae343eddbe567db2c53fcf21
 [oc-transaction]: https://github.com/anomalyco/opencode/blob/dc71d5f94b1800370a6de88d107f117823d85628/packages/core/src/database/drizzle/effect-sqlite/session.ts#L132-L174
 [oc-options]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/core/src/aisdk.ts#L478-L500
 [oc-aisdk]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/core/src/aisdk.ts#L707-L733
