@@ -25,7 +25,7 @@ one policy owner.
 This document is proposed. It records the design and qualification scope selected
 on 2026-11-09, not accepted package admission or production adoption. The detailed
 [plan](../../research/effect-integration-2026-11/README.md),
-[usage guidance](../../research/effect-integration-2026-11/effect-practices.md) and
+[usage guidance](../../packages/effect/docs/practices.md) and
 [spike evidence](../../research/effect-integration-2026-11/spikes.md) distinguish
 tested native behavior from the future public implementation.
 
@@ -63,6 +63,14 @@ Fresh identities per Layer instantiation cover mapper-owned nodes; internal or
 external native Layers and borrowed values keep their owners' sharing policy.
 Native execution promises dependency order, not independent-root listing order.
 
+The 2026-11-11 extension adopts documented typed live/fake variants, nested native
+application/session lifetimes with borrowed inputs, and explicit Host startup
+actions. A general graph projection or shared-tag policy remains a separate
+candidate: projection belongs in neutral preparation and must not leave unusable
+R/input requirements after pruning; sharing must define configuration and ownership.
+Neither is a prerequisite for the first native constructor. No new cache, lifetime
+language, override registry or runtime is admitted by these recipes.
+
 Before production exposure, record the exact neutral preparation API and optional
 package/dependency admission, update its governed source/package boundaries,
 qualify current Promise behavior plus the native path, and update the current
@@ -78,6 +86,9 @@ The current delivery contains design, reviewed guidance and bounded qualificatio
 spikes. It does not publish a package, migrate an unrelated product, add plugin
 lifecycle or assert production conformance. One identified real consumer and
 packed/public-entry checks remain part of eventual library adoption.
+The proposed package directory contains documentation only. Its README and the
+agent instruction routes point to one maintained practices guide; first package
+admission must include that guide in the archive and verify its internal link.
 
 ## Consequences
 

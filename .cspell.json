@@ -26,7 +26,7 @@
   ],
   "overrides": [
     {
-      "filename": "research/{architecture-guarantees,effect-integration}-2026-11/**/*.md",
+      "filename": "{research/{architecture-guarantees,effect-integration}-2026-11,packages/effect}/**/*.md",
       "words": [
         "AISDK",
         "anomalyco",

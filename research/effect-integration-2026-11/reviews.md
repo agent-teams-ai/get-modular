@@ -1,7 +1,7 @@
 # Integration design review record
 
-Status: initial and follow-up cross-review closed, 2026-11-09. Review judgments
-are not execution evidence; see [spikes](spikes.md) for observed behavior and limits.
+Status: 2026-11-09 and 2026-11-11 reviews closed. Review judgments are not
+execution evidence; see [spikes](spikes.md) for observed behavior and limits.
 
 ## Authoring and first cross-review
 
@@ -101,3 +101,50 @@ links to the real-consumer qualification section. The integration owner checked
 the final wording: construction dependency order is a partial order, not literal
 sequential execution of Core's full order or ordering of returned operations.
 No further review cycle or execution experiment was required for these changes.
+
+## 2026-11-11: adapt useful LayerNode behavior without a second engine
+
+The owner asked to reconsider which LayerNode conveniences belong in GM/Effect,
+and to make the practices visible from the proposed package. This round starts
+from `5131d8789d88816ad458f1bd381727365b962a88`; it does not treat the earlier
+scope exclusions as a permanent prohibition.
+
+Three independent critics examined graph substitution/startup, shared/local
+ownership, and current OpenCode practice/documentation. The integration owner
+read the relevant current sources and challenged the proposed projection helper's
+public typing. The graph critic revised that recommendation after the challenge.
+
+| Finding | Decision |
+| --- | --- |
+| Runtime pruning alone can leave the removed provider's Config R or required inputs N in the public type | Use exact typed live/fake variants first. A reusable neutral projection remains eligible only with a useful and honest public E/R/N contract. Do not hide the cost of type-level graph computation in a small traversal estimate. |
+| Current Assembly selects the supplied inventory exactly | Any future projection is pre-preparation data selection in the common neutral owner; the Effect mapper must not rewrite a verified Core plan. |
+| Shared memoization identity, configuration identity and lifetime ownership are different contracts | Add a bounded application/two-session recipe with narrow borrowed inputs, native Scopes and in-scope stream consumption. Keep cross-composition ownership with Host. |
+| Cache reference counts do not make owner shutdown join arbitrary active work | Document ingress/work settlement before local/shared release. Current RcMap owner closure visits its entries; foreign work requires its own contract. |
+| LayerMap is useful but currently marked unstable | Keep it an optional version-qualified consumer choice, not a required GM public type or cache subsystem. |
+| Root build order is weaker than arbitrary factory order | Sequence named application startup actions at Host; a root dependency may acquire before that root's listed turn. No new ordering DSL. |
+| A research-only guide is harder to find from the intended package | Move the one guide to `packages/effect/docs/practices.md`, add a documentation-only README, update agent routes and leave a short historical pointer. No manifest, runtime source or exports are added. |
+| Repository-relative supporting links would break outside the checkout | Use repository URLs for external material and a relative package README-to-guide link. Include the guide in eventual packed qualification. |
+
+Current source observations: GM main `c81fb21766e27cf3535132ec2fc2cfd396497a96`
+changes CI/tooling/evidence, not the relevant composition code. OpenCode
+`c4bf172532b64a02142d2da9a72d57621c48423d` retains the inspected LayerNode,
+SDK instance/Host/fetch/Promise and Location service blobs. AISDK changed elsewhere
+but the reviewed abort-signal gap remains. Its catalog/override/lock still selects
+Effect 4.1.0; this is not an installed-tree audit. The new Effect LayerMap/RcMap
+observations use source `9d6b21fd80f99c7578832e9ee90562e5c5c92123` and are not
+new runtime results on the old 4.1.2 spike environment.
+
+No new runtime mechanism or execution spike was introduced. The two future
+consumer cases reuse planned qualification: fake selection avoids both private
+live acquisition and unused requirements; shared application/two-local ownership
+survives failure, stream termination and asynchronous finalization. Existing
+frozen source/configuration/result snapshots and the six earlier plans are unchanged.
+
+All three critics cross-reviewed the integrated package guide/README, plan, ADR,
+review record and agent routes. Each confirmed closure without remaining P1/P2
+within this documentation/design scope. The ownership review confirmed the bounded
+fail-fast recipe and the removal of an unobserved background fiber from its main
+example. The graph review confirmed that precise E/R/N remains a future public
+API qualification requirement. The documentation review confirmed one canon,
+honest availability and explicit archived versus current source evidence.
+No further runtime experiment or review cycle was needed for these corrections.

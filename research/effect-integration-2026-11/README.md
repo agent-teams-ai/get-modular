@@ -1,13 +1,15 @@
 # Native Effect integration: design and qualification spikes
 
-Status: owner-selected direction, 2026-11-09; proposed production design.
+Status: owner-selected direction, updated 2026-11-11; proposed production design.
 The owner selected neutral subject-specific ports at replaceable boundaries,
 an optional GM integration with native Effect, deliberate breaking changes when
 they improve usability, and executable spikes before committing to the design.
 This research does not claim an implemented or published integration package.
 
 The proposed decision is [ADR-0043](../../docs/decisions/0043-plan-optional-native-effect-composition.md).
-The single usage reference is [Effect integration practices](effect-practices.md).
+The single usage reference is [Effect integration practices](../../packages/effect/docs/practices.md),
+now reachable from the proposed package's documentation-only README. That
+directory adds no package manifest, source, exports or production admission.
 Read [spike evidence](spikes.md) and [review findings](reviews.md) with this plan.
 
 ## Decision and scope
@@ -94,7 +96,7 @@ provides the typed roots under the caller's native Context key, retains `E`,
 and leaves unsatisfied `R` visible after its construction Scope is supplied.
 Native Layer provision supplies explicit ambient requirements; it does not
 replace GM-selected providers inside this closed graph. Use the
-[replacement recipe](effect-practices.md#2-give-inter-module-selection-one-authority)
+[replacement recipe](../../packages/effect/docs/practices.md#2-give-inter-module-selection-one-authority)
 before preparation when changing those providers.
 
 Declared borrowed inputs must also be expressible. The complete type is
@@ -226,9 +228,58 @@ that entire plan is not a prerequisite for this research spike.
   not sequential startup of independent roots by listing order. Extra application
   startup sequencing belongs in Host; do not add an ordering DSL or fake slots.
 
+## Adapting LayerNode within GM boundaries
+
+The 2026-11-11 review reconsidered the earlier exclusions at the owner's request.
+Adapt useful behavior where its owner is clear; do not import OpenCode's whole
+application model. The [canonical guide](../../packages/effect/docs/practices.md)
+contains the actual recipes and the evidence behind these decisions.
+
+| OpenCode idea | Selected first-package treatment | Owner |
+| --- | --- | --- |
+| Checked substitution without acquiring old dependencies | Typed live/fake composition variants before preparation; exact selected entries, bindings and inputs | Consumer composition adapter plus existing shared GM preparation |
+| Shared application resources with local instances | One application Layer, fresh local compositions with declared borrowed inputs and nested native Scopes | Effect owns native resources; Host owns using them |
+| Restrictions on dependency directions | Separate closed parent/local inventories and explicit input contracts; no claim of a complete cross-composition lifetime proof | GM validates each graph; Host declares their connection |
+| Ordered startup | Explicit application actions before admission; graph construction follows real dependencies | Host/application use cases |
+| Decoration without duplicated wiring | Native Effect functions around owned factories/Layers | Implementation owner |
+
+### Why automatic graph projection is not the first additional API
+
+Current Assembly completion selects all supplied entries, and preparation requires
+its inventory to match the Core plan exactly. Core rejects unreachable selections.
+An automatic projection would therefore belong before ordinary preparation, under
+the same neutral owner; the Effect mapper cannot silently prune a verified graph.
+
+The difficult part is public typing as well as traversal. If projection accepts
+a broad catalog, its conservative construction R and required inputs N can still
+contain requirements of the pruned live database. Removing that resource at
+runtime would not make a fake composition convenient. Do not erase requirements
+with casts, unchecked `Exclude` or a claimed `R = never`.
+
+Use exact typed variants first. A runtime union must be narrowed before preparing
+and executing its branch, or retain an explicitly accepted common environment.
+A shared projection helper remains eligible when concrete consumer variants show
+repeated nontrivial selection work. Before selecting it, demonstrate a public
+example without wiring casts that avoids both the old acquisition and its unused
+R/N requirements, or explains the deliberately common environment. Account for
+any type-level graph computation in its scope/estimate; it is not a free detail.
+
+If justified, limit the first helper to a captured input graph, exact authenticated
+replacement identities and explicit target wiring, followed by ordinary Core
+validation. Preserve optional/many shapes and shared dependencies still reachable
+from another root. Reject duplicate/unused replacement instructions; do not add
+override chains, last-wins precedence or implicit provider deduplication. A root
+replacement must also preserve its Host instance contract. This is a candidate
+contract, not admitted work or a prerequisite for the native constructor.
+
+Shared/local cache tags are a separate candidate, not another name for the input
+recipe. They require a concrete sharing/configuration/ownership contract compatible
+with fresh mapper identities. Native LayerMap can be a version-qualified consumer
+choice when keyed reuse is actually needed; it is not a required GM dependency.
+
 ## Delivery steps and concrete stopping points
 
-### 0. Qualify the decision with bounded spikes — this delivery
+### 0. Qualify the decision with bounded spikes — retained evidence
 
 Use public GM Core/Assembly entrypoints, the published Effect package and strict
 TypeScript 7.0.2. Keep a finite complete profile and captured entries. Verify local
@@ -283,11 +334,30 @@ that neutral imports do not install or bundle Effect. Keep platform-specific fil
 I/O in the test consumer; the optional integration itself must not import Node
 builtins. Frontend and backend adapters keep their own application contracts.
 
+Ship `packages/effect/docs/practices.md` with the admitted package and keep its
+README link relative within the archive. Verify that guide and link in this same
+packed qualification; supporting research/standard links use repository URLs.
+Keep AGENTS and `.github` routed to the one source guide, not copies of its rules.
+
 Choose an actual consumer with a concrete async orchestration/resource need.
 The proposed new application is not identified yet, so synthetic results do not
 claim product adoption. Do not migrate Agent Runtime or another product merely
 to fill this row. Run that consumer's failure, cancellation, early stream-return
 and shutdown scenarios before declaring the library contract ready for adoption.
+
+Use two focused cases within that consumer qualification:
+
+- A typed fake variant does not acquire its private live database and does not
+  require that removed implementation's Config R or unused borrowed inputs N.
+  Preserve any shared dependency still needed by another selected root.
+- One shared application resource supports two independent local compositions.
+  On one branch's failure, finish the owned work according to the stated fail-fast
+  policy; an asynchronous finalizer can still use its resource, each local closes
+  once, and the shared resource closes last. Reuse the fixture for stream early
+  return. A server's ingress/drain policy is its own contract.
+
+These are future combined-consumer cases, not additional results of the frozen
+spikes. Do not create a new test framework or rerun unrelated suites for prose.
 
 ## Breaking changes and migration
 
@@ -369,6 +439,13 @@ The six earlier improvement plans retain their own scope and priority.
   the three intervening commits do not change the inspected LayerNode, SDK,
   lifetime or dependency inputs. The guide records its useful extra capabilities
   and their deliberate absence from this first integration scope.
+- Current targeted review, 2026-11-11: GM main
+  `c81fb21766e27cf3535132ec2fc2cfd396497a96` changes only CI/tooling/evidence from
+  the earlier GM pin; the relevant composition source is unchanged. OpenCode
+  `c4bf172532b64a02142d2da9a72d57621c48423d` retains the inspected LayerNode and
+  SDK/lifetime blobs; AISDK changed elsewhere but still has the reviewed signal
+  gap. Effect source `9d6b21fd80f99c7578832e9ee90562e5c5c92123` supplies the new
+  LayerMap stability and RcMap ownership observations; it was not executed here.
 
 The earlier [assessment](../architecture-guarantees-2026-11/effect-assessment.md)
 and [OpenCode study](../architecture-guarantees-2026-11/opencode-effect-case-study.md)
