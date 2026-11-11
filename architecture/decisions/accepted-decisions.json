@@ -191,6 +191,11 @@
       "id": "ADR-0042",
       "path": "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md",
       "immutableDigest": "sha256:1abf9f97ebe089f82c2183dc45a15f8528b09322184b6c19ecdc95df1dd0557f"
+    },
+    {
+      "id": "ADR-0043",
+      "path": "docs/decisions/0043-plan-optional-native-effect-composition.md",
+      "immutableDigest": "sha256:765fae287d9e893618fb5a4b1259810281323c76a6f6aad1a1c5a93af4daa716"
     }
   ]
 }

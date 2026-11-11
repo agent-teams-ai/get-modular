@@ -6,6 +6,7 @@ packageRoots:
   - packages/assembly
   - packages/conformance
   - packages/core
+  - packages/effect
   - packages/lifecycle-kernel
   - packages/observation
   - packages/resources
@@ -19,6 +20,8 @@ governedRoots:
   - packages/assembly/tests
   - packages/conformance/src
   - packages/conformance/tests
+  - packages/effect/src
+  - packages/effect/tests
   - packages/observation/src
   - packages/observation/tests
   - packages/core/dist-seed
@@ -314,6 +317,7 @@ boundaries:
       - packages/assembly/src/features/construction/types.ts
       - packages/assembly/src/features/construction/factory.ts
       - packages/assembly/src/features/construction/format-failure.ts
+      - packages/assembly/src/features/construction/wiring-types.ts
     allow:
       boundaries: []
       packages:
@@ -344,6 +348,76 @@ boundaries:
         - assembly-composition
       packages: []
       builtins: []
+      runtimeReferences: []
+  # ADR-0043 admits native Effect construction as an optional leaf. Assembly's
+  # public neutral wiring is its only bridge to verified composition.
+  - id: effect-construction
+    roots:
+      - packages/effect/src/features/construction
+    entrypoints:
+      - packages/effect/src/features/construction/types.ts
+      - packages/effect/src/features/construction/factory.ts
+    allow:
+      boundaries: []
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - effect
+      builtins: []
+      runtimeReferences: []
+  - id: effect-composition
+    roots:
+      - packages/effect/src/composition/root.ts
+    entrypoints:
+      - packages/effect/src/composition/root.ts
+    allow:
+      boundaries:
+        - effect-construction
+      packages: []
+      builtins: []
+      runtimeReferences: []
+  - id: effect-public-entrypoint
+    packageExports:
+      - "."
+    roots:
+      - packages/effect/src/index.ts
+    entrypoints:
+      - packages/effect/src/index.ts
+    allow:
+      boundaries:
+        - effect-construction
+        - effect-composition
+      packages:
+        - "@get-modular/assembly"
+      builtins: []
+      runtimeReferences: []
+  - id: effect-development
+    dependencyMode: development
+    roots:
+      - packages/effect/tests
+    entrypoints:
+      - packages/effect/tests/construction.test.ts
+      - packages/effect/tests/consumer.test.ts
+      - packages/effect/tests/packed-root.test.ts
+      - packages/effect/tests/portable.ts
+      - packages/effect/tests/support.ts
+      - packages/effect/tests/types.ts
+    allow:
+      boundaries:
+        - repository.development
+      packages:
+        - "@get-modular/assembly"
+        - "@get-modular/core"
+        - effect
+      builtins:
+        - node:assert/strict
+        - node:child_process
+        - node:fs/promises
+        - node:module
+        - node:os
+        - node:path
+        - node:test
+        - node:url
       runtimeReferences: []
   # ADR-0029 permits one pure local policy kernel. Its bookkeeping identities
   # never import the composition packages or acquire Host authority.
@@ -947,6 +1021,7 @@ boundaries:
     entrypoints:
       - packages/assembly/tests/bounds.test.mjs
       - packages/assembly/tests/profile-completion-bounds.test.ts
+      - packages/assembly/tests/wiring.test.ts
     allow:
       boundaries:
         - assembly-composition
@@ -1019,6 +1094,7 @@ boundaries:
       - tests/codemods/codemods.test.mjs
       - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
+      - tests/effect-carrier.types.ts
       - tests/qualification/metadata-patch-pack.ts
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts

@@ -10,7 +10,7 @@
   },
   "scope": {
     "workspaceContainers": ["packages"],
-    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src", "packages/conformance/src", "packages/observation/src"],
+    "productionRoots": ["packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src", "packages/conformance/src", "packages/observation/src", "packages/effect/src"],
     "productionModules": [
       {
         "id": "core",
@@ -41,6 +41,11 @@
         "id": "observation",
         "moduleRoot": "packages/observation",
         "sourceRoot": "packages/observation/src"
+      },
+      {
+        "id": "effect",
+        "moduleRoot": "packages/effect",
+        "sourceRoot": "packages/effect/src"
       }
     ]
   },
@@ -100,6 +105,14 @@
           "moduleComposition": "packages/observation/src/composition",
           "publicEntrypoint": "packages/observation/src/index.ts",
           "testRoot": "packages/observation/tests"
+        },
+        {
+          "moduleRoot": "packages/effect",
+          "sourceRoot": "packages/effect/src",
+          "featuresRoot": "packages/effect/src/features",
+          "moduleComposition": "packages/effect/src/composition",
+          "publicEntrypoint": "packages/effect/src/index.ts",
+          "testRoot": "packages/effect/tests"
         }
       ]
     },
@@ -135,6 +148,10 @@
       {
         "id": "module-change-observation",
         "authority": "docs/decisions/0034-admit-the-module-change-observation-package.md"
+      },
+      {
+        "id": "native-effect-composition",
+        "authority": "docs/decisions/0043-plan-optional-native-effect-composition.md"
       }
     ],
     "deviations": [],

@@ -19,11 +19,11 @@ For consumer composition work, read the [Consumer module standard](docs/architec
 For module authoring, read docs/guides/module-authoring.md.
 For Effect integration or Effect-native consumer work, read the
 [Effect integration practices](packages/effect/docs/practices.md)
-and their linked proposal and spike evidence. The proposed native package does
-not change current Core/Assembly contracts or authorize plugin lifecycle work.
-`packages/effect` currently contains documentation only; read its README before
-assuming the package exists. Keep usage rules in that one guide and include it
-in the eventual package archive, as required by the integration plan.
+and their linked accepted decision and qualification evidence. Read the package
+README for its candidate/release and exact Effect peer status. Core/Assembly stay
+independent of Effect; native and Promise execution are different contracts.
+Keep usage rules in that one packaged guide. This integration does not authorize
+plugin lifecycle work or imply a named product has adopted it.
 For dynamic plugin lifecycle work, read its [lifecycle-kernel decision boundary](docs/architecture/common-assembly.md#optional-dynamic-host-lifecycle-candidate) and the [candidate package contract](packages/lifecycle-kernel/README.md) before selecting a package. Static composition and passive setup do not require this candidate; product adoption and public release remain separate decisions.
 
 Use `bun run check:changed` while editing, `bun run check:fast` before handoff, and

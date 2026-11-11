@@ -26,6 +26,10 @@
   ],
   "overrides": [
     {
+      "filename": "{docs/architecture/common-assembly.md,docs/decisions/0043-plan-optional-native-effect-composition.md}",
+      "words": ["finalizers"]
+    },
+    {
       "filename": "{research/{architecture-guarantees,effect-integration}-2026-11,packages/effect}/**/*.md",
       "words": [
         "AISDK",

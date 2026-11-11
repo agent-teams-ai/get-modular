@@ -1,16 +1,65 @@
 # Native Effect integration: design and qualification spikes
 
-Status: owner-selected direction, updated 2026-11-11; proposed production design.
+Status: implementation candidate, updated 2026-11-11; owner-authorized source delivery.
 The owner selected neutral subject-specific ports at replaceable boundaries,
 an optional GM integration with native Effect, deliberate breaking changes when
 they improve usability, and executable spikes before committing to the design.
-This research does not claim an implemented or published integration package.
+The native package is now implemented. Registry publication and a named product's
+adoption remain separate; neither is implied by library integration tests.
 
-The proposed decision is [ADR-0043](../../docs/decisions/0043-plan-optional-native-effect-composition.md).
+The accepted source-admission decision is [ADR-0043](../../docs/decisions/0043-plan-optional-native-effect-composition.md).
 The single usage reference is [Effect integration practices](../../packages/effect/docs/practices.md),
-now reachable from the proposed package's documentation-only README. That
-directory adds no package manifest, source, exports or production admission.
+reachable from the package README, AGENTS and `.github`, and included in the
+package archive. Historical designs/spikes below retain their original context;
+the current implementation status is recorded next.
 Read [spike evidence](spikes.md) and [review findings](reviews.md) with this plan.
+
+## Implementation candidate
+
+The current source uses Effect **4.1.4**, TypeScript **7.0.2** and the repository's
+existing Node/Bun runtime profiles. Frozen Effect 4.1.2 spikes are unchanged.
+Assembly owns `createEntryFamily<F>()` and the three shared record/value helpers;
+the optional package owns only native authoring types and lowering verified wiring
+to real Layers. No Core source change, generic execution abstraction, plugin
+lifecycle, cache, tag language or scheduler is added.
+
+The selected OpenCode ideas are delivered at explicit boundaries:
+
+| Need | Current implementation |
+| --- | --- |
+| Replace a live provider and omit its private graph | Typed live/fake inventories before preparation; exact construction E/R follow the chosen variant |
+| Share an application resource across local sessions | Borrowed inputs and nested native scopes; the Host joins work before closing its owners |
+| Respect dependency directions | Existing GM slots, ownership policy and source boundaries; no new lifetime DSL |
+| Setup before starting workers | Explicit Host setup before eager native acquisition; failure prevents startup |
+
+Maintained qualification is in `packages/effect/tests`: native exact bindings,
+diamond sharing, parallel provider acquisition, typed failure, interruption,
+safe metadata/input capture, memoization isolation, typed variants, real file
+resources, stream completion and async finalizer ordering. The archive test
+extracts matched packages into an external consumer, first executes ordinary
+Assembly without Effect installed, then repeats native scenarios and public
+NodeNext/Bundler declaration checks with no Node ambient types in the portable
+fixture. This is the library's test Host, not an invented product adoption.
+
+Review found and corrected a public typing hole: Effect's covariant Context key
+could describe more required root fields than the graph actually produces. The
+Layer constructor now checks assignability from produced roots into the caller's
+key shape; rejecting and safe-widening fixtures retain that contract. Review also
+moved a lazy-operation example inside Layer provision and removed duplicated
+carrier validation. A mapper-owned provider/dependent FileHandle finalizer test
+was added after review to cover the actual production lowering path.
+
+Ordinary Promise consumers need no source migration. Native adoption uses the
+package's public imports and explicitly migrates ownership/errors instead of
+wrapping `run()`. The changeset preserves the existing Core/Assembly release pair
+at 0.8.0 and selects the initial Effect 0.1.0; source candidate version 0.0.0 is
+not a claim of publication. Released Assembly 0.7.1 cannot serve this new adapter.
+
+The new application's identity is still unspecified. Product adoption must select
+that consumer and verify its actual ingress, streaming and shutdown contract;
+no unrelated repository is migrated to satisfy this row. Package qualification,
+hosted checks and merge evidence are recorded in the PR, not inferred from the
+presence of test files or from historical passing spikes.
 
 ## Decision and scope
 

@@ -2,8 +2,8 @@ import type { CompositionPlan } from "@get-modular/core";
 import type { DuplicateModule, PreparationErrorCode } from "./types.js";
 import type { Metadata, Program } from "./ports.js";
 import { SnapshotFault, data, limits, rootKeys } from "./snapshot.js";
-import { metadataFor } from "./entry.js";
-import { walkModules } from "./group.js";
+import type { EntryStore } from "./entry-store.js";
+import type { GroupCollection } from "./group-collection.js";
 
 // Private preflight: collect authenticated entries before mapping the verified plan to execution.
 export class PreparationFault extends Error {
@@ -12,9 +12,9 @@ export class PreparationFault extends Error {
 }
 export function refuse(code: PreparationErrorCode): never { throw new PreparationFault(code); }
 
-type Collected = {
-  readonly byEntry: Map<object, Metadata>;
-  readonly byId: Map<string, Metadata>;
+type Collected<F> = {
+  readonly byEntry: Map<object, Metadata<F>>;
+  readonly byId: Map<string, Metadata<F>>;
   readonly groupPaths: Map<string, readonly string[]>;
 };
 export class DuplicateFault extends Error {
@@ -32,16 +32,17 @@ function sortIds(values: Iterable<string>): string[] {
 }
 // Module entries come only through `modules` (groups flattened depth first) and input entries only through
 // `inputs`; together they cover every selection exactly once.
-export function collectMetadata(modules: readonly unknown[], inputEntries: readonly unknown[], inputAliases: readonly string[]): Collected {
-  const walked = walkModules(modules, (kind) => refuse(kind === "input" ? "assembly.prepare.input-handles" : "assembly.prepare.handles"));
+export function collectMetadata<F>(modules: readonly unknown[], inputEntries: readonly unknown[], inputAliases: readonly string[],
+  entries: EntryStore<F>, groups: GroupCollection): Collected<F> {
+  const walked = groups.walk(modules, (kind) => refuse(kind === "input" ? "assembly.prepare.input-handles" : "assembly.prepare.handles"));
   let provides = 0;
   let slots = 0;
-  const all: { readonly entry: unknown; readonly metadata: Metadata; readonly path: readonly string[]; readonly inputAlias?: string }[] = [];
+  const all: { readonly entry: unknown; readonly metadata: Metadata<F>; readonly path: readonly string[]; readonly inputAlias?: string }[] = [];
   for (const { entry, path } of walked.entries) {
-    all.push({ entry, metadata: metadataFor(entry) as Metadata, path });
+    all.push({ entry, metadata: entries.metadataFor(entry) as Metadata<F>, path });
   }
   for (const [index, entry] of inputEntries.entries()) {
-    const found = metadataFor(entry);
+    const found = entries.metadataFor(entry);
     if (found?.input !== true) {refuse("assembly.prepare.input-handles");}
     all.push({ entry, metadata: found, path: [], inputAlias: inputAliases[index] ?? "" });
   }
@@ -50,8 +51,8 @@ export function collectMetadata(modules: readonly unknown[], inputEntries: reado
     slots += metadata.declaration.slots.length;
     if (provides > limits.aggregateProvides || slots > limits.aggregateSlots) {throw new SnapshotFault("limit");}
   }
-  const byEntry = new Map<object, Metadata>();
-  const byId = new Map<string, Metadata>();
+  const byEntry = new Map<object, Metadata<F>>();
+  const byId = new Map<string, Metadata<F>>();
   const groupPaths = new Map<string, readonly string[]>();
   const paths = new Map<string, (readonly string[])[]>();
   const inputs = new Map<string, string[]>();
@@ -82,7 +83,7 @@ export function collectMetadata(modules: readonly unknown[], inputEntries: reado
   return { byEntry, byId, groupPaths };
 }
 
-export function validateSelections(plan: CompositionPlan, byId: ReadonlyMap<string, Metadata>): void {
+export function validateSelections<F>(plan: CompositionPlan, byId: ReadonlyMap<string, Metadata<F>>): void {
   const selected = new Set(plan.selections.map((selection) => selection.implementationId));
   if (plan.selections.length !== byId.size || selected.size !== byId.size) {refuse("assembly.prepare.handles");}
   for (const selection of plan.selections) {
@@ -92,8 +93,8 @@ export function validateSelections(plan: CompositionPlan, byId: ReadonlyMap<stri
   }
 }
 
-export function bindRoots(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: CompositionPlan,
-  byEntry: ReadonlyMap<object, Metadata>): Program["roots"] {
+export function bindRoots<F>(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: CompositionPlan,
+  byEntry: ReadonlyMap<object, Metadata<F>>): Program<F>["roots"] {
   const rootIds = new Set(plan.roots);
   const rootEntries = new Set<object>();
   if (aliases.keys.length !== plan.roots.length || rootIds.size !== plan.roots.length) {refuse("assembly.prepare.roots");}
@@ -111,8 +112,8 @@ export function bindRoots(aliases: Readonly<ReturnType<typeof rootKeys>>, plan: 
   }));
 }
 
-export function bindInputs(aliases: readonly string[], entries: readonly unknown[],
-  byEntry: ReadonlyMap<object, Metadata>): Program["inputs"] {
+export function bindInputs<F>(aliases: readonly string[], entries: readonly unknown[],
+  byEntry: ReadonlyMap<object, Metadata<F>>): Program<F>["inputs"] {
   return Object.freeze(aliases.map((alias, index) => {
     const entry = entries[index];
     const metadata = entry !== null && typeof entry === "object" ? byEntry.get(entry) : undefined;
@@ -121,8 +122,8 @@ export function bindInputs(aliases: readonly string[], entries: readonly unknown
   }));
 }
 
-export function createProgram(plan: CompositionPlan, roots: Program["roots"], inputs: Program["inputs"],
-  byId: ReadonlyMap<string, Metadata>): Program {
+export function createProgram<F>(plan: CompositionPlan, roots: Program<F>["roots"], inputs: Program<F>["inputs"],
+  byId: ReadonlyMap<string, Metadata<F>>): Program<F> {
   const bindings = new Map<string, Map<string, CompositionPlan["bindings"][number]>>();
   for (const binding of plan.bindings) {
     let rows = bindings.get(binding.consumerImplementationId);
@@ -146,7 +147,7 @@ export function createProgram(plan: CompositionPlan, roots: Program["roots"], in
   });
 }
 
-export function rootModuleIds(aliases: Readonly<ReturnType<typeof rootKeys>>, byEntry: ReadonlyMap<object, Metadata>): readonly string[] {
+export function rootModuleIds<F>(aliases: Readonly<ReturnType<typeof rootKeys>>, byEntry: ReadonlyMap<object, Metadata<F>>): readonly string[] {
   const seen = new Set<string>();
   return aliases.keys.map((alias) => {
     const entry = data(aliases.object, alias);

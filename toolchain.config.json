@@ -8,7 +8,8 @@
       "packages/lifecycle-kernel/tsconfig.json",
       "packages/resources/tsconfig.json",
       "packages/conformance/tsconfig.json",
-      "packages/observation/tsconfig.json"
+      "packages/observation/tsconfig.json",
+      "packages/effect/tsconfig.json"
     ]
   },
   "lint": {
@@ -19,7 +20,8 @@
       "packages/lifecycle-kernel/src",
       "packages/resources/src",
       "packages/conformance/src",
-      "packages/observation/src"
+      "packages/observation/src",
+      "packages/effect/src"
     ]
   },
   "format": {
@@ -29,7 +31,8 @@
       "packages/lifecycle-kernel/src",
       "packages/resources/src",
       "packages/conformance/src",
-      "packages/observation/src"
+      "packages/observation/src",
+      "packages/effect/src"
     ]
   }
 }

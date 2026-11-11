@@ -182,3 +182,41 @@ without remaining P1/P2 in this documentation/design scope. The integration owne
 also clarified that the earlier FileHandle result covers resource/fork ordering,
 not execution of the newly documented outcome race. No further runtime experiment
 or broader review cycle was needed for these source-backed corrections.
+
+## 2026-11-11: production implementation and public-package review
+
+The owner then authorized actual implementation. Three work streams delivered
+Assembly's shared inert preparation, the optional native constructor, and package
+admission through existing gates. Cross-review compared the production source
+with the original boundary and the pinned OpenCode lessons; passing prototypes
+were not treated as production mapper qualification.
+
+| Finding | Correction and evidence |
+| --- | --- |
+| Effect Context keys are covariant: a key could require extra root fields the prepared graph never produces | Check produced roots assignable to the caller's inferred key shape. The previously compiling reproducer now fails at the key argument. Maintained negative tests cover extra root fields and stricter nested members; plain keys and safe wider shapes remain accepted. |
+| A type-only example placed a lazy operation after the scope created by Layer provision | Execute the complete native operation inside provision; keep its request requirement test. |
+| Two source boundaries duplicated native carrier validation | Capture the original authenticated callable; validate the carrier once at native acquisition. |
+| Existing runtime tests lacked an async dependent finalizer using its own mapper-selected provider | Add a gated FileHandle finalizer; it reads successfully before provider release. The same case runs from installed archives. |
+| The old CMS described Promise journals/resources cleanup as universal | Qualify the Promise rules and link native Scope/error ownership from the early normative sections. |
+| Installed documentation linked current authority through a temporary feature branch | Use current-main authority links and keep immutable historical evidence pins. |
+
+Observed local qualification: `effect:check` completed successfully, including
+strict source, NodeNext/Bundler public types, 16 native runtime scenarios, four
+admission rejecting controls, and the external installed-archive suite. That suite
+first runs ordinary Core/Assembly with Effect absent, then repeats the 16 native
+cases using the matched archives and exact Effect 4.1.4 peer. It checks packaged
+guide presence and portable public declarations without Node ambient types.
+The normal repository gates and hosted CI are separate required delivery evidence;
+this paragraph does not infer their outcome from the focused command.
+
+Ordinary Assembly focused validation retained 31 existing runtime cases plus four
+new family/wiring cases and strict test-tooling typing. No existing Promise API
+was broadened to native entries. A separate review-only 2,048-node chain ran to
+completion with exactly 2,048 constructions; this bounded probe is not a published
+performance claim, benchmark suite or guarantee for every thousand-module design.
+
+No named real product has been chosen. The library test Host uses real resources
+but does not establish product adoption, ingress policy or production performance.
+The six earlier numbered improvement plans and frozen 4.1.2 evidence remain
+historical; plugin lifecycle, a new runtime, automatic graph pruning, lifetime tags
+and caches are outside this implementation.

@@ -4,7 +4,7 @@ import { posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import {
-  expectedPeerDependencies, LEAF_PACKAGES, leafManifestPath, leafSubpaths, PRIVATE_CANDIDATE, PUBLIC, PUBLIC_FILES,
+  expectedPeerDependencies, LEAF_PACKAGES, leafFiles, leafManifestPath, leafSubpaths, PRIVATE_CANDIDATE, PUBLIC,
   PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.ts";
 import {
@@ -293,7 +293,7 @@ export function leafManifestViolations(manifest) {
     if (!isDeepStrictEqual(manifest.repository, publicRepository(leaf))) {
       violations.push(`${leaf.name} public package requires its exact repository directory`);
     }
-    if (!isDeepStrictEqual(manifest.files, PUBLIC_FILES)) {
+    if (!isDeepStrictEqual(manifest.files, leafFiles(leaf))) {
       violations.push(`${leaf.name} public package requires the exact files list`);
     }
   } else {
@@ -306,7 +306,7 @@ export function leafManifestViolations(manifest) {
     }
   }
   if (!isDeepStrictEqual(manifest.peerDependencies, expectedPeerDependencies(leaf))) {
-    violations.push(`${leaf.name} peerDependencies must be exactly its row peers with workspace:^`);
+    violations.push(`${leaf.name} peerDependencies must be exactly its row peers with workspace or catalog specifiers`);
   }
   if (manifest.peerDependenciesMeta !== undefined) {
     violations.push(`${leaf.name} must not declare optional peers`);

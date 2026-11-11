@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { parse } from "yaml";
-import { expectedLeafImporter, LEAF_PACKAGES, leafManifestPath } from "./leaf-packages.ts";
+import { expectedLeafImporter, LEAF_PACKAGES, leafExternalPeers, leafManifestPath } from "./leaf-packages.ts";
 import {
   manifestCarrierViolations,
   packageManifestInventory,
@@ -257,6 +257,12 @@ async function validateCurrentAssemblyInputs({ readBytes, readPackageManifest, r
       });
       assert.deepEqual(manifestCarrierViolations(inventory), [],
         `${leaf.name} admission requires an ESM package of its publication class with exactly its declared peers`);
+      for (const [name, version] of Object.entries(leafExternalPeers(leaf))) {
+        assert.equal(workspace.catalog?.[name], version,
+          `${leaf.name} admission requires its exact qualified registry peer ${name}`);
+        assert.equal(rootManifest.devDependencies?.[name], "catalog:",
+          `${leaf.name} admission requires a catalog-backed development peer ${name}`);
+      }
     }
     assert.equal(rootManifest.devDependencies?.[leaf.name], present ? "workspace:*" : undefined,
       `${leaf.name} admission requires an exact optional root development workspace edge`);

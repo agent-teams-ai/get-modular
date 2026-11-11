@@ -1,119 +1,146 @@
 ---
 id: ADR-0043
 type: adr
-status: proposed
+status: accepted
 owner: architecture
-summary: Define the bounded native Effect integration, neutral preparation ownership, and qualification before package admission.
+approved_by: product-owner-delegated-orchestrator
+accepted_at: 2026-11-11
+summary: Admit optional native Effect construction over Assembly-owned neutral preparation, preserving ordinary Promise consumers and explicit resource ownership.
 ---
 
-# ADR-0043: Plan optional native Effect composition
+# ADR-0043: Admit optional native Effect composition
 
 ## Context
 
-The owner selected optional native Effect integration after comparing independent
-GM composition with native Effect Layers. The application requires explicit
-module bindings and useful resource/concurrency semantics. Neutral subject-specific
-ports remain the abstraction at boundaries that need replaceable implementations.
-Breaking changes are permitted when they improve the concrete contract.
+The owner selected a native optional Effect integration, reviewed its bounded
+spikes and authorized production implementation on 2026-11-11. GM must remain
+usable in frontend and backend applications without Effect. Native consumers need
+exact module bindings together with Effect errors, environments and resource
+semantics. Neutral subject-specific ports remain the boundary where independent
+implementations are useful; pure domain code needs no execution library.
 
-Current Assembly factories and its prepared runner use Promise. Core plans are
-inert and do not encode TypeScript errors, requirements or slot cardinality. A
-Promise wrapper cannot recover native Layer construction. Independently copying
-Assembly's capture, profile completion and plan-verification rules would duplicate
-one policy owner.
-
-This document is proposed. It records the design and qualification scope selected
-on 2026-11-09, not accepted package admission or production adoption. The detailed
-[plan](../../research/effect-integration-2026-11/README.md),
-[usage guidance](../../packages/effect/docs/practices.md) and
-[spike evidence](../../research/effect-integration-2026-11/spikes.md) distinguish
-tested native behavior from the future public implementation.
+Assembly's existing factories and runner use Promise. Wrapping that runner cannot
+recover native Layer construction or erased error/environment types. Duplicating
+its metadata capture, profile completion and plan verification would introduce a
+second owner of the same composition policy.
 
 ## Decision
 
-Propose an optional `@get-modular/effect` package with native Effect factories and
-a native Layer result. Core's wire, compiler, diagnostics and digest remain
-unchanged. Ordinary Core/Assembly consumers do not acquire an Effect dependency
-through runtime imports, declarations or installation metadata.
+Admit `@get-modular/effect` as an optional public package, using only the public
+Core and Assembly roots and the exact qualified peer **Effect 4.1.4**. It has no
+Node builtin imports, no platform adapter and no runtime dependency flowing back
+into Core or Assembly. Core wire, compiler, diagnostics and digest do not change.
+Ordinary Promise authoring, context adapters, group inference, execution outcomes
+and Conformance behavior remain intact.
 
-Share only inert preparation mechanics in the existing Assembly owner. Preserve
-captured entry/factory identity, exact slots/cardinality, inventory checks,
-profile completion and Core plan verification. Keep Promise and native Effect
-execution as distinct contracts. Do not add a third authoring package, abstract
-interpreter or universal factory carrier.
-The first native slice determines the smallest neutral bridge; `EntryFamily` and
-`Wiring` are candidate shapes, not an admitted extensibility API. Preserve ordinary
-Promise calls, defaults and inference, including groups and context adapters. Do
-not broaden Promise-facing entry types to admit native entries to Promise-only
-Assembly or Conformance execution; ordinary users choose no backend or E/R types.
+Assembly owns one bounded, inert preparation mechanism. Its additive public
+bridge is `createEntryFamily<F>()` for callable factory carriers, returning
+`capture`, `group`, `entriesOf` and `prepare`. An authenticated family captures
+immutable declarations and the exact executable reference. Preparation returns
+existing failures or verified `Wiring<F>` plus its successful composition. Wiring
+contains ordered metadata/injections, roots and input declarations, never a
+runtime, Scope or executor. An input branch has no dummy executable factory.
+
+The same owner exposes `snapshotFactoryProduct`, `captureWiringInputs` and
+`injectionDependencies` to preserve exact records, safe descriptor handling and
+slot cardinality in both executors. The compiler is selected in Assembly's
+composition root; there is no public compiler replacement, backend registry or
+abstract interpreter. Entry families are not plugin loading or trust boundaries.
+Promise-facing entry types do not admit foreign/native factories.
+
+The optional package provides native `implement`, `group`, `entriesOf`, `input`
+and `effectFor<C>().prepare`. A successful `prepared.layer(Roots, { inputs })`
+returns a real Effect Layer. Its selected typed inventory supplies construction
+`E` and `R`; native Layer ownership supplies construction `Scope`. Operation
+errors/environments stay on the returned native operations. A serialized plan
+alone supplies no type-level proof. Invalid input shape fails as `InvalidInputs`
+before factories; expected factory failures, defects and interruption keep their
+native meanings rather than becoming Promise Assembly outcomes.
 
 GM remains the authority for inter-module provider selection. Private native
-Layers and explicit operation context are allowed; a second undeclared global
-business-service lookup is not. Preserve construction E/R only where the typed
-entry inventory proves them. A serialized plan supplies no type-level proof.
-Replace GM providers before preparation; native provision supplies explicit
-ambient R rather than overriding closed slots. GM entries, private native
-services, DDD bounded contexts and Scopes need not correspond one-to-one.
+Layers and explicit request, transaction and tracing context remain native.
+Undeclared global lookups of neighboring business services would make the GM
+graph incomplete and are outside this architecture. Replace GM providers by
+selecting a typed live/fake inventory before preparation; native provision supplies
+ambient `R`, not a second override mechanism for already closed GM slots. GM
+entries, native services, Scopes and DDD bounded contexts need not be one-to-one.
 
-Effect owns native resource acquisition, memoization and finalization. The Host
-owns the lifetime of using roots and its execution/shutdown policy. Scope closing
-does not prove that unrelated runner work or uncooperative Promise I/O has stopped.
-Do not equate native cleanup with GM Resources debt/retry semantics.
-Fresh identities per Layer instantiation cover mapper-owned nodes; internal or
-external native Layers and borrowed values keep their owners' sharing policy.
-Native execution promises dependency order, not independent-root listing order.
+Map each selected implementation to one stable Layer identity within a graph.
+Different local slots may still select different implementations of one capability.
+Every `.layer()` invocation captures fresh mapper identities and input records;
+explicitly reusing its returned Layer retains native memoization. Captured private
+Layers and borrowed values keep their owners' identity/configuration policies.
+Independent acquisition uses native Layer composition. Dependency order is
+preserved; independent-root listing order is not a startup guarantee.
 
-The 2026-11-11 extension adopts documented typed live/fake variants, nested native
-application/session lifetimes with borrowed inputs, and explicit Host startup
-actions. A general graph projection or shared-tag policy remains a separate
-candidate: projection belongs in neutral preparation and must not leave unusable
-R/input requirements after pruning; sharing must define configuration and ownership.
-Neither is a prerequisite for the first native constructor. No new cache, lifetime
-language, override registry or runtime is admitted by these recipes.
+Effect owns native resource acquisition and finalization. The application Host
+owns ingress, shutdown and the work using roots. A service, Effect or Stream
+escaping its resource Scope is not automatically kept alive or tracked. Borrowed
+inputs register no disposer and their owner must outlive their users. Native
+cleanup is not GM Resources debt/retry semantics. A foreground/worker relationship
+needs an explicit failure policy in addition to scoped lifetime ownership.
 
-Before production exposure, record the exact neutral preparation API and optional
-package/dependency admission, update its governed source/package boundaries,
-qualify current Promise behavior plus the native path, and update the current
-Consumer Module Standard and affected adoption evidence. Preserve accepted ADR
-bytes. A mechanical breaking change includes its migration and codemod; resource
-semantics requiring a decision are migrated explicitly by hand.
-No ordinary-user source migration has yet been shown necessary. Prefer internal
-extraction and additive exports. Any unavoidable public break must identify its
-symbols, concrete benefit and before/after migration under the single
-[migration plan](../../research/effect-integration-2026-11/README.md#breaking-changes-and-migration).
+Adopt recipes for typed live/fake variants, shared application resources with
+local session scopes and borrowed inputs, and explicit setup before worker
+acquisition. Do not add automatic graph projection, shared/local tags, a lifetime
+DSL, cache, override registry or Host runtime. A later shared projection helper
+would belong in neutral preparation and must prove useful E/R/input typing after
+pruning. These later candidates do not block the current native constructor.
 
-The current delivery contains design, reviewed guidance and bounded qualification
-spikes. It does not publish a package, migrate an unrelated product, add plugin
-lifecycle or assert production conformance. One identified real consumer and
-packed/public-entry checks remain part of eventual library adoption.
-The proposed package directory contains documentation only. Its README and the
-agent instruction routes point to one maintained practices guide; first package
-admission must include that guide in the archive and verify its internal link.
+## Delivery and migration
+
+Ship the package manifest, source, public entrypoint, strict type and runtime
+qualification, existing architecture/build/CI admission, and one packaged
+[practices guide](../../packages/effect/docs/practices.md) together. Route AGENTS
+and `.github` to that source. Verify matched archive imports, NodeNext/Bundler
+public types, input isolation, local provider selection, failure/interruption,
+resource-using finalizers and stream lifetime through public entrypoints. Ordinary
+Core/Assembly imports and execution must work with Effect absent.
+
+The source candidate starts at `0.0.0`. A coordinated release intent selects
+Core/Assembly **0.8.0** (the existing paired-version rule) and Effect **0.1.0**.
+Core's coordinated version change introduces no Core source/API behavior. Do not
+publish this candidate beside released Assembly 0.7.1, which lacks the new bridge.
+Registry publication and release-baseline promotion retain their existing gates;
+this decision admits source/package scope, not a completed npm publication.
+
+No ordinary-user source migration is required. Native adoption is explicit:
+choose native factories, move acquisition and resource-using work into their
+proper Effect scopes, retain operation error/context types, and select the native
+preparation API. This semantic resource decision is not a mechanical codemod.
+Any later actual signature break needs its own named migration and codemod where
+mechanical. Existing accepted ADR bytes and release baselines remain unchanged.
+
+The [implementation plan](../../research/effect-integration-2026-11/README.md)
+separates executable library qualification from product adoption. No real product
+has been identified by the owner yet. The real-resource test Host is library
+integration evidence, not product adoption; do not migrate an unrelated product
+or certify production behavior merely to fill that evidence row. A named
+consumer must qualify its actual ingress, failure, stream and shutdown policies.
 
 ## Consequences
 
-- GM remains usable without Effect; native consumers retain native Effect tools.
-- Exact slots and one composition authority can coexist with native execution.
-- One preparation owner avoids two implementations of profile/capture policy.
-- The optional integration is intentionally Effect-dependent. Its internal
-  implementation is not made cheaply replaceable by renaming Effect types.
-- A neutral port can hide a runtime dependency, but must define cancellation,
-  error, completion and streaming behavior. Not every internal module needs one.
-- Native and Promise construction have different error/cleanup contracts. Sharing
-  preparation does not make their execution outcomes interchangeable.
-- Current scope and peer/version qualification are explicit implementation work;
-  a successful finite spike is not sufficient release or product evidence.
+- One preparation owner prevents drift between Promise and native composition.
+- Existing consumers remain independent of the optional Effect package.
+- Native consumers retain Effect tools, errors and environments without a new
+  execution abstraction or an artificial Promise facade between native modules.
+- Exact local binding and native resource ownership are compatible, but neither
+  proves correct domain boundaries or prevents arbitrary escaped values.
+- The optional adapter is deliberately Effect-dependent. Replacing Effect still
+  requires migrating native implementations; neutral subject-specific ports can
+  limit that change where their complete contracts are actually runtime-neutral.
+- Typed variants and explicit Host sequencing have less automation than some
+  OpenCode LayerNode policies; that tradeoff keeps this package bounded.
 
 ## Rejected alternatives
 
-- Wrapping `PreparedAssembly.run()` in `tryPromise`: retains the Promise
-  construction contract and cannot recover native factory E/R or Layer semantics.
-- Reimplementing full Assembly convenience and validation in a second package:
-  duplicates the semantic preparation owner.
-- A separate generic authoring package or runtime backend interface: expands
-  topology and API without a concrete additional responsibility.
-- A universal Task/Fiber/Scope/Stream abstraction: creates a new execution
-  contract and limits or mirrors native Effect rather than integrating it.
-- A ManagedRuntime per module: fragments ownership and caller context without a
-  demonstrated lifetime boundary.
-- Mandatory Effect in Core: violates the selected universal-library boundary.
+- `tryPromise(() => prepared.run())` as a native executor: it retains the Promise
+  contract and cannot recover native construction E/R or Layer composition.
+- A second complete Assembly preparer, or a third authoring package: duplicated
+  policy or extra topology without a new concrete responsibility.
+- A universal Task/Fiber/Scope/Stream abstraction: a new runtime contract that
+  limits or mirrors Effect instead of integrating it.
+- One ManagedRuntime per module, or two independent disposers for one resource:
+  fragments caller context and lifetime responsibility.
+- Mandatory Effect in Core/Assembly, a scheduler, retries, event bus or plugin
+  lifecycle in the adapter: violates the selected universal-library boundary.

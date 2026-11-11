@@ -169,6 +169,19 @@ For a local developer console, `{ includeAuthoringContext: true }` adds escaped
 module, slot, group and alias context. Never send that opt-in text to public clients.
 Opaque causes, stacks, instances and capability values are not inspected.
 
+## Optional native construction
+
+The separately admitted `@get-modular/effect` candidate uses Assembly's neutral
+preparation through `createEntryFamily<F>()`, `snapshotFactoryProduct`,
+`captureWiringInputs` and `injectionDependencies`. Ordinary Promise factories,
+prepared runs and Conformance execution keep their carrier and ownership contract;
+they do not accept native Effect entries or acquire an Effect dependency.
+
+See the [native package](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/README.md)
+for matched-version availability and native authoring. This bridge shares inert
+composition policy; it is not a runtime-backend or plugin registry. Existing
+consumers require no source migration for these additive exports.
+
 Output preserves issue order and complete lines, with at most 32 issues, eight
 candidates or duplicate occurrences per issue, and 16,384 UTF-16 code units.
 Truncation is explicit; existing structured diagnostics remain authoritative.

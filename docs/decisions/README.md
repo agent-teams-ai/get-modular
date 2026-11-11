@@ -10,14 +10,14 @@ summary: Index of Get Modular architecture decisions.
 
 ## Proposed decisions
 
-- [ADR-0043: Plan optional native Effect composition](0043-plan-optional-native-effect-composition.md)
-
 - [ADR-0010: Select replaceable primitives for the first core implementation](0010-select-replaceable-primitives-for-the-first-core-implementation.md)
 - [ADR-0011: Define private self-composition evidence and release custody](0011-define-private-self-composition-evidence-and-release-custody.md)
 - [ADR-0013: Close trusted-object and raw-carrier semantics](0013-close-trusted-object-and-raw-carrier-semantics.md)
 - [ADR-0014: Close duplicate binding-record semantics](0014-close-duplicate-binding-record-semantics.md)
 
 ## Accepted decisions
+
+- [ADR-0043: Admit optional native Effect composition](0043-plan-optional-native-effect-composition.md)
 
 - [ADR-0042: Admit the coordinated 0.7.1 metadata release](0042-admit-the-coordinated-0-7-1-metadata-release.md)
 

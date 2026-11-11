@@ -1,16 +1,17 @@
 # Effect integration practices
 
-Status: draft usage guidance, 2026-11-11. The [integration proposal](https://github.com/agent-teams-ai/get-modular/pull/231)
-describes the selected direction; a production GM native executor and its public
-API are not yet admitted or implemented. The current
-[Consumer Module Standard](https://github.com/agent-teams-ai/get-modular/blob/5fb83478dd7b95216be92c4d3077eddf2774eef8/docs/architecture/common-assembly.md#consumer-module-standard)
-and existing package contracts remain authoritative until their explicit successor.
+Status: implementation-candidate guidance, 2026-11-11. The native package and its
+public API are implemented under [ADR-0043](https://github.com/agent-teams-ai/get-modular/blob/main/docs/decisions/0043-plan-optional-native-effect-composition.md).
+The current candidate uses **Effect 4.1.4** and matched candidate Core/Assembly;
+the package README distinguishes source availability from registry publication.
+The current [Consumer Module Standard](https://github.com/agent-teams-ai/get-modular/blob/main/docs/architecture/common-assembly.md#consumer-module-standard)
+owns GM authoring policy. Native and Promise construction retain different
+execution contracts.
 
-Rules about native Effect use apply to an explicitly chosen Effect scope today.
-Rules about the proposed mapper are acceptance requirements, not shipped features.
-The [spike evidence][gm-spikes] separates tested behavior from remaining work.
-Fragments below are pattern sketches with pre-existing named values, not complete
-compiled examples or proposed GM API names.
+The [implementation evidence](https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/README.md#implementation-candidate)
+separates current public-package tests, the frozen [spike evidence][gm-spikes] and
+future named-product adoption. Fragments below use pre-existing named values;
+the README and maintained public type/runtime fixtures supply complete examples.
 
 ## Mistakes to catch first
 
@@ -73,7 +74,7 @@ capability/operation contracts, without adding another override-contract API.
 ### Typed live and fake variants
 
 Reuse the application's declarations and feature entries. Select the complete
-live or test inventory before calling the proposed native preparation API:
+live or test inventory before calling the native preparation API:
 
 ```ts
 const liveModules = [appEntry, liveRepositoryEntry, databaseEntry] as const;
@@ -103,7 +104,7 @@ it must prove useful public typing and actual omitted acquisition before admissi
 
 ## 3. Preserve native construction and exact provider sharing
 
-For the proposed mapper, validate the complete composition before acquisition and
+The mapper validates the complete composition before acquisition and
 translate the selected graph into native Layers. Preserve factory `E` and `R`
 where their types actually establish them. A serialized plan alone cannot recover
 TypeScript errors or value types; use its matching declarations and factories.
@@ -113,7 +114,7 @@ that distinction; one global Context key cannot represent both bindings. Share o
 selected implementation within its intended build.
 Keep stable Layer identities within each intended memoization domain. Do not
 rebuild a diamond dependency once per incoming edge.
-In the proposed API, every `.layer()` call creates fresh mapper-owned Layer
+Every `.layer()` call creates fresh mapper-owned Layer
 identities; reuse its returned Layer when sharing those nodes is intentional.
 This prevents mapper-owned memoization from aliasing different inputs or ambient R
 even inside one shared memoization domain. Caching one implementation Layer can capture the first input
@@ -153,7 +154,7 @@ Use one application Layer and give each session its own composition Scope. Pass
 only the declared shared capability as a borrowed input, not a Context or runtime.
 In this sketch, `appLayer` owns the shared resource; `AppRoots` and `SessionRoots`
 are native keys. The application function `sessionLayer(shared, config)` creates
-a fresh planned `prepared.layer(SessionRoots, { inputs })` for each captured
+a fresh `prepared.layer(SessionRoots, { inputs })` for each captured
 configuration. It borrows `shared` and never registers its release.
 
 ```ts
@@ -383,9 +384,13 @@ Our five paired lifetime spikes use published **Effect 4.1.2** and strict
 TypeScript **7.0.2**. The first three use disposable FileHandles; the other two
 use controlled finalizer failure and caller References. They are integration
 counterexamples, not reported OpenCode defects or proof of a complete GM mapper.
-See [receipts][gm-spikes]. The new shared/local and typed-variant recipes have not
-been executed as a combined consumer scenario; they are requirements for the
-first real native integration, not additions to the old passing test count.
+See [receipts][gm-spikes]. The production mapper now has separate maintained
+Effect **4.1.4** tests for typed variants, two local compositions borrowing one
+real FileHandle, fail-fast interruption, early stream completion, observed worker
+failure and dependent asynchronous finalizers using a still-open provider. Its
+archive qualification repeats those cases through installed public package roots.
+These are library test-Host results, not additions to the old spike count or proof
+that a named product has adopted the integration.
 
 ### Where LayerNode offers more convenience
 
@@ -431,7 +436,7 @@ Layers; its source explains the shutdown self-retention cycle being avoided.
 Borrow the ownership discipline, not its product-specific Location/eviction model.
 
 For ordinary GM compatibility and intentional native adoption, use the one
-[migration plan](https://github.com/agent-teams-ai/get-modular/blob/docs/architecture-guarantees-plan-20261106/research/effect-integration-2026-11/README.md#breaking-changes-and-migration); do not invent a
+[migration plan](https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/README.md#breaking-changes-and-migration); do not invent a
 second migration checklist in consumer instructions.
 
 [gm-spikes]: https://github.com/agent-teams-ai/get-modular/blob/5131d8789d88816ad458f1bd381727365b962a88/research/effect-integration-2026-11/spikes.md

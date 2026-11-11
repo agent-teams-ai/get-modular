@@ -53,7 +53,7 @@ function snapshotRows(value: unknown): { readonly rows: readonly Row[]; readonly
 
 // Candidates depend on capability identity, never revision. Share immutable lists across slots;
 // only a consumer that provides the capability needs its own self-excluding snapshot.
-function candidateIndex(byId: ReadonlyMap<string, Metadata>): (consumer: string, capability: string) => readonly string[] {
+function candidateIndex(byId: ReadonlyMap<string, Metadata<unknown>>): (consumer: string, capability: string) => readonly string[] {
   const providersOf = new Map<string, Set<string>>();
   for (const [implementationId, metadata] of byId) {
     for (const provided of metadata.declaration.provides) {
@@ -85,7 +85,7 @@ function candidateIndex(byId: ReadonlyMap<string, Metadata>): (consumer: string,
 export function deriveProfile(input: {
   readonly profileId: unknown;
   readonly bindings: unknown;
-  readonly byId: ReadonlyMap<string, Metadata>;
+  readonly byId: ReadonlyMap<string, Metadata<unknown>>;
   readonly groupPaths: ReadonlyMap<string, readonly string[]>;
   readonly rootModuleIds: readonly string[];
 }): DerivedProfile {

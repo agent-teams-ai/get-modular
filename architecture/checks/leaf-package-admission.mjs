@@ -6,8 +6,8 @@ import { parseTypeScript } from "../../tests/qualification/support/typescript-pr
 import { GENERATED_PRODUCTION_PATH } from "./generated-production-source.ts";
 import {
   assertLeafPackageTable, expectedLeafExports, expectedPeerDependencies, LEAF_PACKAGES, leafEntrySources,
-  leafManifestPath, leafPeers, leafSubpaths, PUBLIC,
-  PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
+  leafFiles, leafImportPeers, leafManifestPath, leafSubpaths, PUBLIC,
+  PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "./leaf-packages.ts";
 
 const PUBLICATION_FIELDS = Object.freeze([
@@ -65,8 +65,8 @@ async function assertSourceEdges(leaf, path, source) {
   const { parsed, specifiers } = await parseSource(path, source);
   for (const specifier of specifiers) {
     // A declared peer is imported through its package root only.
-    if (leafPeers(leaf).includes(specifier)) continue;
-    const deepPeer = leafPeers(leaf).find(peer => specifier.startsWith(`${peer}/`));
+    if (leafImportPeers(leaf).includes(specifier)) continue;
+    const deepPeer = leafImportPeers(leaf).find(peer => specifier.startsWith(`${peer}/`));
     assert(deepPeer === undefined, `${path} has a forbidden deep import of peer ${deepPeer}: ${specifier}`);
     assert(specifier.startsWith("./") || specifier.startsWith("../"),
       `${path} has a forbidden package or builtin import: ${specifier}`);
@@ -120,7 +120,7 @@ async function assertLeafManifest(leaf, readPackageManifest) {
       `${leaf.name} public package requires the exact npm publishConfig`);
     assert.deepEqual(manifest.repository, publicRepository(leaf),
       `${leaf.name} public package requires its exact repository directory`);
-    assert.deepEqual(manifest.files, PUBLIC_FILES,
+    assert.deepEqual(manifest.files, leafFiles(leaf),
       `${leaf.name} public package requires the exact files list`);
   } else {
     assert.equal(manifest.private, true, `${leaf.name} candidate must remain private`);
@@ -136,7 +136,8 @@ async function assertLeafManifest(leaf, readPackageManifest) {
     : `${leaf.name} requires exactly its row's ESM export subpaths and no deep import`);
   assert(Array.isArray(manifest.files) && manifest.files.length > 0
     && manifest.files.every(path => typeof path === "string"
-      && /^(?:dist|README\.md|LICENSE|CHANGELOG\.md)(?:\/[A-Za-z0-9._/-]+)?$/u.test(path)
+      && (/^(?:dist|README\.md|LICENSE|CHANGELOG\.md)(?:\/[A-Za-z0-9._/-]+)?$/u.test(path)
+        || leaf.documentation?.includes(path))
       && !path.split("/").includes("..")),
   `${leaf.name} requires a bounded archive files allowlist`);
   for (const field of ["dependencies", "optionalDependencies", "devDependencies"]) {
@@ -145,7 +146,7 @@ async function assertLeafManifest(leaf, readPackageManifest) {
     `${leaf.name} must have zero ${field}`);
   }
   assert.deepEqual(manifest.peerDependencies, expectedPeerDependencies(leaf),
-    `${leaf.name} must declare exactly its row peers with the workspace caret range`);
+    `${leaf.name} must declare exactly its row peers with workspace or catalog specifiers`);
   assert.equal(manifest.peerDependenciesMeta, undefined,
     `${leaf.name} must not declare optional peers`);
   assert(manifest.scripts === undefined || record(manifest.scripts),
