@@ -505,7 +505,7 @@ test("v4 quality projects come only from the declared Stack configuration", asyn
   }
 });
 
-test("repository v4 quality policy retains all six production compiler projects", async () => {
+test("repository v4 quality policy retains all seven production compiler projects", async () => {
   const policy = parse(await readFile("architecture/foundation/quality-source-coverage.yaml", "utf8"));
   const config = JSON.parse(await readFile(policy.toolchainConfigPath, "utf8"));
   assert.equal(policy.schemaVersion, 4);
@@ -514,5 +514,6 @@ test("repository v4 quality policy retains all six production compiler projects"
     "packages/core/tsconfig.typecheck.json", "packages/assembly/tsconfig.json",
     "packages/lifecycle-kernel/tsconfig.json", "packages/resources/tsconfig.json",
     "packages/conformance/tsconfig.json", "packages/observation/tsconfig.json",
+    "packages/effect/tsconfig.json",
   ]);
 });

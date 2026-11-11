@@ -51,7 +51,7 @@ import * as observationTesting from "@get-modular/observation/testing";
 const require = createRequire(import.meta.url);
 for (const [name, namespace, expected] of [
   ["core", core, ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]],
-  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "formatFailure", "group", "implement", "input"]],
+  ["assembly", assembly, ["AssemblyBindingError", "assemblyFor", "captureWiringInputs", "createEntryFamily", "declareModule", "defineContract", "entriesOf", "formatFailure", "group", "implement", "injectionDependencies", "input", "snapshotFactoryProduct"]],
   ["resources", resources, ["CloseIncompleteError", "InvalidArgumentError", "ScopeClosedError", "createScope", "scoped"]],
   ["conformance", conformance, ["ConformanceError", "checkModuleLayout", "checkNamespaces", "checkWiring", "contractSuite", "describeWiring", "guardHandles", "isolate", "runContractSuite", "smoke"]],
   ["observation", observation, ["ObservationError", "createStore"]],
