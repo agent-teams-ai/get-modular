@@ -282,13 +282,22 @@ production guidance.
 
 The prepared Host intentionally incorporates accepted main `081ae02b` (PR #206
 and #212), preserving Bun 1.4.3, Foundation 3.0.0, FMS 0.3.0, Stack 0.1.1
-and the unchanged shared publisher `ff94f771`. The standard's current document
-is Git blob `df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, SHA-256
+and the unchanged shared publisher `ff94f771`. The standard document at that
+checkpoint is Git blob `df4eff7235ac781ec574903c6b2aec13bcd7bfaa`, SHA-256
 `3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86`.
 Its reviewed delta from the prepared branch changes five repository verification
 commands to Bun; the owning SDK evidence migration is retained unchanged.
 The earlier review observations above remain historical. SDK activation remains
 on HOLD. This tooling integration changes no production composition boundary.
+
+The current reviewed standard is now source checkpoint
+`49f09f5121ea6da544dd98f3c1cf7015e38c66cc`, Git blob
+`465c3645a8108205a2026c965e5ff1269f32e75e`, SHA-256
+`465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8`.
+ADR-0043 adds optional native Effect construction while keeping ordinary
+Promise ownership and this release-tooling boundary intact. Its exact delta and
+previous reviews are retained by the SDK guidance owner. This source-candidate
+pin does not claim registry publication, production adoption or SDK activation.
 
 ## Coordinated metadata patch
 

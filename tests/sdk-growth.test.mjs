@@ -197,14 +197,17 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("previous current pin is stale", () => rejectCms(model => {
     model.cmsReview.acceptedCurrent = { ...model.cmsReview.delta.fromAcceptedCurrent };
   }, /current CMS pin/u));
-  await t.test("descriptor-union successor cannot be mislabeled command-only", () => rejectCms(model => {
+  await t.test("native construction successor cannot be mislabeled command-only", () => rejectCms(model => {
     model.cmsReview.delta.changesGetModularCompositionContract = false;
   }, /CMS delta review/u));
   for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsP0Bytes", "cmsSourceBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes",
     "cmsHistoricalDeltaBytes", "cmsP0ReviewBytes", "cms300eBytes", "cmsBunDeltaBytes", "cmsBunReviewBytes",
     "cmsGrowthPreviousBytes", "cmsGrowthDeltaBytes", "cmsGrowthReviewBytes",
     "cmsDrainPreviousBytes", "cmsDrainDeltaBytes", "cmsDrainReviewBytes", "cmsDrainGrowthPreviousBytes",
-    "cmsDrainGrowthDeltaBytes", "cmsDrainGrowthReviewBytes", "cmsAuthoringDecisionBytes"]) {
+    "cmsDrainGrowthDeltaBytes", "cmsDrainGrowthReviewBytes", "cmsAuthoringDecisionBytes",
+    "cmsDescriptorPreviousBytes", "cmsDescriptorDeltaBytes", "cmsDescriptorReviewBytes",
+    "cmsDescriptorGrowthPreviousBytes", "cmsDescriptorGrowthDeltaBytes", "cmsDescriptorGrowthReviewBytes",
+    "cmsNativeDecisionBytes"]) {
     await t.test(field, () => rejectCms(model => {
       model[field] = Buffer.from("substituted input");
     }, /CMS .*bytes/u));
@@ -227,6 +230,12 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("accepted authoring ADR identity cannot drift", () => rejectCms(model => {
     model.cmsReview.authoringReview.decision.sha256 = "0".repeat(64);
   }, /CMS authoring contract review/u));
+  await t.test("native construction must retain its accepted decision and distinct ownership", () => rejectCms(model => {
+    model.cmsReview.nativeReview.resourceOwnership = "shared-with-promise-disposer";
+  }, /CMS native construction review/u));
+  await t.test("optional native guidance cannot claim SDK adoption", () => rejectCms(model => {
+    model.cmsReview.growthScopeReview.nativeEffect = "selected";
+  }, /growth CMS scope review/u));
   await t.test("review cannot omit a semantic change", () => rejectCms(model => {
     model.cmsReview.delta.semanticChanges.pop();
   }, /CMS delta review/u));
@@ -262,13 +271,14 @@ test("CMS evidence loading rejects absent current and historical inputs", async 
   await cp("architecture", join(root, "architecture"), { recursive: true });
   for (const path of ["package.json", "pnpm-lock.yaml", "foundation.config.yaml", "docs/architecture/common-assembly.md",
     "packages/assembly/package.json", "packages/core/package.json",
-    "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md"]) {
+    "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
+    "docs/decisions/0043-plan-optional-native-effect-composition.md"]) {
     await mkdir(join(root, path, ".."), { recursive: true });
     await cp(path, join(root, path));
   }
   validateCmsGuidance(await loadSdkGrowthModel(root));
   const review = JSON.parse(await readFile("architecture/sdk-growth/evidence/consumer-module-standard.json", "utf8"));
-  for (const path of [review.retainedEvidence.currentDocumentPath, review.retainedEvidence.deltaPath,
+  for (const path of new Set([review.retainedEvidence.currentDocumentPath, review.retainedEvidence.deltaPath,
     review.retainedEvidence.previousReviewPath, review.retainedEvidence.growthPreviousDocumentPath,
     review.retainedEvidence.growthDeltaPath, review.retainedEvidence.growthPreviousReviewPath,
     "architecture/sdk-growth/evidence/cms-guidance-bun-20261020/common-assembly.diff",
@@ -276,7 +286,12 @@ test("CMS evidence loading rejects absent current and historical inputs", async 
     "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.diff",
     "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/previous-review.json",
     "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/growth-common-assembly.diff",
-    "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md"]) {
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/previous-review.json",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
+    "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
+    "docs/decisions/0043-plan-optional-native-effect-composition.md"])) {
     await t.test(path, async () => {
       const target = join(root, path);
       const bytes = await readFile(target);
