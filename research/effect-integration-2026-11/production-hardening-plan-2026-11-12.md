@@ -1,6 +1,7 @@
 # GM + Effect production hardening — 2026-11-12
 
-Status: implementation and research in progress.
+Status: implementation, research and focused acceptance complete; repository
+gates and exact-source delivery are tracked in [PR #239](https://github.com/agent-teams-ai/get-modular/pull/239).
 Base: `6169d018935444bde08d43c30bb9a6a9fa9efbd3` (merged audit PR #238).
 Owner: the existing optional native construction boundary, its public-package
 tests, and the one [packaged practices guide](../../packages/effect/docs/practices.md).
@@ -51,7 +52,7 @@ adoption by a named production application retain their separate decisions.
    this plan in a draft PR. Report actual outcomes and the remaining product
    admission boundary, including the user's two requested engineering scores.
 
-The cases above are the initial evidence gaps, not predeclared production bugs.
+The cases above are the initial evidence gaps, not assumed production bugs.
 Refine their shape after adversarial review. Use Deferred barriers and independent
 resource counts/order/identity assertions; a finite test timeout is only a hung
 test guard. Reject test oracles that derive their answer from the implementation.

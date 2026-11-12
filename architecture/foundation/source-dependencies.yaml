@@ -398,6 +398,7 @@ boundaries:
     entrypoints:
       - packages/effect/tests/construction.test.ts
       - packages/effect/tests/consumer.test.ts
+      - packages/effect/tests/lifecycle.test.ts
       - packages/effect/tests/packed-root.test.ts
       - packages/effect/tests/portable.ts
       - packages/effect/tests/support.ts

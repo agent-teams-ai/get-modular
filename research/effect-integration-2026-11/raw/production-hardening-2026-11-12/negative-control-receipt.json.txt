@@ -1,0 +1,40 @@
+{
+  "kind": "isolated-test-oracle-control",
+  "observedDate": "2026-11-12",
+  "productionComparisonBase": "6169d018935444bde08d43c30bb9a6a9fa9efbd3",
+  "sourceBinding": "Working-tree test content is bound by SHA-256; comparison base identifies unchanged production source, not this uncommitted test.",
+  "sourcePath": "packages/effect/tests/lifecycle.test.ts",
+  "sourceSha256": "e3ecfe51564598e9c8a101f9447ea33da7ba64f3e41077c4416cd831cc7f0f6f",
+  "sourceBytes": 10186,
+  "versions": {
+    "node": "v24.22.1",
+    "typescript": "7.0.2",
+    "effect": "4.1.4"
+  },
+  "mutation": {
+    "occurrences": 1,
+    "before": "await file.close(); released += 1; events.push(\"resource-closed\");",
+    "after": "released += 1; events.push(\"resource-closed\");"
+  },
+  "scope": "Temporary copy only; its imports resolve the same built public package and copied support fixture. Production and maintained tests unchanged.",
+  "typecheck": {
+    "project": "temporary project extending packages/effect/tsconfig.test-tooling.json, include *.ts, exclude []",
+    "exitCode": 0
+  },
+  "test": {
+    "namePattern": "^partial parallel startup",
+    "expectedExitCode": 1,
+    "actualExitCode": 1,
+    "failed": 1,
+    "cancelled": 0,
+    "rejection": "FileHandle.fd expected -1 after reported release"
+  },
+  "output": {
+    "path": "negative-control.tap.txt",
+    "sha256": "fcd073f4e31797bb151873c0d9203c4fa5956369c0e6fea41ea1556ec6aed0d9",
+    "bytes": 1074,
+    "normalization": "Trailing horizontal whitespace removed from each line; all diagnostic text and line breaks preserved.",
+    "originalSha256": "afed5dcd8fae9b17574c73cbc5cd7c80aabfb5dde128b002dbb3d0ac58062ed1",
+    "originalBytes": 1082
+  }
+}
