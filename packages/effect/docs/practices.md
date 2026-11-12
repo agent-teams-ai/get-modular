@@ -20,6 +20,7 @@ the README and maintained public type/runtime fixtures supply complete examples.
 | Merge a fake Layer into a closed live graph and assume live resources are gone | Select a typed composition variant before preparation; [rule 2](#2-give-inter-module-selection-one-authority) |
 | Treat shared Layer identity or a cache reference count as a complete lifetime guarantee | State configuration, cache domain and resource/work owners separately; [rules 3](#3-preserve-native-construction-and-exact-provider-sharing) and [4](#4-state-who-owns-resources-and-who-owns-work) |
 | Restore a captured Context together with an old Scope | Keep the active operation owner; [rule 4](#4-state-who-owns-resources-and-who-owns-work) |
+| Close a private resource Layer when its factory returns a capability | Build it in the factory's construction Scope; [private Layer recipe](#keep-private-resource-layers-in-the-factory-scope) |
 | Return a Stream from a scope that already released its resource | Own acquisition through consumption/finalization; [rule 7](#7-own-streams-through-consumption-and-finalization) |
 | Discard the Effect signal at a Promise/SDK boundary | Forward cancellation and preserve caller signals; [rule 8](#8-forward-cancellation-to-foreign-io-and-document-its-actual-guarantee) |
 | Discard cleanup failures or treat interrupted waiting as physical cleanup | Preserve causes and the promised close outcome; [rules 9](#9-keep-expected-failures-defects-and-interruption-distinguishable) and [10](#10-preserve-cleanup-evidence-without-inventing-retry-guarantees) |
@@ -147,6 +148,37 @@ Keep resource-using operations and their finalizers inside a lifetime that retai
 the resource. A captured service run by an unrelated root runner is not
 automatically tracked by the service owner's ManagedRuntime. TypeScript does not
 revoke escaped objects. A scoped callback alone cannot prevent every escape.
+
+### Keep private resource Layers in the factory Scope
+
+An implementation can reuse a resourceful native Layer without turning each
+private service into a GM entry. Build it in the existing construction Scope:
+
+```ts
+const entry = implement<AppMap>()(declaration, () => Effect.gen(function* () {
+  const context = yield* Layer.build(PrivateLive);
+  const service = Context.get(context, PrivateService);
+  return { instance: service, capabilities: { [Port.id]: service } };
+}));
+```
+
+`Layer.build` uses the active Scope supplied by the mapper's native Layer. Its
+construction errors and remaining requirements stay in E/R. Do not wrap only
+the creation of a returned resource-using capability in
+`Effect.provide(makeProduct, PrivateLive)` or a new `Effect.scoped`: that inner
+lifetime can end before the capability's first operation. Providing the complete
+resource-using program at the Host boundary, as in the README, remains correct.
+
+Return the narrow capability, not the construction Context. Building a Layer
+does not automatically provide that Context to future operations: capture their
+needed private services or retain honest operation requirements. Do not restore
+the captured construction Scope. Neighboring GM services still arrive through
+declared slots; pass those injected values explicitly to the private Layer.
+The identity/configuration rules in rule 3 still apply to reused private Layers.
+
+The maintained consumer fixture reads a real FileHandle during an operation and
+again in a dependent asynchronous finalizer, then observes the private Layer's
+single release. The installed-archive suite runs that same scenario.
 
 ### One application owner, two local sessions
 

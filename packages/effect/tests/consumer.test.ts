@@ -23,7 +23,7 @@ async function readAlive(file: FileHandle): Promise<string> {
 }
 const ioError = (error: unknown): Error => error instanceof Error ? error : new Error(String(error));
 
-test("a mapper-owned provider stays open through its dependent asynchronous finalizer", { timeout: 10000 }, async () => {
+test("a provider's private Layer stays open through operations and its dependent asynchronous finalizer", { timeout: 10000 }, async () => {
   const directory = await mkdtemp(join(tmpdir(), "gm-effect-dependent-"));
   const filename = join(directory, "resource.txt");
   await writeFile(filename, "alive");
@@ -31,11 +31,16 @@ test("a mapper-owned provider stays open through its dependent asynchronous fina
     const events: string[] = [];
     const finalizing = Deferred.makeUnsafe<void>();
     const proceed = Deferred.makeUnsafe<void>();
+    class PrivateFile extends Context.Service<PrivateFile, FileHandle>()("consumer/PrivateFile") {}
+    const privateFileLive = Layer.effect(PrivateFile, Effect.acquireRelease(
+      Effect.tryPromise({ try: () => open(filename, "r"), catch: ioError }),
+      file => Effect.promise(async () => { await file.close(); events.push("provider-closed"); }),
+    ));
     const provider = implement<ConsumerMap>()(declareModule({ moduleId: "dependent/file", implementationId: "dependent/file",
-      owner: { authority: "consumer", path: ["file"] }, provides: [File.provide()], slots: [] }), () => Effect.acquireRelease(
-        Effect.tryPromise({ try: () => open(filename, "r"), catch: ioError }),
-        file => Effect.promise(async () => { await file.close(); events.push("provider-closed"); }),
-      ).pipe(Effect.map(file => ({ instance: file, capabilities: { [File.id]: file } }))));
+      owner: { authority: "consumer", path: ["file"] }, provides: [File.provide()], slots: [] }), () => Effect.gen(function* () {
+        const file = Context.get(yield* Layer.build(privateFileLive), PrivateFile);
+        return { instance: file, capabilities: { [File.id]: file } };
+      }));
     const app = implement<ConsumerMap>()(declareModule({ moduleId: "dependent/app", implementationId: "dependent/app",
       owner: { authority: "consumer", path: ["app"] }, provides: [], slots: [File.slot("file", required())] }), ({ file }) =>
       Effect.acquireRelease(Effect.succeed(file), () => Effect.gen(function* () {
@@ -45,13 +50,17 @@ test("a mapper-owned provider stays open through its dependent asynchronous fina
       })).pipe(Effect.map(instance => ({ instance, capabilities: {} }))));
     const graph = prepared(await effectFor<ConsumerMap>().prepare({ profileId: "dependent/test", modules: [provider, app], roots: { app } }));
     await Effect.runPromise(Effect.gen(function* () {
-      const work = yield* Effect.forkChild(Effect.provide(Effect.void, graph.layer(ApplicationRoots)));
+      const operation = Effect.gen(function* () {
+        const { app } = yield* ApplicationRoots;
+        yield* Effect.promise(async () => { assert.equal(await readAlive(app), "alive"); events.push("operation-read"); });
+      });
+      const work = yield* Effect.forkChild(Effect.provide(operation, graph.layer(ApplicationRoots)));
       yield* Deferred.await(finalizing);
-      assert.deepEqual(events, []);
+      assert.deepEqual(events, ["operation-read"]);
       yield* Deferred.succeed(proceed, undefined);
       yield* Fiber.join(work);
     }));
-    assert.deepEqual(events, ["dependent-closed", "provider-closed"]);
+    assert.deepEqual(events, ["operation-read", "dependent-closed", "provider-closed"]);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
