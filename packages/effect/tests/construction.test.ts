@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assemblyFor, declareModule, defineContract, implement as implementPromise, type CapabilitiesOf } from "@get-modular/assembly";
-import { required } from "@get-modular/core";
+import { compileComposition, many, required, type CompositionProfile } from "@get-modular/core";
 import { Context, Deferred, Effect, Exit, Fiber, Layer } from "effect";
 import { effectFor, implement, input, InvalidInputs } from "../dist/index.js";
 import { assertPreparationFailure, BootFailure, Config, DatabasePort, fixture, prepared, Roots, type TestMap, uncheckedPreparation } from "./support.ts";
@@ -223,4 +223,74 @@ test("fresh mapper identities also isolate ambient requirements with no borrowed
   assert.deepEqual(await Effect.runPromise(Effect.all([A, B]).pipe(Effect.provide(Layer.mergeAll(a, b)))), ["a/primary", "b/primary"]);
   assert.equal(f.stats.acquired, 4);
   assert.equal(f.stats.released, 4);
+});
+
+test("thousand-node chain and wide graphs acquire once and release dependencies last", { timeout: 30000 }, async () => {
+  interface NodeValue { readonly index: number; readonly size: number }
+  const NodePort = defineContract<NodeValue>()({ id: "growth/node", revision: 1 });
+  interface GrowthMap extends CapabilitiesOf<typeof NodePort> {}
+  class GrowthRoots extends Context.Service<GrowthRoots, { readonly app: NodeValue }>()("native-tests/GrowthRoots") {}
+  const count = 1000;
+  for (const shape of ["chain", "wide"] as const) {
+    let factoryCalls = 0;
+    const active = new Set<number>();
+    const acquisitions = new Array<number>(count).fill(0);
+    const releases = new Array<number>(count).fill(0);
+    const releaseOrder: number[] = [];
+    const id = (index: number): string => `growth/node-${index}`;
+    const modules = Array.from({ length: count }, (_, index) => implement<GrowthMap>()(declareModule({
+      moduleId: id(index), implementationId: id(index), owner: { authority: "growth", path: [shape] },
+      provides: [NodePort.provide()], slots: [NodePort.slot("dependencies", many({ min: 0, max: count - 1 }))],
+    }), ({ dependencies }) => {
+      factoryCalls += 1;
+      return Effect.acquireRelease(
+        Effect.sync(() => {
+          for (const dependency of dependencies) assert.ok(active.has(dependency.index));
+          acquisitions[index] = (acquisitions[index] ?? 0) + 1;
+          active.add(index);
+          return { index, size: 1 + dependencies.reduce((total, dependency) => total + dependency.size, 0) };
+        }),
+        () => Effect.sync(() => {
+          for (const dependency of dependencies) assert.ok(active.has(dependency.index));
+          releases[index] = (releases[index] ?? 0) + 1;
+          releaseOrder.push(index);
+          active.delete(index);
+        }),
+      ).pipe(Effect.map(instance => ({ instance, capabilities: { [NodePort.id]: instance } })));
+    }));
+    const root = modules.at(-1);
+    assert.ok(root);
+    const profile: CompositionProfile = {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: `growth/${shape}`,
+      roots: [root.declaration.moduleId],
+      selections: modules.map(entry => ({ moduleId: entry.declaration.moduleId, implementationId: entry.declaration.implementationId })),
+      bindings: modules.map((entry, index) => ({
+        consumerImplementationId: entry.declaration.implementationId, slotId: "dependencies",
+        providerImplementationIds: shape === "chain" ? index === 0 ? [] : [id(index - 1)]
+          : index === count - 1 ? Array.from({ length: count - 1 }, (_, provider) => id(provider)) : [],
+      })),
+    };
+    // Dynamic inventories use the public verified-composition route. No tuple or type assertion hides their shape.
+    const composition = await compileComposition({ declarations: modules.map(entry => entry.declaration), profile });
+    assert.ok(composition.ok);
+    const graph = prepared(await effectFor<GrowthMap>().prepare({ modules, roots: { app: root }, composition }));
+    const layer = graph.layer(GrowthRoots);
+    assert.equal(factoryCalls, 0);
+    assert.deepEqual(acquisitions, new Array<number>(count).fill(0));
+    assert.equal(active.size, 0);
+    await Effect.runPromise(Effect.gen(function* () {
+      const { app } = yield* GrowthRoots;
+      assert.deepEqual(app, { index: count - 1, size: count });
+      assert.equal(active.size, count);
+      assert.deepEqual(acquisitions, new Array<number>(count).fill(1));
+      assert.equal(releaseOrder.length, 0);
+    }).pipe(Effect.provide(layer)));
+    assert.equal(active.size, 0);
+    assert.equal(factoryCalls, count);
+    assert.deepEqual(releases, new Array<number>(count).fill(1));
+    assert.equal(releaseOrder[0], count - 1);
+    if (shape === "chain") {
+      assert.deepEqual(releaseOrder, Array.from({ length: count }, (_, index) => count - 1 - index));
+    }
+  }
 });

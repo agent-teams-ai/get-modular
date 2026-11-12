@@ -1,0 +1,202 @@
+{
+  "repository": "anomalyco/opencode",
+  "ref": "dev",
+  "sha": "becb9c7c9f3907257d12e95993a47ccc6e3b9625",
+  "observed_date": "2026-11-12",
+  "kind": "source-inspection-only",
+  "files": [
+    {
+      "path": "package.json",
+      "inspectionCopySha256": "d11d6551d10bb1a062d952828528ae82571c1d6a6396da6306c69d39a1038ba8",
+      "inspectionCopyBytes": 7232,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/package.json"
+    },
+    {
+      "path": "packages/core/src/aisdk.ts",
+      "inspectionCopySha256": "e623045e3dfcdd896a32a4e5889883331b8d54ab82636e988bd77aa48416f7b2",
+      "inspectionCopyBytes": 39615,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/src/aisdk.ts"
+    },
+    {
+      "path": "packages/core/src/location-lifecycle.ts",
+      "inspectionCopySha256": "08bf84967b397c968070b54100212de5e732e332bcda8d67d987c1718ff12423",
+      "inspectionCopyBytes": 3640,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/src/location-lifecycle.ts"
+    },
+    {
+      "path": "packages/core/src/location-service-map.ts",
+      "inspectionCopySha256": "a3fd0c15d5d70899112477946abc2915bfda23923104c9d13fd1a49c304b993a",
+      "inspectionCopyBytes": 2148,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/src/location-service-map.ts"
+    },
+    {
+      "path": "packages/core/src/location-services.ts",
+      "inspectionCopySha256": "3f545ffc78ab7dae8b4740e14b6a854cf0bea52e7ab6b8a06d4947384d0a241d",
+      "inspectionCopyBytes": 6164,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/src/location-services.ts"
+    },
+    {
+      "path": "packages/core/src/session/execution/restart.ts",
+      "inspectionCopySha256": "6d077eef40fc35c269bd93a251b28be7608cb300afda5d18fa3a84f2905d9dd7",
+      "inspectionCopyBytes": 21292,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/src/session/execution/restart.ts"
+    },
+    {
+      "path": "packages/core/src/session/run-coordinator.ts",
+      "inspectionCopySha256": "2eb5a00fdc6cddc303ed8e9ccada8c710a647e56456abab80c7c8240ed017080",
+      "inspectionCopyBytes": 9144,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/src/session/run-coordinator.ts"
+    },
+    {
+      "path": "packages/core/test/aisdk.test.ts",
+      "inspectionCopySha256": "d02f04d1a1627dd093725f98d7aaf66e951083fbb8677a2a89f5d5daca962c48",
+      "inspectionCopyBytes": 47479,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/aisdk.test.ts"
+    },
+    {
+      "path": "packages/core/test/effect/layer-node/layer-node-types.test.ts",
+      "inspectionCopySha256": "790dc829698e423863a04f50faf2e16cc2088d3b165eb01a68bf4486dc0e1e79",
+      "inspectionCopyBytes": 11776,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/effect/layer-node/layer-node-types.test.ts"
+    },
+    {
+      "path": "packages/core/test/effect/layer-node/layer-node.test.ts",
+      "inspectionCopySha256": "b5a3be3f441b91f9fc3533c970edfddc0cc5b96c29719ae470b0f50a514ab074",
+      "inspectionCopyBytes": 18880,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/effect/layer-node/layer-node.test.ts"
+    },
+    {
+      "path": "packages/core/test/effect/layer-node/node-build.test.ts",
+      "inspectionCopySha256": "4ddbd601e210c97248cc19fa38294b674bc8ab68f3901e9599571015c01ff790",
+      "inspectionCopyBytes": 5982,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/effect/layer-node/node-build.test.ts"
+    },
+    {
+      "path": "packages/core/test/location-layer.test.ts",
+      "inspectionCopySha256": "595d313bf5a72ad1675e503e68d85ef81b6bd08cf35046916bead7d08d7a8df6",
+      "inspectionCopyBytes": 37258,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/location-layer.test.ts"
+    },
+    {
+      "path": "packages/core/test/location-retain.test.ts",
+      "inspectionCopySha256": "4f7be69b18e873356cb69818736b691a4715755127e7d95ce329306f6f7084fe",
+      "inspectionCopyBytes": 4381,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/location-retain.test.ts"
+    },
+    {
+      "path": "packages/core/test/session-run-coordinator.test.ts",
+      "inspectionCopySha256": "4d1e3f2d4dbcf9f79b9e41905a3fe8550745828685ffafc4883b036378e05931",
+      "inspectionCopyBytes": 28427,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/core/test/session-run-coordinator.test.ts"
+    },
+    {
+      "path": "packages/sdk/src/internal/fetch.ts",
+      "inspectionCopySha256": "df240c3125491af67d91df4cd25cb0165f53ac32deed6c570eb31c57c81344c2",
+      "inspectionCopyBytes": 3613,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/src/internal/fetch.ts"
+    },
+    {
+      "path": "packages/sdk/src/internal/host.ts",
+      "inspectionCopySha256": "8a7ec390950bcd16657399e29dae4f1e04afdb1c7e158e59c5ce3fc11bce9fe7",
+      "inspectionCopyBytes": 3359,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/src/internal/host.ts"
+    },
+    {
+      "path": "packages/sdk/src/internal/instances.ts",
+      "inspectionCopySha256": "5adb38864459e0cafa2520dbd97cda8e7df9b158d12aa9b0397b896b31e57e58",
+      "inspectionCopyBytes": 4866,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/src/internal/instances.ts"
+    },
+    {
+      "path": "packages/sdk/src/promise.ts",
+      "inspectionCopySha256": "73fba6fed72fd49b6559c4f3a13175f81da820cd5d499a15cbe7f9e2743300c3",
+      "inspectionCopyBytes": 3002,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/src/promise.ts"
+    },
+    {
+      "path": "packages/sdk/test/import-boundaries.test.ts",
+      "inspectionCopySha256": "3d654cd1563914f0ff3c3481090a887e8e4701d34fe7b825e022772fb9c96322",
+      "inspectionCopyBytes": 1836,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/test/import-boundaries.test.ts"
+    },
+    {
+      "path": "packages/sdk/test/instances-effect.test.ts",
+      "inspectionCopySha256": "252a1469c63a3ffe5af59784f5c459a636468e9988406d90b1cd62692f61995a",
+      "inspectionCopyBytes": 13669,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/test/instances-effect.test.ts"
+    },
+    {
+      "path": "packages/sdk/test/instances-lifecycle.test.ts",
+      "inspectionCopySha256": "37139986c7b92f343801b613a942c9d4c94f56a0c9ce137f6ba45d49864c823d",
+      "inspectionCopyBytes": 2759,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/test/instances-lifecycle.test.ts"
+    },
+    {
+      "path": "packages/sdk/test/instances.test.ts",
+      "inspectionCopySha256": "af50a48e8763baef569526e259fec1db8f7226d60cd6142903bf0d0ccbf4d8d8",
+      "inspectionCopyBytes": 15848,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/test/instances.test.ts"
+    },
+    {
+      "path": "packages/sdk/test/request-retention.test.ts",
+      "inspectionCopySha256": "d296b206f9f1bb1b4fca42ea87f23fc7d33d1fb1ea4fdc91784e61647bf194b5",
+      "inspectionCopyBytes": 4386,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/sdk/test/request-retention.test.ts"
+    },
+    {
+      "path": "packages/server/src/fetch.ts",
+      "inspectionCopySha256": "7f0cdcc59f2563e29d9fd747e6c7f6ec0108a04cc92b8da54474cb2a8e917689",
+      "inspectionCopyBytes": 3128,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/server/src/fetch.ts"
+    },
+    {
+      "path": "packages/util/docs/layer-node.md",
+      "inspectionCopySha256": "630956325daccc666d06c0c1ce9e34beaad53521320ea959bf0ac51447250b41",
+      "inspectionCopyBytes": 7286,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/util/docs/layer-node.md"
+    },
+    {
+      "path": "packages/util/package.json",
+      "inspectionCopySha256": "146ba685c4287243abfb4b55c2f162943f8958d608215fe377bc38497033b595",
+      "inspectionCopyBytes": 2294,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/util/package.json"
+    },
+    {
+      "path": "packages/util/src/effect/app-node.ts",
+      "inspectionCopySha256": "f377573852ab855d366771aaac6ec4b66c9fdd2821b38bb7c687fedd2d9be96d",
+      "inspectionCopyBytes": 472,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/util/src/effect/app-node.ts"
+    },
+    {
+      "path": "packages/util/src/effect/layer-node.ts",
+      "inspectionCopySha256": "ca91804ccc9bc136cc878106785af8666b2f5385693ac8021bd56320a52b35ff",
+      "inspectionCopyBytes": 15319,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/util/src/effect/layer-node.ts"
+    },
+    {
+      "path": "packages/util/src/teardown.ts",
+      "inspectionCopySha256": "5e1fd9eb8b1c2cfe841550c326b441d24008366af71725c8fbd03dd96044ba5d",
+      "inspectionCopyBytes": 752,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/util/src/teardown.ts"
+    },
+    {
+      "path": "packages/util/tsconfig.dist.json",
+      "inspectionCopySha256": "5c3b76869ec2216b3afca171b667e392ade0c58a05edc42099d495644e7ff1a4",
+      "inspectionCopyBytes": 308,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/packages/util/tsconfig.dist.json"
+    },
+    {
+      "path": "script/ast-grep/rules/no-effect-die-string.yml",
+      "inspectionCopySha256": "44715ae57d2d6d6b830ab0fd9c804ed8bd34745947297f378467d5eb2a7d3a01",
+      "inspectionCopyBytes": 513,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/script/ast-grep/rules/no-effect-die-string.yml"
+    },
+    {
+      "path": "script/ast-grep/rules/no-nested-effect-service-yield.yml",
+      "inspectionCopySha256": "8362e20fda645a572149ce91170195098bee3ec50b1962d583dc45c53c35f609",
+      "inspectionCopyBytes": 330,
+      "sourceUrl": "https://github.com/anomalyco/opencode/blob/becb9c7c9f3907257d12e95993a47ccc6e3b9625/script/ast-grep/rules/no-nested-effect-service-yield.yml"
+    }
+  ],
+  "digestScope": "Local UTF-8 inspection copies, with one extra terminal LF appended during snapshot writing; not upstream raw blobs."
+}

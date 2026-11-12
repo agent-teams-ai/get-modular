@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { declareModule, defineContract, type CapabilitiesOf } from "@get-modular/assembly";
 import { required } from "@get-modular/core";
-import { Context, Deferred, Effect, Exit, Fiber, Layer, Stream } from "effect";
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Stream } from "effect";
 import { effectFor, implement, input } from "../dist/index.js";
 import { BootFailure, prepared } from "./support.ts";
 
@@ -61,6 +61,61 @@ test("a provider's private Layer stays open through operations and its dependent
       yield* Fiber.join(work);
     }));
     assert.deepEqual(events, ["operation-read", "dependent-closed", "provider-closed"]);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test("finalizer defects preserve both causes and close a shared file after every dependent", { timeout: 10000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-effect-finalizer-defects-"));
+  const filename = join(directory, "resource.txt");
+  await writeFile(filename, "alive");
+  try {
+    const events: string[] = [];
+    const dependentDefect = new Error("dependent-finalizer-defect");
+    const providerDefect = new Error("provider-finalizer-defect");
+    let acquired = 0;
+    let released = 0;
+    class DefectRoots extends Context.Service<DefectRoots, { readonly left: FileHandle; readonly right: FileHandle }>()("consumer/DefectRoots") {}
+    const owner = { authority: "defects", path: ["test"] };
+    const resource = implement<ConsumerMap>()(declareModule({ moduleId: "defects/resource", implementationId: "defects/resource",
+      owner, provides: [File.provide()], slots: [] }), () => Effect.acquireRelease(
+      Effect.tryPromise({ try: async () => {
+        const file = await open(filename, "r");
+        acquired += 1;
+        return file;
+      }, catch: ioError }),
+      file => Effect.gen(function* () {
+        yield* Effect.promise(async () => { await file.close(); released += 1; events.push("provider-closed"); });
+        return yield* Effect.die(providerDefect);
+      }),
+    ).pipe(Effect.map(file => ({ instance: file, capabilities: { [File.id]: file } }))));
+    const consumer = (name: "left" | "right") => implement<ConsumerMap>()(declareModule({
+      moduleId: `defects/${name}`, implementationId: `defects/${name}`, owner,
+      provides: [], slots: [File.slot("file", required())],
+    }), ({ file }) => Effect.acquireRelease(Effect.succeed(file), () => Effect.gen(function* () {
+      yield* Effect.promise(async () => { assert.equal(await readAlive(file), "alive"); events.push(`${name}-closed`); });
+      if (name === "left") return yield* Effect.die(dependentDefect);
+    })).pipe(Effect.map(instance => ({ instance, capabilities: {} }))));
+    const left = consumer("left"), right = consumer("right");
+    const graph = prepared(await effectFor<ConsumerMap>().prepare({
+      profileId: "defects/test", modules: [resource, left, right], roots: { left, right },
+    }));
+    const exit = await Effect.runPromiseExit(Effect.gen(function* () {
+      const roots = yield* DefectRoots;
+      assert.equal(roots.left, roots.right);
+      yield* Effect.promise(async () => { assert.equal(await readAlive(roots.left), "alive"); });
+    }).pipe(Effect.provide(graph.layer(DefectRoots))));
+    assert.ok(Exit.isFailure(exit));
+    const defects = exit.cause.reasons.filter(Cause.isDieReason).map(reason => reason.defect);
+    assert.equal(defects.length, 2);
+    assert.ok(defects.includes(dependentDefect));
+    assert.ok(defects.includes(providerDefect));
+    assert.equal(Exit.hasFails(exit), false);
+    assert.equal(Exit.hasInterrupts(exit), false);
+    assert.equal(acquired, 1);
+    assert.equal(released, 1);
+    assert.equal(events.at(-1), "provider-closed");
+    assert.equal(events.filter(event => event === "left-closed").length, 1);
+    assert.equal(events.filter(event => event === "right-closed").length, 1);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

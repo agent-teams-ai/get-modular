@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: native construction is lazy and preserves local providers, diamond sharing and slot shapes
+ok 1 - native construction is lazy and preserves local providers, diamond sharing and slot shapes
+  ---
+  duration_ms: 16.817929
+  type: 'test'
+  ...
+# Subtest: native entries and profiles capture metadata before asynchronous preparation
+ok 2 - native entries and profiles capture metadata before asynchronous preparation
+  ---
+  duration_ms: 5.964918
+  type: 'test'
+  ...
+# Subtest: invalid inventory, forged entries, mixed carriers and plan tampering fail before factories
+ok 3 - invalid inventory, forged entries, mixed carriers and plan tampering fail before factories
+  ---
+  duration_ms: 5.952379
+  type: 'test'
+  ...
+# Subtest: independent providers acquire concurrently without weakening dependency order
+ok 4 - independent providers acquire concurrently without weakening dependency order
+  ---
+  duration_ms: 4.359675
+  type: 'test'
+  ...
+# Subtest: typed acquisition failure releases acquired dependencies and preserves the expected error
+ok 5 - typed acquisition failure releases acquired dependencies and preserves the expected error
+  ---
+  duration_ms: 2.867227
+  type: 'test'
+  ...
+# Subtest: interrupting native acquisition joins cleanup before the caller completes
+ok 6 - interrupting native acquisition joins cleanup before the caller completes
+  ---
+  duration_ms: 2.76231
+  type: 'test'
+  ...
+# Subtest: factory throws and malformed products remain defects while owned resources release
+ok 7 - factory throws and malformed products remain defects while owned resources release
+  ---
+  duration_ms: 3.2785
+  type: 'test'
+  ...
+# Subtest: borrowed input records are captured at layer creation without freezing their values
+ok 8 - borrowed input records are captured at layer creation without freezing their values
+  ---
+  duration_ms: 1.778894
+  type: 'test'
+  ...
+# Subtest: invalid borrowed inputs fail through InvalidInputs without evaluating accessors or factories
+ok 9 - invalid borrowed inputs fail through InvalidInputs without evaluating accessors or factories
+  ---
+  duration_ms: 1.248613
+  type: 'test'
+  ...
+# Subtest: each layer call isolates mapper memoization and explicit reuse shares within one native build
+ok 10 - each layer call isolates mapper memoization and explicit reuse shares within one native build
+  ---
+  duration_ms: 2.55094
+  type: 'test'
+  ...
+# Subtest: fresh mapper identities also isolate ambient requirements with no borrowed inputs
+ok 11 - fresh mapper identities also isolate ambient requirements with no borrowed inputs
+  ---
+  duration_ms: 2.967236
+  type: 'test'
+  ...
+# Subtest: thousand-node chain and wide graphs acquire once and release dependencies last
+ok 12 - thousand-node chain and wide graphs acquire once and release dependencies last
+  ---
+  duration_ms: 322.174643
+  type: 'test'
+  ...
+# Subtest: a provider's private Layer stays open through operations and its dependent asynchronous finalizer
+ok 13 - a provider's private Layer stays open through operations and its dependent asynchronous finalizer
+  ---
+  duration_ms: 18.083416
+  type: 'test'
+  ...
+# Subtest: finalizer defects preserve both causes and close a shared file after every dependent
+ok 14 - finalizer defects preserve both causes and close a shared file after every dependent
+  ---
+  duration_ms: 12.38778
+  type: 'test'
+  ...
+# Subtest: a shared application resource outlives both local sessions and their async finalizers
+ok 15 - a shared application resource outlives both local sessions and their async finalizers
+  ---
+  duration_ms: 12.349301
+  type: 'test'
+  ...
+# Subtest: an observed worker failure interrupts foreground and finishes its resource-using finalizer
+ok 16 - an observed worker failure interrupts foreground and finishes its resource-using finalizer
+  ---
+  duration_ms: 3.302436
+  type: 'test'
+  ...
+# Subtest: application setup runs before eager worker acquisition and failure prevents startup
+ok 17 - application setup runs before eager worker acquisition and failure prevents startup
+  ---
+  duration_ms: 2.729001
+  type: 'test'
+  ...
+# Subtest: typed fake composition omits the live provider and its private resource graph
+ok 18 - typed fake composition omits the live provider and its private resource graph
+  ---
+  duration_ms: 2.523635
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 738.438605

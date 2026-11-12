@@ -1,0 +1,57 @@
+import assert from "node:assert/strict";
+import { Context, Deferred, Effect, Fiber } from "./get-modular/node_modules/effect/dist/index.js";
+import { declareModule } from "./get-modular/packages/assembly/dist/index.js";
+import { effectFor, implement } from "./get-modular/packages/effect/dist/index.js";
+
+const owner = { authority: "probe", path: ["native-boundary"] };
+const enteredA = Deferred.makeUnsafe<void>();
+const enteredB = Deferred.makeUnsafe<void>();
+const release = Deferred.makeUnsafe<void>();
+let active = 0;
+let maximum = 0;
+
+const a = implement<{}>()(declareModule({ moduleId: "probe/a", implementationId: "probe/a", owner, provides: [], slots: [] }), () => Effect.gen(function* () {
+  active++;
+  maximum = Math.max(maximum, active);
+  yield* Deferred.succeed(enteredA, undefined);
+  yield* Deferred.await(release);
+  active--;
+  return { instance: "a", capabilities: {} };
+}));
+const b = implement<{}>()(declareModule({ moduleId: "probe/b", implementationId: "probe/b", owner, provides: [], slots: [] }), () => Effect.gen(function* () {
+  active++;
+  maximum = Math.max(maximum, active);
+  yield* Deferred.succeed(enteredB, undefined);
+  yield* Deferred.await(release);
+  active--;
+  return { instance: "b", capabilities: {} };
+}));
+class Roots extends Context.Service<Roots, { readonly a: string; readonly b: string }>()("probe/Roots") {}
+const result = await effectFor<{}>().prepare({ profileId: "probe/fanout", modules: [a, b], roots: { a, b } });
+assert.equal(result.status, "prepared");
+if (result.status !== "prepared") throw new Error("probe failed preparation");
+await Effect.runPromise(Effect.gen(function* () {
+  const build = yield* Effect.forkChild(Effect.forEach([undefined], () => Effect.provide(Roots, result.prepared.layer(Roots)), { concurrency: 1 }));
+  yield* Deferred.await(enteredA);
+  yield* Deferred.await(enteredB);
+  assert.equal(maximum, 2);
+  yield* Deferred.succeed(release, undefined);
+  const [roots] = yield* Fiber.join(build);
+  assert.ok(roots);
+  assert.equal(roots.a, "a");
+  assert.equal(roots.b, "b");
+}).pipe(Effect.timeout("2 seconds")));
+
+const captured = { counter: 0 };
+const prebuilt = Effect.succeed({ instance: captured, capabilities: {} });
+const staticValue = implement<{}>()(declareModule({ moduleId: "probe/state", implementationId: "probe/state", owner, provides: [], slots: [] }), () => prebuilt);
+class StateRoots extends Context.Service<StateRoots, { readonly state: { counter: number } }>()("probe/StateRoots") {}
+const stateResult = await effectFor<{}>().prepare({ profileId: "probe/state", modules: [staticValue], roots: { state: staticValue } });
+assert.equal(stateResult.status, "prepared");
+if (stateResult.status !== "prepared") throw new Error("probe failed preparation");
+const first = await Effect.runPromise(Effect.provide(StateRoots, stateResult.prepared.layer(StateRoots)));
+first.state.counter++;
+const second = await Effect.runPromise(Effect.provide(StateRoots, stateResult.prepared.layer(StateRoots)));
+assert.equal(first.state, second.state);
+assert.equal(second.state.counter, 1);
+process.stdout.write(JSON.stringify({ effect: "4.1.4", maximumConcurrentConstructionDespiteOuterOne: maximum, distinctMapperCallsShareFactoryCapturedValue: first.state === second.state, capturedCounter: second.state.counter }) + "\n");

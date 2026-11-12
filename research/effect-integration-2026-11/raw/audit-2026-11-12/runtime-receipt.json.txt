@@ -1,0 +1,35 @@
+{
+  "sourceBaseline": "0ff54371967e4b56a9978f784f568a48731a324d",
+  "checkoutHead": "d20f3a1cb01f230fff23d7993e4b1e2b3304b7d8",
+  "runtime": "v24.22.1",
+  "effect": "4.1.4",
+  "typescript": "7.0.2",
+  "commands": [
+    "node node_modules/typescript/bin/tsc -p tsconfig.json",
+    "node scale.ts",
+    "node finalizer-defects.ts",
+    "node node_modules/typescript/bin/tsc -p packages/effect/tsconfig.test-tooling.json --noEmit",
+    "node --test --test-reporter=tap packages/effect/tests/construction.test.ts packages/effect/tests/consumer.test.ts"
+  ],
+  "limits": [
+    "scale preparationMs includes explicit compileComposition and verified prepare; it is not isolated mapper timing",
+    "scale RSS is cumulative process resident memory, not retained memory or peak allocation",
+    "scale and failure probes execute local built public entrypoints, not npm publication or packed artifacts",
+    "growth timings are observations, not latency thresholds or qualified product SLOs",
+    "maintained growth test uses exactly 1000 selected nodes per shape; the scratch wide probe uses count providers plus one root"
+  ],
+  "evidenceSha256": {
+    "scale.ts": "c674ae693ea244b1a5ba79a5d7492ea999a35bb892976e7d7856fcab93f59b30",
+    "finalizer-defects.ts": "a3771ac2c981ee140eea1f2c79af180a9f18d4374e0d7422ca21a4ba025eae03",
+    "tsconfig.json": "3a2b796d99f0da587e73633fd7cc6be42edb511a5367579c29ae5bda60373dd8",
+    "scale.jsonl": "cd3b2beba1fd1de83d3899260df7450f015db45082944fad01a2de78102b0711",
+    "finalizer-defects.jsonl": "9724416ed205c6aaa03e23ac6f319f60ce2ad86aecf270b02388846926f0ee79",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "maintained-tests.tap": "3df9a17b83e84e0df774eea57d682c7745faf5a3a94047ca4eb3a4387fe3a1d1"
+  },
+  "importedPackageDistSha256": {
+    "core": "77b7aaf1e6d96e41a0c5432a80d31d918e9d381754b91eb6096166500b525222",
+    "assembly": "74a95c55e9634fe5fa726e6f07d64c9266843e761d2b7f5d10ad4eee27852423",
+    "effect": "349423657af40f418d6eb86f41cdc9ed5aeabe92ff029a03f077ea9567366275"
+  }
+}

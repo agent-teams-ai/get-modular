@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,open,rm,writeFile,type FileHandle} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {declareModule,defineContract,type CapabilitiesOf} from '@get-modular/assembly';
+import {required} from '@get-modular/core';
+import {effectFor,implement} from '@get-modular/effect';
+import {Cause,Context,Effect,Exit} from 'effect';
+
+const File = defineContract<FileHandle>()({id:'defects/file',revision:1});
+interface Ports extends CapabilitiesOf<typeof File>{}
+class Roots extends Context.Service<Roots,{readonly left:FileHandle;readonly right:FileHandle}>()('defects/Roots'){}
+const owner={authority:'defects',path:['test']};
+const dir=await mkdtemp(join(tmpdir(),'gm-finalizer-audit-'));
+const filename=join(dir,'file.txt');
+await writeFile(filename,'alive');
+const events:string[]=[];
+let acquired=0,released=0;
+const failureA=new Error('consumer-release-defect');
+const failureB=new Error('provider-release-defect');
+const ioError=(error:unknown):Error=>error instanceof Error?error:new Error(String(error));
+try{
+  const resource=implement<Ports>()(declareModule({moduleId:'defects/resource',implementationId:'defects/resource',owner,provides:[File.provide()],slots:[]}),()=>Effect.acquireRelease(
+    Effect.tryPromise({try:async()=>{const file=await open(filename,'r');acquired+=1;events.push('provider-open');return file;},catch:ioError}),
+    file=>Effect.gen(function*(){yield* Effect.promise(async()=>{await file.close();released+=1;events.push('provider-closed');});return yield* Effect.die(failureB);}),
+  ).pipe(Effect.map(file=>({instance:file,capabilities:{[File.id]:file}}))));
+  const consumer=(name:'left'|'right')=>implement<Ports>()(declareModule({moduleId:`defects/${name}`,implementationId:`defects/${name}`,owner,provides:[],slots:[File.slot('file',required())]}),({file})=>Effect.acquireRelease(
+    Effect.succeed(file),
+    file=>Effect.gen(function*(){yield* Effect.promise(async()=>{const {buffer}=await file.read(new Uint8Array(5),0,5,0);assert.equal(new TextDecoder().decode(buffer),'alive');events.push(`${name}-closed`);});if(name==='left')return yield* Effect.die(failureA);}),
+  ).pipe(Effect.map(instance=>({instance,capabilities:{}}))));
+  const left=consumer('left'),right=consumer('right');
+  const result=await effectFor<Ports>().prepare({profileId:'defects/test',modules:[resource,left,right],roots:{left,right}});
+  assert.equal(result.status,'prepared');if(result.status!=='prepared')throw new Error('prepare');
+  const exit=await Effect.runPromiseExit(Effect.provide(Roots,result.prepared.layer(Roots)));
+  assert.equal(Exit.isFailure(exit),true);if(!Exit.isFailure(exit))throw new Error('expected finalizer failure');
+  const defects=exit.cause.reasons.filter(Cause.isDieReason).map(reason=>reason.defect);
+  assert.ok(defects.includes(failureA));assert.ok(defects.includes(failureB));
+  assert.equal(Exit.hasFails(exit),false);assert.equal(Exit.hasInterrupts(exit),false);
+  assert.equal(acquired,1);assert.equal(released,1);assert.equal(events.at(-1),'provider-closed');
+  assert.equal(events.filter(event=>event==='left-closed').length,1);assert.equal(events.filter(event=>event==='right-closed').length,1);
+  console.log(JSON.stringify({case:'diamond-finalizer-defects',acquired,released,events,defects:defects.map(value=>value instanceof Error?value.message:String(value)),expectedTypedFailure:Exit.hasFails(exit)}));
+}finally{await rm(dir,{recursive:true,force:true});}

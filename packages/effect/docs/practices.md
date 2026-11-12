@@ -1,6 +1,6 @@
 # Effect integration practices
 
-Status: implementation-candidate guidance, 2026-11-11. The native package and its
+Status: implementation-candidate guidance, updated 2026-11-12. The native package and its
 public API are implemented under [ADR-0043](https://github.com/agent-teams-ai/get-modular/blob/main/docs/decisions/0043-plan-optional-native-effect-composition.md).
 The current candidate uses **Effect 4.1.4** and matched candidate Core/Assembly;
 the package README distinguishes source availability from registry publication.
@@ -12,6 +12,9 @@ The [implementation evidence](https://github.com/agent-teams-ai/get-modular/blob
 separates current public-package tests, the frozen [spike evidence][gm-spikes] and
 future named-product adoption. Fragments below use pre-existing named values;
 the README and maintained public type/runtime fixtures supply complete examples.
+The [architecture and scale audit][gm-audit] adds current source studies of
+OpenCode, LiveStore, T3 Code and Alchemy, measured graph/type fixtures and their
+limits. It does not qualify an application's concurrent workload.
 
 ## Mistakes to catch first
 
@@ -25,6 +28,8 @@ the README and maintained public type/runtime fixtures supply complete examples.
 | Discard the Effect signal at a Promise/SDK boundary | Forward cancellation and preserve caller signals; [rule 8](#8-forward-cancellation-to-foreign-io-and-document-its-actual-guarantee) |
 | Discard cleanup failures or treat interrupted waiting as physical cleanup | Preserve causes and the promised close outcome; [rules 9](#9-keep-expected-failures-defects-and-interruption-distinguishable) and [10](#10-preserve-cleanup-evidence-without-inventing-retry-guarantees) |
 | Use listing order or one runtime per module as hidden coordination | Keep native calls connected and sequence application startup explicitly; [rules 5](#5-preserve-the-native-operation-chain-and-caller-context) and [11](#11-bound-fan-out-and-make-detached-work-deliberate) |
+| Treat an outer operation limit as a limit on every resource opened inside its graph | Bound expensive acquisition at its owner; [rule 11](#11-bound-fan-out-and-make-detached-work-deliberate) |
+| Treat a valid dependency DAG as proof that shutdown cannot deadlock | Check resource retention and finalizer wait relationships; [rule 4](#4-state-who-owns-resources-and-who-owns-work) |
 
 ## 1. Abstract subject-specific capabilities at replaceable boundaries
 
@@ -106,7 +111,7 @@ it must prove useful public typing and actual omitted acquisition before admissi
 ## 3. Preserve native construction and exact provider sharing
 
 The mapper validates the complete composition before acquisition and
-translate the selected graph into native Layers. Preserve factory `E` and `R`
+translates the selected graph into native Layers. Preserve factory `E` and `R`
 where their types actually establish them. A serialized plan alone cannot recover
 TypeScript errors or value types; use its matching declarations and factories.
 
@@ -124,6 +129,12 @@ This does not refresh private Layers captured inside a factory or clone borrowed
 or caller-owned services. Their author controls native identity, configuration and
 sharing. Distinct configuration may require distinct native Layers or deliberate
 native `Layer.fresh`; the mapper must not recursively impose its own cache policy.
+
+Fresh mapper identity does not allocate fresh arbitrary factory state.
+`Effect.succeed(existingValue)` returns that same value on each execution;
+allocate per-instance mutable state during its owned acquisition when isolation
+is required. Cold/hot subscription behavior similarly belongs to the stream
+author, not to the number of calls to `.layer()`.
 
 Current Promise Assembly wrapped in `tryPromise` remains Promise construction.
 It does not become native Layer acquisition or gain typed construction errors.
@@ -148,6 +159,13 @@ Keep resource-using operations and their finalizers inside a lifetime that retai
 the resource. A captured service run by an unrelated root runner is not
 automatically tracked by the service owner's ManagedRuntime. TypeScript does not
 revoke escaped objects. A scoped callback alone cannot prevent every escape.
+
+A construction DAG does not rule out reference-count or finalizer wait cycles.
+For example, a cached child must not retain an owner Layer whose shutdown waits
+for that child. Borrow already-owned narrow services where that is the intended
+relationship. The [OpenCode audit][gm-opencode-audit] examines a failed cache build
+after its borrower is cancelled; that consumer-owned cache scenario is distinct
+from ordinary module dependency validation.
 
 ### Keep private resource Layers in the factory Scope
 
@@ -312,6 +330,14 @@ Give subscriptions an owner and define delivery semantics. Latest-state
 observation, ephemeral multicast and durable delivery are different contracts.
 Do not equate GM Observation with Effect PubSub or add a second generic event bus.
 
+For a bounded delivery contract, count all retained stages, including data already
+dequeued but awaiting acknowledgement. Bound item count and bytes where payload
+size varies; a bounded queue alone is not an end-to-end memory proof. T3 Code's
+examined stream path retains its item/byte charge through RPC acknowledgement.
+Conversely, an internal unbounded queue can have a real enclosing budget; inspect
+its admission and release path before calling it unbounded. See the
+[project study][gm-project-audit] for the source and limits.
+
 ## 8. Forward cancellation to foreign I/O and document its actual guarantee
 
 ```ts
@@ -345,6 +371,8 @@ technical owner when useful; do not expose provider DTOs as the domain language.
 Do not turn all causes, interruption and finalizer defects into ordinary success
 or an empty result. Retrying needs a safe or idempotent operation contract; a
 timeout does not establish that the external effect never occurred.
+Keep a product's deliberate fatal-setup `orDie` policy at that product boundary;
+the generic adapter must not erase a factory's known error channel.
 
 ## 10. Preserve cleanup evidence without inventing retry guarantees
 
@@ -358,12 +386,29 @@ Preserving that first failure is not physical release or retry. Native Scope clo
 does not recreate GM Resources debt/retry semantics. Do not build a universal
 adapter that silently claims those different contracts are interchangeable.
 
+Name what a timeout completes: stopping the wait, requesting cancellation,
+joining native work, or confirming physical release. A soft shutdown wait can
+return while an independently owned drain still runs. Work that remains alive
+after a timeout still consumes capacity; preserve its owner and observed result.
+
 ## 11. Bound fan-out and make detached work deliberate
 
 Choose concurrency from actual workload and resource capacity. `unbounded` is a
 policy requiring a controlled work population or measured justification; module
 count alone says little about active instances or operations. Infinite idle cache
 retention similarly needs an application-owned policy.
+An outer `Effect.forEach`/`Effect.all` concurrency limit controls its own branches,
+not acquisition inside each graph. The mapper uses native `Layer.mergeAll`, which
+can begin all independent providers concurrently before application ingress opens.
+Use acquisition-only limits, an appropriate pool or staged graphs at the real
+resource owner where expensive startup needs a bound. Holding a scarce permit
+for a provider's entire lifetime can deadlock a dependent that needs the same
+permit to acquire. No GM scheduler or generic limiter is implied.
+
+Distinguish graph size, TypeScript cost, active instances, claim-loop count,
+outstanding operations, waiting publishers and retained payload bytes. The
+[dated scale measurements][gm-audit] cover explicit graph and type shapes;
+they do not promise thousands of live agents or a process-wide memory bound.
 GM groups organize declarations. Native construction follows dependencies and
 may start independent providers concurrently; listing order is not a startup
 sequence. Host owns any additional application sequencing. Do not introduce
@@ -398,7 +443,13 @@ Effect mechanisms; no GM scheduler, retries, universal lease system or runtime.
 
 ## OpenCode evidence: observations and their limits
 
-The primary targeted review uses `c4bf172532b64a02142d2da9a72d57621c48423d`.
+The original targeted review used `c4bf172532b64a02142d2da9a72d57621c48423d`.
+The [2026-11-12 source audit][gm-opencode-audit] pins
+`becb9c7c9f3907257d12e95993a47ccc6e3b9625` and directly rechecks seven relevant
+files at both revisions, confirming identical bytes. It also examines
+additional failure, cache-retention and body-lifetime tests. These are source
+observations, not executed OpenCode E2E. The evidence below keeps its original
+source identities and execution boundaries.
 Compared with [the earlier checkpoint][oc-followup], LayerNode, SDK instance/Host/
 fetch/Promise adapters and Location service files retain their inspected blobs.
 AISDK changed elsewhere; the signal-forwarding gap below remains in the current
@@ -437,8 +488,10 @@ that a named product has adopted the integration.
 For an Effect-only application requiring those specialized policies, LayerNode can
 be more convenient. The GM integration earns its additional layer from portable
 module declarations, exact local slots and shared authoring policy across the
-two executors. Module count alone does not prove a hybrid is better. Neither this
-review nor the finite spike qualifies thousand-module performance or type costs.
+two executors. Module count alone does not prove a hybrid is better. The historical
+review and finite spike did not qualify thousand-module performance or type costs;
+the [later bounded measurements][gm-audit] report those separate shapes without
+claiming application workload capacity.
 
 ### Observed behavior and positive practices
 
@@ -472,6 +525,9 @@ For ordinary GM compatibility and intentional native adoption, use the one
 second migration checklist in consumer instructions.
 
 [gm-spikes]: https://github.com/agent-teams-ai/get-modular/blob/5131d8789d88816ad458f1bd381727365b962a88/research/effect-integration-2026-11/spikes.md
+[gm-audit]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/architecture-audit-2026-11-12.md
+[gm-opencode-audit]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/opencode-audit-2026-11-12.md
+[gm-project-audit]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/effect-projects-2026-11-12.md
 [gm-input-probe]: https://github.com/agent-teams-ai/get-modular/blob/5131d8789d88816ad458f1bd381727365b962a88/research/effect-integration-2026-11/spikes.md#input-identity-counterexample
 [effect-layer-map]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/LayerMap.ts#L1-L12
 [effect-map-close]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/RcMap.ts#L265-L299

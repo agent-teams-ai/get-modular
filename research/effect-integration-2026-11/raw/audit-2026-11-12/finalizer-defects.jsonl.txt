@@ -1,0 +1,1 @@
+{"case":"diamond-finalizer-defects","acquired":1,"released":1,"events":["provider-open","right-closed","left-closed","provider-closed"],"defects":["consumer-release-defect","provider-release-defect"],"expectedTypedFailure":false}
