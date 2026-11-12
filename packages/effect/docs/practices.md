@@ -15,6 +15,8 @@ the README and maintained public type/runtime fixtures supply complete examples.
 The [architecture and scale audit][gm-audit] adds current source studies of
 OpenCode, LiveStore, T3 Code and Alchemy, measured graph/type fixtures and their
 limits. It does not qualify an application's concurrent workload.
+The [production failure study][gm-production] connects actual upstream fixes to
+deterministic library checks and the application responsibilities they cannot prove.
 
 ## Mistakes to catch first
 
@@ -26,6 +28,7 @@ limits. It does not qualify an application's concurrent workload.
 | Close a private resource Layer when its factory returns a capability | Build it in the factory's construction Scope; [private Layer recipe](#keep-private-resource-layers-in-the-factory-scope) |
 | Return a Stream from a scope that already released its resource | Own acquisition through consumption/finalization; [rule 7](#7-own-streams-through-consumption-and-finalization) |
 | Discard the Effect signal at a Promise/SDK boundary | Forward cancellation and preserve caller signals; [rule 8](#8-forward-cancellation-to-foreign-io-and-document-its-actual-guarantee) |
+| Make resource acquisition interruptible to shorten shutdown without handling late results | Protect the acquisition-to-release handoff and state the cancellation contract; [acquisition recipe](#cancellation-during-resource-acquisition) |
 | Discard cleanup failures or treat interrupted waiting as physical cleanup | Preserve causes and the promised close outcome; [rules 9](#9-keep-expected-failures-defects-and-interruption-distinguishable) and [10](#10-preserve-cleanup-evidence-without-inventing-retry-guarantees) |
 | Use listing order or one runtime per module as hidden coordination | Keep native calls connected and sequence application startup explicitly; [rules 5](#5-preserve-the-native-operation-chain-and-caller-context) and [11](#11-bound-fan-out-and-make-detached-work-deliberate) |
 | Treat an outer operation limit as a limit on every resource opened inside its graph | Bound expensive acquisition at its owner; [rule 11](#11-bound-fan-out-and-make-detached-work-deliberate) |
@@ -136,6 +139,14 @@ allocate per-instance mutable state during its owned acquisition when isolation
 is required. Cold/hot subscription behavior similarly belongs to the stream
 author, not to the number of calls to `.layer()`.
 
+After a failed or interrupted build, a new native provision with its own Scope
+and memoization domain can rebuild the same returned Layer. This is different
+from reusing a failed build inside one shared MemoMap, or restarting a disposed
+runtime. Keep the retry boundary explicit; reacquisition is not rollback of an
+external write and does not make that write safe to repeat. The
+[lifecycle regressions][gm-lifecycle-tests] exercise fresh builds after both
+failure and interruption, with distinct real FileHandles and no stale root use.
+
 Current Promise Assembly wrapped in `tryPromise` remains Promise construction.
 It does not become native Layer acquisition or gain typed construction errors.
 [OpenCode LayerNode][oc-node] demonstrates policy compiled into native Layers,
@@ -147,6 +158,11 @@ Acquire a resource and register its release together. Its native Layer/Scope own
 that resource; the Host owns ingress, shutdown policy and execution admission.
 These responsibilities can be nested without independently disposing the same
 resource from GM Resources and Effect.
+Install ownership before a later validation step can fail, and before handing
+the resource to background work. A finalizer placed only inside the worker body
+cannot protect a resource if that worker never starts. Upstream HTTP-upgrade and
+stream-worker fixes in the [industry study][gm-industry-failures] demonstrate both
+handoff gaps; they are already fixed in the qualified Effect peer.
 Host is an ownership role at the application's existing execution boundary;
 `Effect.provide`, `Effect.scoped` or a chosen `ManagedRuntime` can serve it. No new
 GM Host runtime is required. When carrying service context across a boundary,
@@ -363,6 +379,33 @@ that ignores it can outlive its interrupted Effect wrapper. A late resource resu
 needs the foreign API's cancellation/join/cleanup contract; this sketch does not
 reclaim it automatically. [OpenCode's SDK bridge][oc-aisdk] motivates this rule.
 
+### Cancellation during resource acquisition
+
+In the qualified [Effect implementation][effect-acquire-release],
+`acquireRelease` makes acquisition and finalizer registration uninterruptible by
+default. A pending interruption can wait for a non-cooperative `open()` to finish;
+its returned resource is then owned and its finalizer runs before the native
+operation finishes. The [late-acquisition test][gm-lifecycle-tests] holds both the foreign
+open and asynchronous close behind separate barriers and checks that behavior.
+
+```ts
+// A finite foreign acquisition with no cancellation contract: retain its result.
+const owned = Effect.acquireRelease(
+  Effect.tryPromise({ try: () => foreign.open(), catch: toOpenError }),
+  resource => Effect.promise(() => resource.close()),
+);
+```
+
+This is a resource-safety pattern, not a hard shutdown deadline. If the foreign
+acquisition never settles, this owner can keep waiting. Use the adapter's actual
+abort/deadline/settlement contract where available. `{ interruptible: true }` is
+appropriate only when that contract safely handles interrupted acquisition and
+late results; merely setting the option or forwarding a signal cannot establish
+it. For locks and pools, prefer a native primitive that waits interruptibly and
+atomically registers release when ownership is obtained. Avoid a manual
+`take(); addFinalizer(release)` gap; the semaphore regression in the
+[industry study][gm-industry-failures] explains why.
+
 ## 9. Keep expected failures, defects and interruption distinguishable
 
 Preserve expected `E` in native contracts. At a neutral boundary, map expected
@@ -373,6 +416,14 @@ or an empty result. Retrying needs a safe or idempotent operation contract; a
 timeout does not establish that the external effect never occurred.
 Keep a product's deliberate fatal-setup `orDie` policy at that product boundary;
 the generic adapter must not erase a factory's known error channel.
+
+Choose retry policy by operation and failure class. Bound attempts, elapsed time
+and concurrent work; require idempotency or reconciliation for writes with an
+uncertain outcome. Parse untrusted values at the owning adapter boundary and
+translate failures into the consumed contract. Redaction of schema values is a
+useful control, not a guarantee that every log, span or custom error is safe.
+[Hazel's request/retry boundaries][gm-industry-failures] are a concrete example;
+their application policy does not belong in the GM constructor.
 
 ## 10. Preserve cleanup evidence without inventing retry guarantees
 
@@ -390,6 +441,16 @@ Name what a timeout completes: stopping the wait, requesting cancellation,
 joining native work, or confirming physical release. A soft shutdown wait can
 return while an independently owned drain still runs. Work that remains alive
 after a timeout still consumes capacity; preserve its owner and observed result.
+
+Exercise every supported ownership exit: normal completion, explicit disposal,
+parent Scope closure, failed startup and interruption. One passing `shutdown()`
+test does not establish the Scope-close path. LiveStore's
+[shutdown fix and earlier reverted complexity][gm-ownership-history] illustrate
+why the existing owner should drive all supported paths. Do not add a second
+shutdown state machine to compensate for a missing connection to that owner.
+Dependency finalizers still require their providers to stay alive; unrelated
+owners with mutual waits may need parallel closing. Blindly serializing all
+cleanup can introduce a deadlock, as the OpenCode history demonstrates.
 
 ## 11. Bound fan-out and make detached work deliberate
 
@@ -440,6 +501,38 @@ Pin the tested Effect version and classify ecosystem APIs individually; not ever
 API in the package has the same stability. Upgrade tests should exercise sharing,
 cancellation and finalization semantics, not just rename imports. Reuse native
 Effect mechanisms; no GM scheduler, retries, universal lease system or runtime.
+
+## 13. Verify failure boundaries deterministically
+
+Use barriers to establish the exact race: acquisition entered, finalizer
+registered, sibling failed, cancellation requested, cleanup held, cleanup done.
+Assert the original error identity, no successful root publication, resource
+liveness during dependent cleanup and exact release counts. Wall-clock delays
+do not prove these transitions. A test timeout is a hung-test guard, not a
+performance or shutdown guarantee. Keep expected answers independent of the
+mapper's implementation.
+
+| Boundary | Maintained public-behavior evidence |
+| --- | --- |
+| Partial parallel startup and shared dependency cleanup | [Lifecycle tests][gm-lifecycle-tests]: a failed branch interrupts its sibling; held cleanup keeps the real file alive and the caller pending |
+| Interruption while foreign acquisition is in progress | Lifecycle tests: the late file is owned, closed once and never published as a successful root |
+| Build again after failure or interruption | Lifecycle tests: reuse the same Layer in a new native build; acquire distinct handles and release both |
+| Invalid inputs/products and expected failure versus defects | [Construction tests][gm-construction-tests]: reject before factories where required, preserve native causes and release acquired dependencies |
+| Diamond sharing, independent configuration and graph growth | Construction tests: exact providers, input/context isolation and 1,000-node chain/wide resource invariants |
+| Worker, stream and dependent-finalizer lifetime | [Consumer tests][gm-consumer-tests]: real files remain usable through owned operations and asynchronous cleanup; multiple finalizer defects remain visible |
+| Distribution and optionality | [Archive test][gm-archive-test]: repeat native cases from matched installed packages, check portable public types and ordinary Assembly without Effect |
+
+From the repository root, `bun run effect:check` runs the focused build, strict
+source/type/test-tooling checks, native cases and archive qualification under the
+pinned repository toolchain. Follow the repository instructions for the full gate.
+Consumers should copy the relevant test obligations into their actual adapter and
+Host acceptance tests, not duplicate GM's generic test implementation.
+
+Before admitting a concrete application, verify its own readiness publication,
+work admission, cancellation/settlement, resource budgets, stream delivery and
+shutdown failure policy where applicable. Library tests cannot decide those
+product contracts. A public release and a product's production admission are
+separate recorded outcomes; neither follows solely from a green graph test.
 
 ## OpenCode evidence: observations and their limits
 
@@ -528,6 +621,14 @@ second migration checklist in consumer instructions.
 [gm-audit]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/architecture-audit-2026-11-12.md
 [gm-opencode-audit]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/opencode-audit-2026-11-12.md
 [gm-project-audit]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/effect-projects-2026-11-12.md
+[gm-production]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/production-hardening-2026-11-12.md
+[gm-industry-failures]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/industry-failure-patterns-2026-11-12.md
+[gm-ownership-history]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/ownership-failure-history-2026-11-12.md
+[gm-lifecycle-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/lifecycle.test.ts
+[gm-construction-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/construction.test.ts
+[gm-consumer-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/consumer.test.ts
+[gm-archive-test]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/packed-root.test.ts
+[effect-acquire-release]: https://github.com/Effect-TS/effect/blob/289a53f7b1fc40049219c6e69022db2fb859c356/packages/effect/src/internal/effect.ts#L4240-L4256
 [gm-input-probe]: https://github.com/agent-teams-ai/get-modular/blob/5131d8789d88816ad458f1bd381727365b962a88/research/effect-integration-2026-11/spikes.md#input-identity-counterexample
 [effect-layer-map]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/LayerMap.ts#L1-L12
 [effect-map-close]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/RcMap.ts#L265-L299

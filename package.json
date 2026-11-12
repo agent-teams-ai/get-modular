@@ -97,7 +97,7 @@
     "runtime:projection:check": "node architecture/tooling/runtime/projection-check.ts",
     "effect:build": "node architecture/tooling/build-leaf-package.ts effect",
     "effect:typecheck": "node node_modules/typescript/bin/tsc -p packages/effect/tsconfig.json --noEmit && node architecture/tooling/test-assembly-types.mjs --projects packages/effect/tsconfig.types.json packages/effect/tsconfig.types.bundler.json packages/effect/tsconfig.test-tooling.json",
-    "effect:test": "node --test packages/effect/tests/construction.test.ts packages/effect/tests/consumer.test.ts tests/effect-admission.test.ts",
+    "effect:test": "node --test packages/effect/tests/construction.test.ts packages/effect/tests/consumer.test.ts packages/effect/tests/lifecycle.test.ts tests/effect-admission.test.ts",
     "effect:pack": "node --test packages/effect/tests/packed-root.test.ts",
     "effect:check": "node architecture/tooling/runtime/command.ts run effect:build && node architecture/tooling/runtime/command.ts run effect:typecheck && node architecture/tooling/runtime/command.ts run effect:test && node architecture/tooling/runtime/command.ts run effect:pack"
   },

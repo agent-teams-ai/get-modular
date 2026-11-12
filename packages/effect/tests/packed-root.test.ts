@@ -93,14 +93,14 @@ test("matched public archives preserve native execution, portable types and neut
     for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) assert.deepEqual(effect[field] ?? {}, {});
     await cp(effectRoot, join(consumer, "node_modules/effect"), { recursive: true });
     await writeFile(join(consumer, "readme.ts"), readmeExample);
-    for (const name of ["support.ts", "construction.test.ts", "consumer.test.ts", "portable.ts"]) {
+    for (const name of ["support.ts", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "portable.ts"]) {
       const source = await readFile(join(packageRoot, "tests", name), "utf8");
       const publicCarrier = 'from "../dist/index.js"';
       assert.equal(source.split(publicCarrier).length, 2, `${name} must import exactly one public carrier`);
       await writeFile(join(consumer, name), source.replace(publicCarrier, 'from "@get-modular/effect"'));
     }
-    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts"], consumer);
-    for (const summary of ["# tests 18", "# pass 18", "# fail 0", "# cancelled 0", "# skipped 0"]) {
+    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts"], consumer);
+    for (const summary of ["# tests 20", "# pass 20", "# fail 0", "# cancelled 0", "# skipped 0"]) {
       assert.ok(output.split(/\r?\n/u).includes(summary), `packed suite lacks ${summary}\n${output}`);
     }
     await writeFile(join(consumer, "public.ts"), `
@@ -126,7 +126,7 @@ test("matched public archives preserve native execution, portable types and neut
         run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
       }
     }
-    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 18,
+    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 20,
       publicTypeResolutions: ["NodeNext", "Bundler"], neutralEffectDependency: false }));
   } finally { await rm(temporary, { recursive: true, force: true }); }
 });

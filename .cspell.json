@@ -44,6 +44,8 @@
         "finalizers",
         "interprocedural",
         "interruptibility",
+        "interruptible",
+        "interruptibly",
         "microtask",
         "nonmatching",
         "opencode",
@@ -55,6 +57,7 @@
         "thenables",
         "unadopted",
         "unref",
+        "workerd",
         "workstream",
         "workstreams"
       ]

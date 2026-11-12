@@ -27,6 +27,18 @@ not establish a named application's concurrent capacity or authorize publication
 The [audit plan](audit-plan-2026-11-12.md) precedes the added public tests;
 [PR #238](https://github.com/agent-teams-ai/get-modular/pull/238) owns delivery checks.
 
+## Production failure paths, 2026-11-12
+
+The [hardening report](production-hardening-2026-11-12.md) closes additional
+failure-path evidence gaps with barrier-controlled partial startup, late resource
+acquisition and fresh-build checks. It links the [plan](production-hardening-plan-2026-11-12.md),
+the [Effect and Hazel regression study](industry-failure-patterns-2026-11-12.md)
+and [ownership fix history](ownership-failure-history-2026-11-12.md) from OpenCode,
+LiveStore, T3 Code and Alchemy. The existing packaged guide owns the resulting
+practice rules and executable-check map. [PR #239](https://github.com/agent-teams-ai/get-modular/pull/239)
+owns reviewed delivery and exact-source CI; public release and product admission
+retain their separate owners.
+
 ## Implementation candidate
 
 The current source uses Effect **4.1.4**, TypeScript **7.0.2** and the repository's
