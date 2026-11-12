@@ -41,7 +41,8 @@ async function selectQualifiedCi(source: string, event: Record<string, unknown>)
   const runId = String(observed.id);
   const attempt = String(observed.run_attempt);
   const freshRun = api(`repos/${repository}/actions/runs/${runId}/attempts/${attempt}`);
-  const pages = list(json(run("gh", ["api", "--paginate", "--slurp", `repos/${repository}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`])));
+  // Bound each response; pagination still collects the complete attempt roster.
+  const pages = list(json(run("gh", ["api", "--paginate", "--slurp", `repos/${repository}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=30`])));
   const jobs = pages.flatMap(page => list(record(page).jobs));
   assertQualifiedCi(freshRun, jobs, expectedCiJobNames(await readFile(join(root, ".github/workflows/ci.yml"), "utf8")), source);
   console.log(`CI qualified: ${runId}, attempt ${attempt}, source ${source}, ${jobs.length} successful jobs`);
