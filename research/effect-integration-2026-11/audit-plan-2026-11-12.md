@@ -1,6 +1,8 @@
 # GM + Effect architecture audit — 2026-11-12
 
-Status: in progress. Base: `0ff54371967e4b56a9978f784f568a48731a324d`.
+Status: audit and focused local acceptance complete; final remote verification
+is tracked in [PR #238](https://github.com/agent-teams-ai/get-modular/pull/238).
+Base: `0ff54371967e4b56a9978f784f568a48731a324d`.
 Owner: the existing optional Effect construction boundary and its packaged guide.
 
 ## Goal and authority

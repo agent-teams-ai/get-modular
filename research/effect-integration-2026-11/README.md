@@ -14,6 +14,19 @@ package archive. Historical designs/spikes below retain their original context;
 the current implementation status is recorded next.
 Read [spike evidence](spikes.md) and [review findings](reviews.md) with this plan.
 
+## Architecture follow-up, 2026-11-12
+
+The [source and scale audit](architecture-audit-2026-11-12.md) reviews the
+implemented package against Clean Architecture, SOLID and DRY, with measured
+native graph and TypeScript fixtures. It links deeper
+[OpenCode research](opencode-audit-2026-11-12.md), a critical study of
+[LiveStore, T3 Code and Alchemy](effect-projects-2026-11-12.md), and
+[retained experiment inputs/results](raw/audit-2026-11-12/README.md).
+Reusable rules remain in the packaged practices guide. These observations do
+not establish a named application's concurrent capacity or authorize publication.
+The [audit plan](audit-plan-2026-11-12.md) precedes the added public tests;
+[PR #238](https://github.com/agent-teams-ai/get-modular/pull/238) owns delivery checks.
+
 ## Implementation candidate
 
 The current source uses Effect **4.1.4**, TypeScript **7.0.2** and the repository's

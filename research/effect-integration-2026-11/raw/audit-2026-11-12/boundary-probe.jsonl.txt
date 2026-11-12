@@ -1,0 +1,1 @@
+{"effect":"4.1.4","maximumConcurrentConstructionDespiteOuterOne":2,"distinctMapperCallsShareFactoryCapturedValue":true,"capturedCounter":1}

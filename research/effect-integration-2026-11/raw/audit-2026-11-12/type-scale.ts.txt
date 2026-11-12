@@ -1,0 +1,118 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { arch, platform, release } from "node:os";
+import { dirname, join, resolve } from "node:path";
+
+const repository = resolve(process.argv[2] ?? "");
+const destination = resolve(process.argv[3] ?? "");
+assert.notEqual(repository, destination);
+const require = createRequire(join(repository, "package.json"));
+const manifest = require("typescript/package.json") as { version: string };
+assert.equal(manifest.version, "7.0.2");
+const compiler = join(dirname(require.resolve("typescript/package.json")), "bin/tsc");
+const effectRoot = dirname(require.resolve("effect/package.json"));
+
+function source(count: number): string {
+  const teams = 20;
+  assert.equal(count % teams, 0);
+  const indexes = Array.from({ length: count }, (_, index) => index);
+  const providers = (index: number): number[] => index === 0 ? [] : [...new Set([index - 1, Math.floor(index / 2)])];
+  const lines = [
+    'import { required } from "@get-modular/core";',
+    'import { declareModule, defineContract, type CapabilitiesOf } from "@get-modular/assembly";',
+    'import { effectFor, implement, group, InvalidInputs } from "@get-modular/effect";',
+    'import { Context, Effect, Layer } from "effect";',
+    'class Config extends Context.Service<Config, { readonly enabled: boolean }>()("scale/Config") {}',
+    'class BootFailure extends Error { readonly _tag = "BootFailure"; }',
+    ...indexes.map(index => `const C${index} = defineContract<{ readonly v${index}: (x: number) => number }>()({ id: "scale/c${index}", revision: ${1 + (index % 3)} });`),
+  ];
+  for (let team = 0; team < teams; team += 1) {
+    const own = indexes.slice(team * count / teams, (team + 1) * count / teams);
+    const used = [...new Set(own.flatMap(index => [index, ...providers(index)]))].sort((a, b) => a - b);
+    lines.push(`interface Team${team} extends CapabilitiesOf<${used.map(index => `typeof C${index}`).join(" | ")}> {}`);
+    for (const index of own) {
+      const slots = providers(index).map(id => `C${id}.slot("s${id}", required())`).join(", ");
+      const value = providers(index).map(id => `deps.s${id}.v${id}(1)`).join(" + ") || "0";
+      lines.push(`const h${index} = implement<Team${team}>()(declareModule({ moduleId: "scale/m${index}", implementationId: "scale/m${index}", owner: { authority: "scale", path: ["team${team}"] }, provides: [C${index}.provide()], slots: [${slots}] }), deps => Effect.gen(function* () { const config = yield* Config; if (!config.enabled) return yield* Effect.fail(new BootFailure()); return { instance: { n: ${value} }, capabilities: { "scale/c${index}": { v${index}: (x: number) => x } } }; }));`);
+    }
+    lines.push(`const team${team} = group("team-${team}", [${own.map(index => `h${index}`).join(", ")}]);`);
+  }
+  lines.push(
+    `interface Ports extends CapabilitiesOf<${indexes.map(index => `typeof C${index}`).join(" | ")}> {}`,
+    'class Roots extends Context.Service<Roots, { readonly last: { readonly n: number } }>()("scale/Roots") {}',
+    'export async function prepareNative() {',
+    `  const result = await effectFor<Ports>().prepare({ profileId: "scale/profile", modules: [${Array.from({ length: teams }, (_, index) => `team${index}`).join(", ")}], roots: { last: h${count - 1} } });`,
+    '  if (result.status !== "prepared") throw new Error("prepare failed");',
+    '  const layer = result.prepared.layer(Roots);',
+    '  const exact: Layer.Layer<Roots, BootFailure | InvalidInputs, Config> = layer;',
+    '  void exact;',
+    '  // @ts-expect-error Config remains required after construction Scope is supplied.',
+    '  const erased: Layer.Layer<Roots, BootFailure | InvalidInputs, never> = layer;',
+    '  void erased;',
+    '  // @ts-expect-error The factory BootFailure remains in the construction error channel.',
+    '  const erasedError: Layer.Layer<Roots, InvalidInputs, Config> = layer;',
+    '  void erasedError;',
+    '  return layer;',
+    '}',
+  );
+  return lines.join("\n") + "\n";
+}
+
+await mkdir(destination, { recursive: true });
+const observations: unknown[] = [];
+for (const count of [100, 500, 1000]) {
+  const directory = join(destination, String(count));
+  await mkdir(join(directory, "node_modules/@get-modular"), { recursive: true });
+  for (const name of ["core", "assembly", "effect"]) {
+    await symlink(join(repository, "packages", name), join(directory, "node_modules/@get-modular", name), "junction");
+  }
+  await symlink(effectRoot, join(directory, "node_modules/effect"), "junction");
+  await writeFile(join(directory, "package.json"), '{"type":"module"}\n');
+  const text = source(count);
+  await writeFile(join(directory, "fixture.ts"), text);
+  const digest = createHash("sha256").update(text).digest("hex");
+  await writeFile(join(directory, "tsconfig.json"), JSON.stringify({ compilerOptions: {
+    target: "ES2024", lib: ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
+    strict: true, noEmit: true, skipLibCheck: false, types: [],
+  }, files: ["fixture.ts"] }));
+  // A type-size fixture must also describe an admissible graph, not just parseable declarations.
+  const preparation = spawnSync(process.execPath, ["--input-type=module", "--eval",
+    'import { prepareNative } from "./fixture.ts"; await prepareNative();'], {
+    cwd: directory, encoding: "utf8", timeout: 30000, maxBuffer: 1024 * 1024,
+    env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "" },
+  });
+  await writeFile(join(directory, "preparation.log"), preparation.stdout + preparation.stderr);
+  assert.ifError(preparation.error);
+  assert.equal(preparation.signal, null);
+  assert.equal(preparation.status, 0, preparation.stdout + preparation.stderr);
+  for (const resolution of ["NodeNext", "Bundler"]) {
+    const result = spawnSync(process.execPath, [compiler, "-p", join(directory, "tsconfig.json"),
+      "--module", resolution === "NodeNext" ? "NodeNext" : "ESNext", "--moduleResolution", resolution,
+      "--extendedDiagnostics", "--singleThreaded", "--pretty", "false"], {
+      cwd: directory, encoding: "utf8", timeout: 180000, maxBuffer: 16 * 1024 * 1024,
+      env: { ...process.env, NODE_PATH: "", NODE_OPTIONS: "" },
+    });
+    await writeFile(join(directory, resolution + ".log"), result.stdout + result.stderr);
+    assert.ifError(result.error);
+    assert.equal(result.signal, null);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const metric = (name: string): string => {
+      const match = new RegExp("^" + name + ":\\s+(.+)$", "mu").exec(result.stdout);
+      assert.ok(match, name);
+      return match[1]!.trim();
+    };
+    const row = { count, teams: 20, resolution, preparation: "passed", generatedSourceSha256: digest,
+      types: metric("Types"), instantiations: metric("Instantiations"),
+      checkTime: metric("Check time"), memoryUsed: metric("Memory used") };
+    observations.push(row);
+    process.stdout.write(JSON.stringify(row) + "\n");
+  }
+}
+const evidence = { sourceBase: "0ff54371967e4b56a9978f784f568a48731a324d",
+  node: process.version, typescript: manifest.version,
+  effect: JSON.parse(await readFile(join(effectRoot, "package.json"), "utf8")).version,
+  os: platform(), architecture: arch(), release: release(), observations };
+await writeFile(join(destination, "evidence.json"), JSON.stringify(evidence, null, 2) + "\n");

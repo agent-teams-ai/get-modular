@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { declareModule, defineContract, type CapabilitiesOf } from '@get-modular/assembly';
+import { compileComposition, many, required, type CompositionProfile } from '@get-modular/core';
+import { effectFor, implement } from '@get-modular/effect';
+import { Context, Effect } from 'effect';
+
+const Value = defineContract<number>()({id:'audit/value',revision:1});
+interface Ports extends CapabilitiesOf<typeof Value> {}
+class Roots extends Context.Service<Roots,{readonly app:number}>()('audit/Roots') {}
+const owner = {authority:'audit',path:['scale']};
+const bind = implement<Ports>();
+
+async function chain(count:number) {
+  let acquired = 0;
+  let released = 0;
+  let dependencyReleasedEarly = false;
+  const live = new Set<number>();
+  const acquire = (id:number,value:number) => Effect.acquireRelease(
+    Effect.sync(() => { acquired += 1; live.add(id); return value; }),
+    () => Effect.sync(() => { if (id>0 && !live.has(id-1)) dependencyReleasedEarly=true; released += 1; live.delete(id); }),
+  ).pipe(Effect.map(instance => ({instance,capabilities:{[Value.id]:instance}})));
+  const first=bind(declareModule({moduleId:'audit/n0',implementationId:'audit/n0',owner,provides:[Value.provide()],slots:[]}),()=>acquire(0,1));
+  const rest=Array.from({length:count-1},(_,index)=> {
+    const id=index+1;
+    return bind(declareModule({moduleId:`audit/n${id}`,implementationId:`audit/n${id}`,owner,provides:[Value.provide()],slots:[Value.slot('previous',required())]}),({previous})=>acquire(id,previous+1));
+  });
+  const modules = [first,...rest];
+  const root = modules.at(-1);
+  assert.ok(root);
+  const profile:CompositionProfile = {kind:'get-modular.composition-profile',schemaVersion:1,profileId:'audit/chain',roots:[root.declaration.moduleId],selections:modules.map(entry=>({moduleId:entry.declaration.moduleId,implementationId:entry.declaration.implementationId})),bindings:rest.map((entry,index)=>({consumerImplementationId:entry.declaration.implementationId,slotId:'previous',providerImplementationIds:[`audit/n${index}`]}))};
+  const start=performance.now();
+  const composition=await compileComposition({declarations:modules.map(entry=>entry.declaration),profile});
+  assert.ok(composition.ok,JSON.stringify(composition));
+  const prepared=await effectFor<Ports>().prepare({modules,roots:{app:root},composition});
+  assert.equal(prepared.status,'prepared');
+  if(prepared.status!=='prepared')throw new Error('prepare');
+  const preparationMs=performance.now()-start;
+  const build=performance.now();
+  const result=await Effect.runPromise(Effect.provide(Effect.map(Roots,value=>value.app),prepared.prepared.layer(Roots)));
+  assert.equal(result,count); assert.equal(acquired,count); assert.equal(released,count); assert.equal(dependencyReleasedEarly,false);
+  return {shape:'chain',count,preparationMs,buildAndReleaseMs:performance.now()-build,acquired,released,rssMB:process.memoryUsage().rss/1024/1024};
+}
+
+async function fanout(count:number) {
+  let acquired=0,released=0,active=0,maxActive=0;
+  const modules=Array.from({length:count},(_,id)=>bind(declareModule({moduleId:`audit/p${id}`,implementationId:`audit/p${id}`,owner,provides:[Value.provide()],slots:[]}),()=>Effect.acquireRelease(Effect.gen(function*(){
+    active += 1; maxActive=Math.max(active,maxActive); yield* Effect.sleep('1 millis'); active-=1; acquired+=1;return 1;
+  }),()=>Effect.sync(()=>{released+=1;})).pipe(Effect.map(instance=>({instance,capabilities:{[Value.id]:instance}})))));
+  const root=bind(declareModule({moduleId:'audit/root',implementationId:'audit/root',owner,provides:[],slots:[Value.slot('values',many({min:count,max:count}))]}),({values})=>Effect.succeed({instance:values.reduce((a,b)=>a+b,0),capabilities:{}}));
+  const inventory=[...modules,root];
+  const profile:CompositionProfile={kind:'get-modular.composition-profile',schemaVersion:1,profileId:'audit/fanout',roots:['audit/root'],selections:inventory.map(entry=>({moduleId:entry.declaration.moduleId,implementationId:entry.declaration.implementationId})),bindings:[{consumerImplementationId:'audit/root',slotId:'values',providerImplementationIds:modules.map(entry=>entry.declaration.implementationId)}]};
+  const start=performance.now();
+  const composition=await compileComposition({declarations:inventory.map(entry=>entry.declaration),profile});assert.ok(composition.ok,JSON.stringify(composition));
+  const prepared=await effectFor<Ports>().prepare({modules:inventory,roots:{app:root},composition});assert.equal(prepared.status,'prepared');if(prepared.status!=='prepared')throw new Error('prepare');
+  const preparationMs=performance.now()-start;const build=performance.now();
+  const [result]=await Effect.runPromise(Effect.all([Effect.provide(Effect.map(Roots,value=>value.app),prepared.prepared.layer(Roots))], {concurrency:2}));
+  assert.equal(result,count); assert.equal(acquired,count);assert.equal(released,count);
+  return {shape:'fanout',count,preparationMs,buildAndReleaseMs:performance.now()-build,acquired,released,maxActive,outerConcurrency:2,rssMB:process.memoryUsage().rss/1024/1024};
+}
+for(const count of [100,500,1000,2048])console.log(JSON.stringify(await chain(count)));
+for(const count of [100,500,1000])console.log(JSON.stringify(await fanout(count)));
