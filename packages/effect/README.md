@@ -63,7 +63,8 @@ const text = await Effect.runPromise(
 Execute the resource-using operation inside `Effect.provide`, as above. Returning
 a service or lazy Stream and then consuming it after that scope closes does not
 retain its resources. Resource-owning factories use native `Effect.acquireRelease`
-or their own internal Layers; the integration adds no second disposer.
+or build [private resource Layers in the factory Scope](docs/practices.md#keep-private-resource-layers-in-the-factory-scope);
+the integration adds no second disposer.
 
 `prepare()` captures and verifies inert metadata. It returns the existing
 discriminated preparation failures and never calls factories. It accepts a
