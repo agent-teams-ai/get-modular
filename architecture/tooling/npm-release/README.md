@@ -14,6 +14,22 @@ Publishing, reconciles uncertain uploads, downloads registry bytes and promotes
 tags. It has no dependency on Get Modular tooling or package policy. This
 keeps the common npm invariant reusable while package qualification remains local.
 
+## Source candidates
+
+[ADR-0043](../../../docs/decisions/0043-plan-optional-native-effect-composition.md)
+admits `@get-modular/effect` at `0.0.0` as a public source candidate. It does not
+add Effect to the five-package publication cohort. After exact-source CI,
+preparation validates the complete package inventory and reports
+`pending-admission` when this exact candidate is present. Both automatic runs
+and manual dispatch leave `ready=false` and stop before registry reads, builds,
+archives or publication. Unknown public packages and a changed candidate name,
+version or publication shape still fail closed.
+
+This matches the [checked version route](../release-candidate/README.md), which
+reports the coordinated Effect release intent as pending until its new cohort
+is admitted. Source admission does not authorize publishing the candidate beside
+the released Assembly version or changing historical archive and baseline policy.
+
 ## Normal release
 
 1. Use the Changesets version branch and the
@@ -26,7 +42,7 @@ keeps the common npm invariant reusable while package qualification remains loca
 2. A completed `CI` run on main wakes `npm release`. Preparation requires the
    exact current main source, the actual `.github/workflows/ci.yml`, and every
    expected job from that run attempt to have succeeded. Matrix job names are
-   expanded from the checked-in workflow. Currently this is 64 jobs; the accepted Bun/Node runtime matrix retains all lanes,
+   expanded from the checked-in workflow. The accepted Bun/Node runtime matrix retains all lanes,
    nine aggregates and one installed Node 24 compatibility job. Missing, skipped,
    cancelled, duplicate or foreign-source jobs fail admission. An older
    `workflow_run` is skipped when its source differs from `github.sha` or live main.

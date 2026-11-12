@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { appendFile, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { appendFile, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   archiveHashes, assertArchive, assertQualifiedCi, assertRegistryReceipt, assertRetainedBuildInputs, expectedCiJobNames,
-  json, list, manifestFrom, packageIds, record, repository, requiresRelease, retainedBuildPaths, retainedPackage, retainedSource, text,
+  json, list, manifestFrom, record, repository, requiresRelease, retainedBuildPaths, retainedPackage, retainedSource, text,
   type ReleasePackage,
 } from "./policy.ts";
 
 import { registryVersion } from "./registry.ts";
 import { assertCurrentArchiveSource, currentArchivesFor, prepareCurrentArchive } from "./current-archives.ts";
+import { sourcePackages } from "./source-packages.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 function run(command: string, args: string[], cwd = root, extraEnv: NodeJS.ProcessEnv = {}): string {
@@ -45,21 +46,6 @@ async function selectQualifiedCi(source: string, event: Record<string, unknown>)
   assertQualifiedCi(freshRun, jobs, expectedCiJobNames(await readFile(join(root, ".github/workflows/ci.yml"), "utf8")), source);
   console.log(`CI qualified: ${runId}, attempt ${attempt}, source ${source}, ${jobs.length} successful jobs`);
 }
-async function sourcePackages(): Promise<{ id: string; name: string; version: string; tree: string }[]> {
-  const packages = [];
-  for (const id of packageIds) {
-    const manifest = record(json(await readFile(join(root, "packages", id, "package.json"), "utf8")));
-    assert.notEqual(manifest.private, true, "release.private-package");
-    assert.equal(manifest.name, `@get-modular/${id}`, "release.package-name");
-    packages.push({ id, name: text(manifest.name), version: text(manifest.version), tree: git("rev-parse", `HEAD:packages/${id}`) });
-  }
-  const allPackageDirs = await readdir(join(root, "packages"));
-  for (const id of allPackageDirs.filter(id => !packageIds.some(publicId => publicId === id))) {
-    const candidate = record(json(await readFile(join(root, "packages", id, "package.json"), "utf8")));
-    assert.equal(candidate.private, true, "release.unclassified-public-package");
-  }
-  return packages;
-}
 async function prepare(destination: string): Promise<void> {
   await output("ready", "false");
   const source = environment("GITHUB_SHA");
@@ -79,7 +65,15 @@ async function prepare(destination: string): Promise<void> {
   }
   if (eventName === "workflow_run") assert.equal(record(event.workflow_run).event, "push", "release.upstream-ci-event");
   await selectQualifiedCi(source, event);
-  const packages = await sourcePackages();
+  const { packages, pendingAdmission } = await sourcePackages(root);
+  if (pendingAdmission) {
+    const message = "ADR-0043 admits @get-modular/effect@0.0.0 as source only; the coordinated release requires separate admission. No archives or publication were prepared.";
+    console.warn(`::warning title=Release admission pending::${message}`);
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      await appendFile(process.env.GITHUB_STEP_SUMMARY, `### npm release deferred: pending admission\n\n${message}\n`);
+    }
+    return;
+  }
   const registryStates = await Promise.all(packages.map(async item => {
     const [exact, latest] = await Promise.all([registryVersion(item.name, item.version), registryVersion(item.name, "latest")]);
     return requiresRelease(item.version, exact, latest);

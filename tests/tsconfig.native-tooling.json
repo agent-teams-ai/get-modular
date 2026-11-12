@@ -34,6 +34,7 @@
     "native-tooling.test.ts",
     "../architecture/tooling/npm-release/policy.ts",
     "../architecture/tooling/npm-release/run.ts",
+    "../architecture/tooling/npm-release/source-packages.ts",
     "npm-release.test.ts",
     "../architecture/tooling/npm-release/registry.ts",
     "../architecture/tooling/npm-release/current-archives.ts",
