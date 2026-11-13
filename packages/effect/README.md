@@ -4,12 +4,11 @@ Native Effect construction for a verified Get Modular composition. GM selects
 modules and their exact local bindings; Effect builds and finalizes their native
 resources. The application owns the work using those resources.
 
-**Availability: implementation candidate, not an npm release.** This package is
-qualified against **Effect 4.1.4**. Its source version `0.0.0` is a candidate marker;
-use matched local archives until the coordinated Core/Assembly 0.8.0 and Effect
-0.1.0 release is admitted. Released Assembly 0.7.1 lacks the preparation exports
-this candidate needs. Installing this candidate beside that released archive is
-unsupported. Ordinary Core/Assembly users need no Effect installation or migration.
+The initial release is qualified against **Effect 4.1.4** and requires matched
+Core/Assembly 0.8.0. Assembly 0.7.1 lacks the preparation exports needed by this
+package. The source version `0.0.0` is a candidate marker; check the registry for
+published versions. Ordinary Core/Assembly users need no Effect installation or
+migration.
 
 Read [Effect integration practices](docs/practices.md) before using this package.
 That is the single guide to ownership, errors, cancellation, streams, module

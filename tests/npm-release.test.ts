@@ -14,10 +14,10 @@ import {
   json, manifestFrom, packageIds, record, repository, requiresRelease, retainedBuildPaths, retainedPackage, retainedSource, type ReleaseManifest,
 } from "../architecture/tooling/npm-release/policy.ts";
 
-import { registryArchive, registryVersion } from "../architecture/tooling/npm-release/registry.ts";
+import { registryArchive, registryIdentity, registryVersion } from "../architecture/tooling/npm-release/registry.ts";
 import { sourcePackages } from "../architecture/tooling/npm-release/source-packages.ts";
 import { assertArchivePayload, assertCurrentArchiveSource, currentArchivesFor, currentOriginalArchives,
-  metadataCohort, qualifyCurrentArchive } from "../architecture/tooling/npm-release/current-archives.ts";
+  metadataCohort, qualifyCurrentArchive, qualifyRegistryArchive } from "../architecture/tooling/npm-release/current-archives.ts";
 import { metadataDecision } from "../architecture/tooling/release-candidate/metadata-authority.ts";
 import { git } from "../architecture/tooling/release-candidate/io.ts";
 
@@ -148,7 +148,7 @@ test("qualified retained archives require their exact package trees, versions an
   assert.throws(() => assertRetainedBuildInputs(qualifiedInputs, qualifiedInputs, { ...record(qualifiedPolicy), packageManager: "pnpm@1.0.0" }, qualifiedPolicy), /release.retained-build-policy-drift/u);
   const checksums = await readFile("research/releases/observation-0.1.0/SHA256SUMS", "utf8");
   const integrities = await readFile("research/releases/observation-0.1.0/INTEGRITY", "utf8");
-  for (const id of packageIds) {
+  for (const id of ["core", "assembly", "resources", "conformance", "observation"] as const) {
     const tree = { core: "07c13c9fdd7b69282f5b46aabc7c7f410894c70b", assembly: "cd42707e48907a231c46895d247d243579dbc3f6", resources: "44aab0974d2f88e30d362f609a5095bd4bbc78bb", conformance: "8edceba6669c4202bdb796f7c77bc26c9d20201b", observation: "2c5f9124db7d5f3874994a06d5d9aa883a987c42" }[id];
     const version = { core: "0.6.0", assembly: "0.6.0", resources: "0.2.0", conformance: "0.4.0", observation: "0.1.0" }[id];
     const retained = retainedPackage(`@get-modular/${id}`, version, tree); assert(retained);
@@ -282,6 +282,23 @@ test("current payload comparison rejects content, member modes, manifests, extra
   }
 });
 
+test("existing registry version uses original bytes only after complete payload and integrity match", () => {
+  const original = archiveFixture(archiveRows);
+  const integrity = archiveHashes(original).integrity;
+  const metadata = { name: "@get-modular/resources", version: "0.2.1", dist: {
+    tarball: "https://registry.npmjs.org/@get-modular/resources/-/resources-0.2.1.tgz", integrity,
+  } };
+  const identity = registryIdentity(metadata.name, metadata.version, metadata);
+  assert.equal(identity.integrity, integrity);
+  const selection = qualifyRegistryArchive(metadata.name, metadata.version, integrity, original, original);
+  assert.deepEqual(selection.bytes, original);
+  assert.throws(() => qualifyRegistryArchive(metadata.name, metadata.version, archiveHashes(Buffer.from("foreign")).integrity, original, original), /release.registry-archive-integrity/u);
+  const changed = archiveFixture([archiveRows[0], { ...archiveRows[1], bytes: Buffer.from("changed") }]);
+  assert.throws(() => qualifyRegistryArchive(metadata.name, metadata.version, integrity, changed, original), /release.current-archive-payload/u);
+  assert.throws(() => registryIdentity(metadata.name, metadata.version, { ...metadata, dist: { ...metadata.dist, tarball: "https://foreign.example/a.tgz" } }), /release.registry-archive-url/u);
+  assert.throws(() => registryIdentity(metadata.name, "0.2.2", metadata), /release.registry-version-mismatch/u);
+});
+
 function archiveSourceFixture() {
   const root = mkdtempSync(join(tmpdir(), "get-modular-current-archive-unit-TEST-"));
   git(root, "init", "--quiet");
@@ -305,36 +322,38 @@ function archiveSourceFixture() {
   return { root, source: commit(), commit, dispose: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-test("real source inventory defers the admitted Effect candidate without expanding publication", async () => {
+test("source inventory defers the Effect candidate and admits only a coordinated source", async () => {
   const subject = archiveSourceFixture();
-  const names = ["core", "assembly", "resources", "conformance", "observation"];
-  const expectedPackages = names.map(id => ({ id, name: `@get-modular/${id}`,
-    version: metadataCohort.find(item => item.name === `@get-modular/${id}`)!.version,
-    tree: git(subject.root, "rev-parse", `HEAD:packages/${id}`).trim() }));
   const writeManifest = (id: string, value: unknown): void => {
     const path = join(subject.root, "packages", id, "package.json");
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, JSON.stringify(value));
+    mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(value));
   };
   const candidate = record(json(await readFile("packages/effect/package.json", "utf8")));
   try {
     writeManifest("lifecycle-kernel", json(await readFile("packages/lifecycle-kernel/package.json", "utf8")));
-    assert.deepEqual(await sourcePackages(subject.root), { packages: expectedPackages, pendingAdmission: false });
     writeManifest("effect", candidate);
-    assert.deepEqual(await sourcePackages(subject.root), { packages: expectedPackages, pendingAdmission: true });
-    for (const mutation of [{ name: "@foreign/effect" }, { version: "0.1.0" }, { version: "1.0.0" },
-      { private: true }, { private: false }]) {
+    git(subject.root, "add", "--force", "packages/effect/package.json");
+    const settings = ["-c", "user.name=iliya", "-c", "user.email=iliyazelenkog@gmail.com"];
+    for (const role of ["GIT_AUTHOR_IDENT", "GIT_COMMITTER_IDENT"]) assert.match(git(subject.root, ...settings, "var", role), /^iliya <iliyazelenkog@gmail\.com> \d+ [+-]\d{4}\n$/u);
+    git(subject.root, ...settings, "commit", "--quiet", "-m", "test(release): add effect fixture");
+    assert.equal((await sourcePackages(subject.root)).pendingAdmission, true);
+    for (const mutation of [{ name: "@foreign/effect" }, { private: true }]) {
       writeManifest("effect", { ...candidate, ...mutation });
-      await assert.rejects(sourcePackages(subject.root), /release.unclassified-public-package/u);
+      await assert.rejects(sourcePackages(subject.root), /release.(?:package-name|private-package)/u);
     }
+    writeManifest("effect", { ...candidate, version: "0.1.0" });
+    await assert.rejects(sourcePackages(subject.root), /release.effect-assembly-version/u);
+    writeManifest("core", { name: "@get-modular/core", version: "0.8.0" });
+    writeManifest("assembly", { name: "@get-modular/assembly", version: "0.8.0" });
+    assert.equal((await sourcePackages(subject.root)).pendingAdmission, false);
+    writeManifest("assembly", { name: "@get-modular/assembly", version: "0.9.0" });
+    await assert.rejects(sourcePackages(subject.root), /release.effect-paired-version/u);
+    writeManifest("assembly", { name: "@get-modular/assembly", version: "0.8.0" });
+    writeManifest("effect", { ...candidate, version: "0.0.1" });
+    await assert.rejects(sourcePackages(subject.root), /release.effect-version/u);
     writeManifest("effect", candidate);
-    // A pending row must not terminate inventory before a later unknown public root.
     writeManifest("z-foreign", { name: "@foreign/public", version: "0.0.0" });
     await assert.rejects(sourcePackages(subject.root), /release.unclassified-public-package/u);
-    writeManifest("z-foreign", { name: "@foreign/private", version: "0.0.0", private: true });
-    assert.deepEqual(await sourcePackages(subject.root), { packages: expectedPackages, pendingAdmission: true });
-    writeManifest("core", { name: "@get-modular/core", version: "0.7.1", private: true });
-    await assert.rejects(sourcePackages(subject.root), /release.private-package/u);
   } finally { subject.dispose(); }
 });
 

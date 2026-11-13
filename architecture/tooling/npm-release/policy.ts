@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { parse } from "yaml";
 
 export const repository = "agent-teams-ai/get-modular";
-export const packageIds = ["core", "assembly", "resources", "conformance", "observation"] as const;
+export const packageIds = ["core", "assembly", "resources", "conformance", "observation", "effect"] as const;
 export type PackageId = typeof packageIds[number];
 export interface ReleasePackage {
   name: string;

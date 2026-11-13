@@ -13,6 +13,7 @@ import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/co
 import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
 import { assertNodeQualification, array, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
+import { RELEASE_POLICY_DECISION } from "../architecture/checks/assembly-admission.mjs";
 
 import { assertPromotionBranch, assertPromotionReceipt, baselinePaths, pendingMetadataCohort, plannedBaselines, produceBaselines } from "../architecture/tooling/release-candidate/baselines.ts";
 
@@ -604,6 +605,72 @@ await test("real admitted metadata cohort promotes public baselines and independ
     rmSync(temporary, { recursive: true, force: true }); mark("cleanup");
     console.log(JSON.stringify({ phase: "real-metadata-release-test-timing", elapsedMs: performance.now() - started, timings }));
   }
+});
+
+await test("coordinated Effect release uses authenticated authority and replays promoted public baselines", () => {
+  const source = git(repositoryRoot, "rev-parse", "HEAD").trim();
+  // The version PR no longer contains the consumed intent; its base is the
+  // exact source for the same end-to-end replay.
+  const lastChange = git(repositoryRoot, "rev-list", "-1", "HEAD", "--", ".changeset/native-effect-composition.md").trim();
+  const candidates = [source, lastChange, ...(lastChange ? [git(repositoryRoot, "rev-parse", `${lastChange}^`).trim()] : [])];
+  const accepted = candidates.find(revision => revision !== "" && git(repositoryRoot, "ls-tree", revision,
+    "--", ".changeset/native-effect-composition.md").trim() !== "");
+  assert(accepted, "Effect intent source must remain in authenticated history");
+  const temporary = mkdtempSync(join(tmpdir(), "get-modular-effect-release-TEST-"));
+  const root = join(temporary, "source");
+  try {
+    git(repositoryRoot, "clone", "--quiet", "--shared", "--no-hardlinks", repositoryRoot, root);
+    git(root, "checkout", "--detach", accepted);
+    git(root, "update-ref", "refs/heads/main", accepted);
+    mkdirSync(join(root, "node_modules"));
+    for (const entry of readdirSync(nodeModules)) {
+      if (!statSync(join(nodeModules, entry)).isDirectory()) {continue;}
+      symlinkSync(join(nodeModules, entry), join(root, "node_modules", entry), process.platform === "win32" ? "junction" : "dir");
+    }
+    const prepared = prepareRelease(root);
+    assert.equal(prepared.pendingAdmission, false);
+    assert.deepEqual(plannedBaselines(prepared.before, prepared.expected.plan), baselinePaths);
+    const actual = prepared.expected.plan.releases.filter(row => row.oldVersion !== row.newVersion)
+      .map(row => [row.packageName, row.oldVersion, row.newVersion, row.type]).toSorted();
+    assert.deepEqual(actual, [
+      ["@get-modular/assembly", "0.7.1", "0.8.0", "minor"],
+      ["@get-modular/conformance", "0.5.1", "0.5.2", "patch"],
+      ["@get-modular/core", "0.7.1", "0.8.0", "minor"],
+      ["@get-modular/effect", "0.0.0", "0.1.0", "minor"],
+      ["@get-modular/observation", "0.2.0", "0.2.1", "patch"],
+      ["@get-modular/resources", "0.2.1", "0.2.2", "patch"],
+    ]);
+    const effectPath = "packages/effect/package.json";
+    const effectFile = prepared.before[effectPath]; assert(effectFile);
+    const futureTree = { ...prepared.before, [effectPath]: { ...effectFile,
+      contents: JSON.stringify({ ...record(JSON.parse(effectFile.contents)), version: "0.1.0" }) } };
+    const future = { ...prepared.expected.plan, releases: prepared.expected.plan.releases.map(row =>
+      row.packageName === "@get-modular/effect" ? { ...row, oldVersion: "0.1.0", newVersion: "0.1.1", type: "patch" as const } : row) };
+    assert.deepEqual(plannedBaselines(futureTree, future), baselinePaths);
+    const missingAuthority = { ...prepared.before }; delete missingAuthority[RELEASE_POLICY_DECISION.path];
+    assert.throws(() => plannedBaselines(missingAuthority, prepared.expected.plan), /candidate.release-policy-authority-missing/u);
+    for (const mutation of [{ packageName: "@get-modular/unknown" }, { newVersion: "0.1.1-beta.1" }, { newVersion: "1.0.0" }]) {
+      const foreign = { ...future, releases: future.releases.map(row =>
+        row.packageName === "@get-modular/effect" ? { ...row, ...mutation } : row) };
+      assert.throws(() => plannedBaselines(futureTree, foreign), /candidate.release-(?:unknown-package|stable-version|mvp-version)/u);
+    }
+    const invalid = { ...future, releases: future.releases.map(row =>
+      row.packageName === "@get-modular/assembly" ? { ...row, newVersion: "0.8.1" } : row) };
+    assert.equal(pendingMetadataCohort(futureTree, invalid), true);
+    assert.throws(() => plannedBaselines(futureTree, invalid), /candidate.release-pair-version/u);
+    assert.throws(() => plannedBaselines(prepared.before, future), /candidate.first-effect-release-cohort/u);
+    const result = versionPreparedRelease(prepared);
+    assert.equal(result.report.outcome, "passed");
+    for (const path of baselinePaths) {
+      assert.equal(record(JSON.parse(read(root, path)))["packageVersion"], "0.8.0");
+    }
+    const head = commit(root, "test(release): retain coordinated Effect candidate");
+    assert.equal(verifyRelease(root, accepted, head).report.outcome, "passed");
+    const assemblyBaseline = record(JSON.parse(read(root, baselinePaths[1])));
+    write(root, baselinePaths[1], { ...assemblyBaseline, entrypoints: [] });
+    const forgedHead = commit(root, "test(release): forge Assembly baseline");
+    assert.throws(() => verifyRelease(root, accepted, forgedHead), /candidate.generated-output-drift/u);
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
 });
 
 await test("private producer receipts reject foreign processes, barriers and noncanonical evidence", () => {

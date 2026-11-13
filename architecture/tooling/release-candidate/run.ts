@@ -28,7 +28,7 @@ export function releaseCandidateMain(command: string | undefined): void {
       }
       if (process.env.GITHUB_STEP_SUMMARY !== undefined && process.env.GITHUB_STEP_SUMMARY !== "") {
         appendFileSync(process.env.GITHUB_STEP_SUMMARY,
-          "### Release version deferred: pending admission\n\nChangesets has a release plan, but ADR-0042 does not admit this cohort. No version branch or publication was created. The strict version and PR gates remain unchanged.\n");
+          "### Release version deferred: pending admission\n\nChangesets has a release plan that no accepted cohort admits. No version branch or publication was created. The strict version and PR gates remain unchanged.\n");
       }
     }
     console.log(JSON.stringify({ source: prepared.execution.source, hasRelease: prepared.hasRelease,
