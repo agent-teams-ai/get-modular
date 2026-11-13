@@ -307,13 +307,15 @@ The earlier review observations above remain historical. SDK activation remains
 on HOLD. This tooling integration changes no production composition boundary.
 
 The current reviewed standard is now source checkpoint
-`49f09f5121ea6da544dd98f3c1cf7015e38c66cc`, Git blob
-`465c3645a8108205a2026c965e5ff1269f32e75e`, SHA-256
-`465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8`.
-ADR-0043 adds optional native Effect construction while keeping ordinary
-Promise ownership and this release-tooling boundary intact. Its exact delta and
-previous reviews are retained by the SDK guidance owner. This source-candidate
-pin does not claim registry publication, production adoption or SDK activation.
+`c25a498e4ac6d959072571e1b2e7cccc95258e23`, Git blob
+`3cd861ac20e6ee825c4f54c1ffb325b622f60d08`, SHA-256
+`8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b`.
+Its one-hunk, six-addition delta clarifies the existing combined module/input
+entry ceiling and the separate module-tree budget. It changes no composition
+contract or release-tooling boundary. The preceding ADR-0043 native Effect review,
+its exact delta and all earlier reviews remain authenticated by the SDK guidance
+owner. Ordinary Promise ownership remains intact. This source-candidate pin
+does not claim registry publication, production adoption or SDK activation.
 
 ## Coordinated metadata patch
 

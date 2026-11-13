@@ -35,6 +35,8 @@ function sortIds(values: Iterable<string>): string[] {
 export function collectMetadata<F>(modules: readonly unknown[], inputEntries: readonly unknown[], inputAliases: readonly string[],
   entries: EntryStore<F>, groups: GroupCollection): Collected<F> {
   const walked = groups.walk(modules, (kind) => refuse(kind === "input" ? "assembly.prepare.input-handles" : "assembly.prepare.handles"));
+  // Borrowed inputs consume selections, independently of the module-tree node budget.
+  if (walked.entries.length + inputEntries.length > limits.handles) {throw new SnapshotFault("limit");}
   let provides = 0;
   let slots = 0;
   const all: { readonly entry: unknown; readonly metadata: Metadata<F>; readonly path: readonly string[]; readonly inputAlias?: string }[] = [];

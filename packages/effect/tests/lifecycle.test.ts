@@ -215,3 +215,89 @@ test("interruption during foreign acquisition retains the late file through join
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("malformed product rejection joins cleanup of the resource acquired by that same factory", { timeout: 10000 }, async context => {
+  const directory = await mkdtemp(join(tmpdir(), "gm-effect-malformed-product-"));
+  const filename = join(directory, "resource.txt");
+  const finalizing = Deferred.makeUnsafe<void>();
+  const allowClose = Deferred.makeUnsafe<void>();
+  const controller = new AbortController();
+  const files: FileHandle[] = [];
+  const events: string[] = [];
+  let acquired = 0;
+  let released = 0;
+  let getterReads = 0;
+  let published = 0;
+  let completed = false;
+  let pending: Promise<Exit.Exit<void, unknown>> | undefined;
+  try {
+    await writeFile(filename, "alive");
+    class Roots extends Context.Service<Roots, { readonly app: FileHandle }>()("lifecycle/MalformedRoots") {}
+    const app = implement<LifecycleMap>()(declareModule({ moduleId: "malformed/app", implementationId: "malformed/app",
+      owner, provides: [], slots: [] }), () => Effect.acquireRelease(
+      Effect.tryPromise({ try: async () => {
+        const file = await open(filename, "r");
+        files.push(file);
+        acquired += 1;
+        events.push("resource-opened");
+        return file;
+      }, catch: ioError }),
+      file => Effect.gen(function* () {
+        events.push("cleanup-started");
+        yield* Deferred.succeed(finalizing, undefined);
+        yield* Deferred.await(allowClose);
+        yield* Effect.promise(async () => {
+          await assertAlive(file);
+          await file.close();
+          released += 1;
+          events.push("resource-closed");
+        });
+      }),
+    ).pipe(Effect.map(instance => {
+      const product = { instance, capabilities: {} };
+      // The value has the declared TypeScript shape, but accessors are not an
+      // accepted product record. Its already acquired resource must stay owned.
+      Object.defineProperty(product, "instance", { get: () => { getterReads += 1; return instance; } });
+      return product;
+    })));
+    const graph = prepared(await effectFor<LifecycleMap>().prepare({ profileId: "malformed/test", modules: [app], roots: { app } }));
+    const operation = Effect.gen(function* () {
+      const roots = yield* Roots;
+      published += 1;
+      yield* Effect.promise(() => assertAlive(roots.app));
+    }).pipe(Effect.provide(graph.layer(Roots)));
+    pending = Effect.runPromiseExit(operation, { signal: controller.signal }).then(exit => { completed = true; return exit; });
+    await Effect.runPromise(Deferred.await(finalizing), { signal: context.signal });
+    assert.equal(completed, false);
+    assert.equal(published, 0);
+    assert.equal(getterReads, 0);
+    assert.equal(acquired, 1);
+    assert.equal(released, 0);
+    const file = files[0];
+    assert.ok(file);
+    await assertAlive(file);
+    assert.deepEqual(events, ["resource-opened", "cleanup-started"]);
+    await Effect.runPromise(Deferred.succeed(allowClose, undefined));
+    const exit = await pending;
+    assert.ok(Exit.isFailure(exit));
+    assert.equal(Exit.hasDies(exit), true);
+    const defects = exit.cause.reasons.filter(Cause.isDieReason).map(reason => reason.defect);
+    assert.equal(defects.length, 1);
+    const defect = defects[0];
+    assert.ok(defect instanceof Error);
+    assert.equal(defect.message, "assembly.snapshot.shape");
+    assert.equal(Exit.hasFails(exit), false);
+    assert.equal(Exit.hasInterrupts(exit), false);
+    assert.equal(getterReads, 0);
+    assert.equal(published, 0);
+    assert.equal(released, 1);
+    assert.equal(file.fd, -1);
+    assert.deepEqual(events, ["resource-opened", "cleanup-started", "resource-closed"]);
+  } finally {
+    controller.abort();
+    await Effect.runPromise(Deferred.succeed(allowClose, undefined));
+    await pending;
+    for (const file of files) if (file.fd !== -1) await file.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

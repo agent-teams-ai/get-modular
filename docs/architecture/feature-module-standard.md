@@ -276,14 +276,20 @@ policy remain local. Copying Foundation's complete Host runtime would duplicate
 policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
 
 The current Consumer Module Standard review pins exact source checkpoint
-`49f09f5121ea6da544dd98f3c1cf7015e38c66cc`, blob
-`465c3645a8108205a2026c965e5ff1269f32e75e`, with full-document SHA-256
-`465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8`.
-Its complete delta from reviewed `b2fec1fa` admits ADR-0043's optional native
-Effect construction over shared inert Assembly preparation. Ordinary Promise
-authoring, execution and ownership remain unchanged. Native Layers keep their
-own resource/error contract, while the application owns the work using roots.
-The source checkpoint does not establish a release or a product's adoption.
+`c25a498e4ac6d959072571e1b2e7cccc95258e23`, blob
+`3cd861ac20e6ee825c4f54c1ffb325b622f60d08`, with full-document SHA-256
+`8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b`.
+Its complete delta from reviewed `49f09f51` clarifies the existing preparation
+envelope in one hunk with six additions. Module entries and borrowed inputs share
+the selected-entry ceiling; module entries and group nodes separately share the
+module-tree ceiling. The combined entry check precedes metadata collection and
+profile completion. Valid boundary cases and the composition contract remain
+unchanged. The source checkpoint does not establish a release or product adoption.
+
+The preceding native Effect successor still records ADR-0043's optional native
+construction over shared inert Assembly preparation. Ordinary Promise authoring,
+execution and ownership remain unchanged. Native Layers keep their own resource
+and error contract, while the application owns the work using roots.
 
 The accepted ADR-0041 authoring successor remains intact: complete own,
 transitive, unused and private-child descriptor unions;
@@ -295,11 +301,12 @@ descriptor, and custom maps keep their complete interface until a separate
 compatibility proof. The Host continues to compose complete public parent maps.
 This uses existing TypeScript and Assembly types and adds no runtime mechanism.
 
-The prior P0, 300e, Bun, drain, descriptor-union and selected-flat reviews and complete snapshots
-remain authenticated, including their accepted ADR and dated measurement bytes.
+The prior P0, 300e, Bun, drain, descriptor-union, native Effect and selected-flat
+reviews and complete snapshots remain authenticated, including their accepted
+ADR and dated measurement bytes.
 The historical raw delta from upstream descriptor-union source `b70ba393` to
-`b2fec1fa` remains five Bun verification command substitutions. The current
-native successor is separately retained as five hunks, 52 additions and eight
+`b2fec1fa` remains five Bun verification command substitutions. The historical
+native successor is retained as five hunks, 52 additions and eight
 removals. Changed current growth
 source identities require fresh qualification; old timings do not qualify the
 successor. SDK growth does not adopt Effect and stays fixed development tooling, pending with activation

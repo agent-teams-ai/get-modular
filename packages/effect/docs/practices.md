@@ -1,6 +1,6 @@
 # Effect integration practices
 
-Status: implementation-candidate guidance, updated 2026-11-12. The native package and its
+Status: implementation-candidate guidance, updated 2026-11-13. The native package and its
 public API are implemented under [ADR-0043](https://github.com/agent-teams-ai/get-modular/blob/main/docs/decisions/0043-plan-optional-native-effect-composition.md).
 The current candidate uses **Effect 4.1.4** and matched candidate Core/Assembly;
 the package README distinguishes source availability from registry publication.
@@ -17,6 +17,9 @@ OpenCode, LiveStore, T3 Code and Alchemy, measured graph/type fixtures and their
 limits. It does not qualify an application's concurrent workload.
 The [production failure study][gm-production] connects actual upstream fixes to
 deterministic library checks and the application responsibilities they cannot prove.
+The [subsequent production review][gm-production-review] adds mixed-inventory
+bounds, ownership in graphs with repeated diamonds, factory-product rejection and further
+upstream lessons about identity, cache isolation and installed dependencies.
 
 ## Mistakes to catch first
 
@@ -123,6 +126,13 @@ that distinction; one global Context key cannot represent both bindings. Share o
 selected implementation within its intended build.
 Keep stable Layer identities within each intended memoization domain. Do not
 rebuild a diamond dependency once per incoming edge.
+Qualify graph shapes as well as node counts. Repeated diamonds can traverse many
+paths while acquiring each leaf only once. Effect's [composed-Layer correction][effect-composed-memo]
+memoizes the composed parent; it is present in the qualified peer. The maintained
+repeated-diamond graph test checks identity and resource ownership, not a complexity
+or latency bound. To intentionally refresh a whole native subtree, place
+`Layer.fresh` around that composed Layer; an interior fresh dependency can still
+belong to a shared parent.
 Every `.layer()` call creates fresh mapper-owned Layer
 identities; reuse its returned Layer when sharing those nodes is intentional.
 This prevents mapper-owned memoization from aliasing different inputs or ambient R
@@ -132,6 +142,19 @@ This does not refresh private Layers captured inside a factory or clone borrowed
 or caller-owned services. Their author controls native identity, configuration and
 sharing. Distinct configuration may require distinct native Layers or deliberate
 native `Layer.fresh`; the mapper must not recursively impose its own cache policy.
+
+A new Scope alone does not establish request isolation when it shares a longer
+lived MemoMap. Effect's [Atom registry correction][effect-registry-memo] isolates
+the default map by registry while retaining explicitly shared maps. Name which
+state may be shared and who owns that map; do not recreate application resources
+per request merely to avoid reasoning about their ownership.
+
+Keep implementation identity, graph-local service identity and serialized cache
+identity distinct. At an application cache or hydration boundary, include its
+owning service and encode composite keys unambiguously. The [mutation-key fix][effect-mutation-keys]
+checks destination, payload and result across services with identical endpoint
+names. A random key is unsuitable when server and client need the same stable
+identity. This does not imply a collision in GM's closed private Layer contexts.
 
 Fresh mapper identity does not allocate fresh arbitrary factory state.
 `Effect.succeed(existingValue)` returns that same value on each execution;
@@ -433,6 +456,14 @@ reporting. If a foreign facade promises one idempotent close outcome, retain its
 first disposal Promise/result. The spike observed different outcomes for repeated
 raw ManagedRuntime disposal callers after the initiating finalizer failed.
 
+In the qualified [ManagedRuntime implementation][effect-runtime-disposal], ordinary
+overlapping disposal callers wait for the in-progress close, but that completion
+signal does not replay the first caller's cleanup failure. Reentrant calls from
+work involved in disposal have a deadlock-avoidance exception. These are separate
+properties: completion waiting, failure reporting and reentrancy. The historical
+spike remains a dated observation; a facade promising one close result still
+needs to retain that result at its existing owner.
+
 Preserving that first failure is not physical release or retry. Native Scope close
 does not recreate GM Resources debt/retry semantics. Do not build a universal
 adapter that silently claims those different contracts are interchangeable.
@@ -502,6 +533,12 @@ API in the package has the same stability. Upgrade tests should exercise sharing
 cancellation and finalization semantics, not just rename imports. Reuse native
 Effect mechanisms; no GM scheduler, retries, universal lease system or runtime.
 
+Verify the archive's actual runtime imports and declared dependencies in a clean
+consumer. A workspace lock can hide a missing direct runtime dependency, as
+[OpenCode's packed-server correction][oc-packed-runtime] demonstrates. Declare
+what the package itself uses; this is not a reason to pin every transitive package
+or add platform dependencies to portable Core/Assembly.
+
 ## 13. Verify failure boundaries deterministically
 
 Use barriers to establish the exact race: acquisition entered, finalizer
@@ -517,8 +554,11 @@ mapper's implementation.
 | Partial parallel startup and shared dependency cleanup | [Lifecycle tests][gm-lifecycle-tests]: a failed branch interrupts its sibling; held cleanup keeps the real file alive and the caller pending |
 | Interruption while foreign acquisition is in progress | Lifecycle tests: the late file is owned, closed once and never published as a successful root |
 | Build again after failure or interruption | Lifecycle tests: reuse the same Layer in a new native build; acquire distinct handles and release both |
+| Combined module/input inventory ceiling | Construction tests: public native and Promise preparation reject overflow with no factory calls; the same case runs from installed archives |
 | Invalid inputs/products and expected failure versus defects | [Construction tests][gm-construction-tests]: reject before factories where required, preserve native causes and release acquired dependencies |
+| Product validation after that same factory acquired a resource | Lifecycle tests: an accessor-bearing product fails without invoking its getter; held cleanup delays completion and closes the real file once |
 | Diamond sharing, independent configuration and graph growth | Construction tests: exact providers, input/context isolation and 1,000-node chain/wide resource invariants |
+| Repeated diamonds | Construction tests: shared instances and real resources remain live through dependent cleanup; no traversal-complexity claim |
 | Worker, stream and dependent-finalizer lifetime | [Consumer tests][gm-consumer-tests]: real files remain usable through owned operations and asynchronous cleanup; multiple finalizer defects remain visible |
 | Distribution and optionality | [Archive test][gm-archive-test]: repeat native cases from matched installed packages, check portable public types and ordinary Assembly without Effect |
 
@@ -624,11 +664,16 @@ second migration checklist in consumer instructions.
 [gm-production]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/production-hardening-2026-11-12.md
 [gm-industry-failures]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/industry-failure-patterns-2026-11-12.md
 [gm-ownership-history]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/ownership-failure-history-2026-11-12.md
+[gm-production-review]: https://github.com/agent-teams-ai/get-modular/blob/main/research/effect-integration-2026-11/production-review-2026-11-13.md
 [gm-lifecycle-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/lifecycle.test.ts
 [gm-construction-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/construction.test.ts
 [gm-consumer-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/consumer.test.ts
 [gm-archive-test]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/packed-root.test.ts
 [effect-acquire-release]: https://github.com/Effect-TS/effect/blob/289a53f7b1fc40049219c6e69022db2fb859c356/packages/effect/src/internal/effect.ts#L4240-L4256
+[effect-composed-memo]: https://github.com/Effect-TS/effect/commit/c7072e46356a19615625ae0fa569b1c3a79d50be
+[effect-registry-memo]: https://github.com/Effect-TS/effect/commit/9591f00993f882de494033ddc4a1324f054f075a
+[effect-mutation-keys]: https://github.com/Effect-TS/effect/commit/8fbb39eb92577915831f19a83b51be376e844613
+[effect-runtime-disposal]: https://github.com/Effect-TS/effect/blob/289a53f7b1fc40049219c6e69022db2fb859c356/packages/effect/src/ManagedRuntime.ts#L403-L427
 [gm-input-probe]: https://github.com/agent-teams-ai/get-modular/blob/5131d8789d88816ad458f1bd381727365b962a88/research/effect-integration-2026-11/spikes.md#input-identity-counterexample
 [effect-layer-map]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/LayerMap.ts#L1-L12
 [effect-map-close]: https://github.com/Effect-TS/effect/blob/9d6b21fd80f99c7578832e9ee90562e5c5c92123/packages/effect/src/RcMap.ts#L265-L299
@@ -652,3 +697,4 @@ second migration checklist in consumer instructions.
 [oc-reload]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/core/src/location-service-map.ts#L20-L35
 [oc-fetch]: https://github.com/anomalyco/opencode/blob/dc71d5f94b1800370a6de88d107f117823d85628/packages/server/src/fetch.ts#L43-L56
 [oc-owned-fetch]: https://github.com/anomalyco/opencode/blob/c4bf172532b64a02142d2da9a72d57621c48423d/packages/sdk/src/internal/fetch.ts#L8-L116
+[oc-packed-runtime]: https://github.com/anomalyco/opencode/commit/578f8d637a8008f7d86d9b3003088b4fbd26888f
