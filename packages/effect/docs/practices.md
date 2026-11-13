@@ -426,8 +426,8 @@ multicast subscriber. Merely obtaining a lazy Stream does not prove readiness.
 There is no replay in this recipe. Two identical payloads are two occurrences.
 A bounded source can wait for a slow subscriber; publication confirms admission,
 not that every handler finished. Subscriber cancellation releases only its own
-subscription. Source shutdown interrupts this recipe's pending reads; it does
-not pretend to be a graceful business-completion event. The Host separately
+subscription. Source shutdown interrupts this recipe's pending reads and subsequent publication
+returns `false`; neither is a graceful business-completion event. The Host separately
 chooses whether one consumer failure ends the application or is handled locally.
 The tests exercise both early successful exit and locally handled failure while
 a sibling remains active, and verify that the source stops with its graph.
@@ -451,8 +451,13 @@ Every consumption acquires its own foreign subscription through
 created queue. If subscribe throws before returning a disposer, the source must
 roll back its own partial acquisition; no adapter can recover an undisclosed
 handle. A returned disposer remains owned through early completion, processing
-failure and interruption. A throwing disposer remains a native defect. No second
-GM Resources disposer is installed for that same subscription.
+failure and interruption. A throwing disposer remains a native defect. In the
+qualified peer, a simultaneous processing failure and disposer failure preserve
+both original error objects as defects; without failed cleanup, the processing
+error retains its typed failure channel. Inspect the complete Cause rather than
+assuming every original error remains a `Fail` after finalization fails. The
+recipe preserves native behavior instead of reconstructing an artificial Exit.
+No second GM Resources disposer is installed for that same subscription.
 
 This source cannot wait for backpressure. The recipe uses a bounded queue and
 turns a refused offer into `ProgressOverflow`, closes admission, and discards its

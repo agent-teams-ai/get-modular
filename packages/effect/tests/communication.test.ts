@@ -75,8 +75,8 @@ test("communication: GM selects one native source; early or failed subscriber ex
     })).pipe(Effect.provide(graph.layer(Roots))));
     assert.deepEqual(result.map(value => value.completed), [1, 1, 2]);
     assert.ok(retained.publisher);
-    const afterClose = await Effect.runPromiseExit(retained.publisher.publish(event(3)));
-    assert.ok(Exit.hasInterrupts(afterClose), "the graph's source is no longer live");
+    const afterClose = await Effect.runPromise(retained.publisher.publish(event(3)));
+    assert.equal(afterClose, false, "the closed source refuses publication");
   }
 });
 
@@ -148,15 +148,26 @@ test("communication: a failed foreign subscribe retains its error and the source
 });
 
 test("communication: processing failure and foreign teardown defect are not converted into success", async () => {
-  const processing = new Error("processing failed"), cleanup = new Error("unsubscribe failed");
-  const fixture = progressFixture({ initial: [event(1)], releaseFailure: cleanup });
-  const result = await Effect.runPromiseExit(Stream.runDrain(
-    Stream.mapEffect(callbackProgress(fixture.source), () => Effect.fail(processing)),
-  ));
-  assert.ok(Exit.isFailure(result));
-  assert.ok(result.cause.reasons.filter(Cause.isFailReason).some(reason => reason.error === processing));
-  assert.ok(result.cause.reasons.filter(Cause.isDieReason).some(reason => reason.defect === cleanup));
-  assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
+  for (const brokenCleanup of [false, true]) {
+    const processing = new Error("processing failed"), cleanup = new Error("unsubscribe failed");
+    const fixture = progressFixture({ initial: [event(1)], ...(brokenCleanup ? { releaseFailure: cleanup } : {}) });
+    const result = await Effect.runPromiseExit(Stream.runDrain(
+      Stream.mapEffect(callbackProgress(fixture.source), () => Effect.fail(processing)),
+    ));
+    assert.ok(Exit.isFailure(result));
+    if (brokenCleanup) {
+      // Native finalization retains both original error objects as defects here.
+      // Do not fabricate the original typed Fail classification after failed cleanup.
+      const defects = result.cause.reasons.filter(Cause.isDieReason).map(reason => reason.defect);
+      assert.equal(defects.length, 2);
+      assert.ok(defects.includes(processing));
+      assert.ok(defects.includes(cleanup));
+    } else {
+      assert.deepEqual(result.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error), [processing]);
+      assert.equal(result.cause.reasons.some(Cause.isDieReason), false);
+    }
+    assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
+  }
 });
 
 test("communication: native interruption waits for callback subscription teardown", { timeout: 10000 }, async () => {
