@@ -14,6 +14,15 @@ package archive. Historical designs/spikes below retain their original context;
 the current implementation status is recorded next.
 Read [spike evidence](spikes.md) and [review findings](reviews.md) with this plan.
 
+## Communication recipes, 2026-11-14
+
+The [boundary review and delivery plan](communication-recipes-plan-2026-11-14.md)
+qualifies native notifications, a neutral callback adapter and one-way Observation
+projection. The existing packaged practices guide owns usage rules; the recipes
+and their rejecting tests do not add a public event API, a runtime dependency or
+a product adoption claim. [PR #242](https://github.com/agent-teams-ai/get-modular/pull/242)
+records exact-source execution and review evidence.
+
 ## Architecture follow-up, 2026-11-12
 
 The [source and scale audit](architecture-audit-2026-11-12.md) reviews the

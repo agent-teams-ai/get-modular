@@ -280,8 +280,11 @@ Environments: Node 24 and 26 are supported. Bun 1.3 was observed to behave the s
 only and no ordering guarantee beyond "a later task" (`setImmediate` where it exists, else `setTimeout(…, 0)`).
 
 State versus events. A store holds state: commits coalesce, and a subscriber sees the newest value, not every
-change. A one-off fact that must not be lost (an order was placed) is an event; events come later as
-`createEvent`/`emit`/`subscribe`. Never encode an event as a store key.
+change. A one-off fact that must not be lost (an order was placed) needs an explicit occurrence or durable
+delivery contract, not a store key. No general `createEvent`/`emit`/`subscribe` API is promised here.
+An Effect-native consumer can use a native event source or the one-way state bridge in the
+[optional integration practices](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/docs/practices.md#7-own-streams-through-consumption-and-finalization);
+Observation itself has no Effect dependency.
 
 Ownership. Values are plain data: supported primitives, ordinary local objects and ordinary arrays, without
 Proxy wrappers at any level. This also applies to the initial and patch records. `createStore` and `set` validate
