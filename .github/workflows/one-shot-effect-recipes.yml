@@ -12,20 +12,16 @@ jobs:
     permissions:
       contents: write
     env:
-      SOURCE_SHA: 0448b38aac3036bb05af13b9ad4a35931a684338
+      SOURCE_SHA: 24844e3f06b35468a72a94410517505946899efb
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Preserve reviewed edit inputs and select exact source
-        shell: bash
+      - name: Preserve reviewed patch and select exact source
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          mkdir -p "$RUNNER_TEMP/recipe-edit"
-          cp .recipe-ops/apply.ts .recipe-ops/guide.md "$RUNNER_TEMP/recipe-edit/"
-          printf '{"type":"module"}\n' > "$RUNNER_TEMP/recipe-edit/package.json"
+          cp .recipe-ops/qualification.patch "$RUNNER_TEMP/qualification.patch"
           git checkout --detach "$SOURCE_SHA"
           test ! -e .recipe-ops
           test ! -e .github/workflows/one-shot-effect-recipes.yml
@@ -44,29 +40,21 @@ jobs:
           node architecture/tooling/runtime/retained-history.ts
           node architecture/tooling/runtime/dev.ts install
           node architecture/tooling/runtime/dev.ts peers
-      - name: Read owning documentation policy and typecheck the bounded edit
-        run: |
-          node architecture/tooling/runtime/command.ts tool docs-protocol info --consumer . --profile architecture/foundation/docs-protocol.yaml
-          node architecture/tooling/runtime/command.ts tool docs-protocol find --consumer . --profile architecture/foundation/docs-protocol.yaml --text communication
-          node node_modules/typescript/bin/tsc --strict --noEmit --target ES2024 --module NodeNext --moduleResolution NodeNext --types node --typeRoots "$PWD/node_modules/@types" "$RUNNER_TEMP/recipe-edit/apply.ts"
-      - name: Apply exact-blob edits and publish only the source staging ref
+      - name: Apply exact-source patch and publish only a staging ref
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          node "$RUNNER_TEMP/recipe-edit/apply.ts" "$PWD" "$RUNNER_TEMP/recipe-edit/guide.md"
-          git diff --check
-          test "$(git diff --name-only | wc -l | tr -d ' ')" = 6
-          git add package.json packages/effect/package.json packages/effect/tests/packed-root.test.ts packages/effect/docs/practices.md packages/observation/README.md research/effect-integration-2026-11/README.md
+          git apply --check "$RUNNER_TEMP/qualification.patch"
+          git apply --index "$RUNNER_TEMP/qualification.patch"
+          git diff --cached --check
+          test "$(git diff --cached --name-only)" = "$(printf 'packages/effect/docs/practices.md\npackages/effect/tests/communication.test.ts')"
           git config --local user.name iliya
           git config --local user.email iliyazelenkog@gmail.com
-          git commit -m 'docs(effect): integrate executable communication recipes and archive checks'
+          git commit -m 'test(effect): strengthen subscription retirement and slow-state consumer evidence'
           test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
           test "$(git show -s --format='%an|%ae|%cn|%ce' HEAD)" = 'iliya|iliyazelenkog@gmail.com|iliya|iliyazelenkog@gmail.com'
-          test ! -e .recipe-ops
-          test ! -e .github/workflows/one-shot-effect-recipes.yml
           cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
           #!/bin/sh
           case "$1" in
@@ -81,10 +69,24 @@ jobs:
           printf 'Source commit: %s\nSource ref: %s\n' "$(git rev-parse HEAD)" "$ref" | tee "$RUNNER_TEMP/recipe-source.txt" >> "$GITHUB_STEP_SUMMARY"
           echo "EXPECTED_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           git archive --format=tar.gz HEAD > "$RUNNER_TEMP/recipe-source.tar.gz"
+      - name: Retain an offline copy of the exact installed qualification environment
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/recipe-tools/bin"
+          cp "$(command -v node)" "$RUNNER_TEMP/recipe-tools/bin/node"
+          cp "$(command -v bun)" "$RUNNER_TEMP/recipe-tools/bin/bun"
+          node --version > "$RUNNER_TEMP/recipe-tools/versions.txt"
+          bun --version >> "$RUNNER_TEMP/recipe-tools/versions.txt"
+          node node_modules/typescript/bin/tsc --version >> "$RUNNER_TEMP/recipe-tools/versions.txt"
+          tar -czf "$RUNNER_TEMP/recipe-dependencies.tar.gz" node_modules
+          tar -czf "$RUNNER_TEMP/recipe-tools.tar.gz" -C "$RUNNER_TEMP/recipe-tools" .
+          git bundle create "$RUNNER_TEMP/recipe-history.bundle" --all HEAD
+          sha256sum bun.lock package.json > "$RUNNER_TEMP/recipe-inputs.sha256"
       - name: Qualify maintained examples through workspace and installed public packages
         run: |
           bun run assembly:build
           bun run resources:build
+          bun run conformance:build
           bun run observation:build
           bun run effect:check
       - name: Verify documentation and changed-source gate
@@ -94,13 +96,17 @@ jobs:
       - name: Verify tracked source integrity
         if: always()
         run: node architecture/tooling/runtime/dev.ts verify
-      - name: Retain source and staged identity without credentials
+      - name: Retain source and frozen test environment without credentials
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: recipe-source-${{ github.run_id }}
+          name: recipe-qualification-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/recipe-source.txt
             ${{ runner.temp }}/recipe-source.tar.gz
-          if-no-files-found: ignore
-          retention-days: 7
+            ${{ runner.temp }}/recipe-dependencies.tar.gz
+            ${{ runner.temp }}/recipe-tools.tar.gz
+            ${{ runner.temp }}/recipe-history.bundle
+            ${{ runner.temp }}/recipe-inputs.sha256
+          if-no-files-found: error
+          retention-days: 2
