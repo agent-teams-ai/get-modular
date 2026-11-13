@@ -50,8 +50,8 @@ existing shared publisher pin.
    These files remain protected by the complete source snapshot and diff check.
    Active prerelease state remains outside the qualified route.
 3. Distinguish three states on main: `no-release` (no version changes),
-   `ready` (the admitted exact cohort), and `pending-admission` (Changesets
-   plans a future cohort not admitted by ADR-0042). The status command always
+   `ready` (the admitted stable plan), and `pending-admission` (a plan outside
+   the policy in ADR-0044). The status command always
    observes the complete installed Changesets plan and authenticated source.
    Pending admission emits an explicit GitHub warning and step summary, but
    **never** runs `version`, creates a release branch, changes baselines or
@@ -110,8 +110,9 @@ baselines and accepted decisions retain their original bytes.
 [ADR-0042](../../../docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md)
 admits exactly the metadata patch cohort: Core/Assembly 0.7.1, Conformance 0.5.1,
 Resources 0.2.1 and Observation 0.2.0. Changesets selects versions from truthful
-intents. A future/mixed cohort requires its own authority. The feature change
-leaves public baselines unchanged.
+intents. ADR-0044 admits the Effect cohort and the checked stable release policy;
+historical metadata authority remains unchanged. Preparation leaves public
+baselines unchanged until the checked version route runs.
 
 For that exact release, the Host binds the installed public Foundation 3 bin and
 its entire runtime package closure alongside Changesets and governing source.

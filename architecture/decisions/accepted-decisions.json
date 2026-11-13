@@ -196,6 +196,11 @@
       "id": "ADR-0043",
       "path": "docs/decisions/0043-plan-optional-native-effect-composition.md",
       "immutableDigest": "sha256:765fae287d9e893618fb5a4b1259810281323c76a6f6aad1a1c5a93af4daa716"
+    },
+    {
+      "id": "ADR-0044",
+      "path": "docs/decisions/0044-admit-checked-public-release-automation-and-effect.md",
+      "immutableDigest": "sha256:b20b22948285a90f914cd0e20d3ccda30e9bafa00db13787767726fd37e9e565"
     }
   ]
 }

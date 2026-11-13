@@ -64,6 +64,16 @@ export function assertArchivePayload(name: string, version: string, freshBytes: 
     return { path: text(row["path"]), size, mode, sha256: text(row["sha256"]) };
   });
 }
+/** Select immutable registry bytes only when independently packed payloads and npm SRI agree. */
+export function qualifyRegistryArchive(name: string, version: string, integrity: string,
+  freshBytes: Uint8Array, originalBytes: Uint8Array) {
+  const original = archiveHashes(originalBytes);
+  assert.equal(original.integrity, integrity, "release.registry-archive-integrity");
+  const inventory = assertArchivePayload(name, version, freshBytes, originalBytes);
+  return { bytes: Buffer.from(originalBytes), proof: { name, version, fresh: archiveHashes(freshBytes), original,
+    inventory, selected: "original-registry-bytes" } };
+}
+
 /** Original authenticated bytes are always selected, even if fresh containers happen to match. */
 export function qualifyCurrentArchive(root: string, source: string, packages: readonly SourceCoordinate[], name: string,
   freshBytes: Uint8Array, originalBytes: Uint8Array) {

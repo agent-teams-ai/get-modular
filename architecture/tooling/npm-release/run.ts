@@ -3,15 +3,15 @@ import { execFileSync } from "node:child_process";
 import { appendFile, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   archiveHashes, assertArchive, assertQualifiedCi, assertRegistryReceipt, assertRetainedBuildInputs, expectedCiJobNames,
   json, list, manifestFrom, record, repository, requiresRelease, retainedBuildPaths, retainedPackage, retainedSource, text,
   type ReleasePackage,
 } from "./policy.ts";
 
-import { registryVersion } from "./registry.ts";
-import { assertCurrentArchiveSource, currentArchivesFor, prepareCurrentArchive } from "./current-archives.ts";
+import { registryArchive, registryIdentity, registryMetadata, registryVersion } from "./registry.ts";
+import { assertCurrentArchiveSource, currentArchivesFor, prepareCurrentArchive, qualifyRegistryArchive } from "./current-archives.ts";
 import { sourcePackages } from "./source-packages.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -68,7 +68,7 @@ async function prepare(destination: string): Promise<void> {
   await selectQualifiedCi(source, event);
   const { packages, pendingAdmission } = await sourcePackages(root);
   if (pendingAdmission) {
-    const message = "ADR-0043 admits @get-modular/effect@0.0.0 as source only; the coordinated release requires separate admission. No archives or publication were prepared.";
+    const message = "@get-modular/effect@0.0.0 is a source candidate; the coordinated version change must merge before publication. No archives or publication were prepared.";
     console.warn(`::warning title=Release admission pending::${message}`);
     if (process.env.GITHUB_STEP_SUMMARY) {
       await appendFile(process.env.GITHUB_STEP_SUMMARY, `### npm release deferred: pending admission\n\n${message}\n`);
@@ -76,18 +76,19 @@ async function prepare(destination: string): Promise<void> {
     return;
   }
   const registryStates = await Promise.all(packages.map(async item => {
-    const [exact, latest] = await Promise.all([registryVersion(item.name, item.version), registryVersion(item.name, "latest")]);
-    return requiresRelease(item.version, exact, latest);
+    const [metadata, latest] = await Promise.all([registryMetadata(item.name, item.version), registryVersion(item.name, "latest")]);
+    const exact = metadata === undefined ? undefined : text(metadata.version);
+    return { metadata, required: requiresRelease(item.version, exact, latest) };
   }));
-  if (eventName === "workflow_run" && registryStates.every(required => !required)) {
+  if (eventName === "workflow_run" && registryStates.every(state => !state.required)) {
     console.log("Every current public version is already published on latest; manual dispatch remains available for reconciliation");
     return;
   }
   await mkdir(destination, { recursive: false });
   const currentArchives = currentArchivesFor(packages);
   const currentEvidence = `${destination}-current-archive-evidence`;
-  if (currentArchives.length > 0) {
-    assertCurrentArchiveSource(root, source, packages);
+  if (currentArchives.length > 0) assertCurrentArchiveSource(root, source, packages);
+  if (currentArchives.length > 0 || registryStates.some(state => state.metadata !== undefined)) {
     await mkdir(currentEvidence, { recursive: false });
   }
   const candidates = packages.map(item => ({ ...item, retained: retainedPackage(item.name, item.version, item.tree) }));
@@ -110,10 +111,10 @@ async function prepare(destination: string): Promise<void> {
     } : undefined);
   }
   if (candidates.some(item => !item.retained)) {
-    for (const script of ["assembly:build", "resources:build", "conformance:build", "observation:build"]) run("pnpm", ["--pm-on-fail=ignore", "run", script]);
+    for (const script of ["assembly:build", "resources:build", "conformance:build", "observation:build", "effect:build"]) run("pnpm", ["--pm-on-fail=ignore", "run", script]);
   }
   const entries: ReleasePackage[] = [];
-  for (const item of candidates) {
+  for (const [index, item] of candidates.entries()) {
     const file = `get-modular-${item.id}-${item.version}.tgz`;
     if (item.retained) {
       const archive = join(root, "research/releases/observation-0.1.0", file);
@@ -125,6 +126,25 @@ async function prepare(destination: string): Promise<void> {
       if (currentArchives.some(pin => pin.name === item.name)) {
         const proof = await prepareCurrentArchive(root, source, packages, item.name, join(destination, file), currentEvidence);
         console.log(JSON.stringify({ package: item.name, source, selected: proof.selected, containerBytesEqual: proof.containerBytesEqual }));
+      } else {
+        const state = registryStates[index]; assert(state, "release.registry-state");
+        if (state.metadata !== undefined) {
+          const identity = registryIdentity(item.name, item.version, state.metadata);
+          const packedFile = join(destination, file);
+          const fresh = await readFile(packedFile);
+          await writeFile(join(currentEvidence, `fresh-${file}`), fresh, { flag: "wx" });
+          try {
+            const original = await registryArchive(identity.url);
+            await writeFile(join(currentEvidence, `registry-${file}`), original, { flag: "wx" });
+            const selection = qualifyRegistryArchive(item.name, item.version, identity.integrity, fresh, original);
+            await writeFile(join(currentEvidence, `${item.id}-selection.json`), JSON.stringify({ source, ...selection.proof }, null, 2) + "\n", { flag: "wx" });
+            await writeFile(packedFile, selection.bytes);
+          } catch (error) {
+            await writeFile(join(currentEvidence, `${item.id}-failure.json`), JSON.stringify({ source, package: item.name,
+              version: item.version, fresh: archiveHashes(fresh), identity, error: String(error) }, null, 2) + "\n", { flag: "wx" });
+            throw error;
+          }
+        }
       }
     }
     entries.push({ name: item.name, version: item.version, file, ...archiveHashes(await readFile(join(destination, file))) });
@@ -151,14 +171,28 @@ async function verify(original: string, registry: string): Promise<void> {
     { GET_MODULAR_COMPAT_ARCHIVE_DIR: registry }));
   const consumer = await mkdtemp(join(tmpdir(), "get-modular-registry-types-"));
   try {
+    const effectPeerPath = join(root, "node_modules/effect");
+    const peer = record(json(await readFile(join(effectPeerPath, "package.json"), "utf8")));
+    assert.equal(peer.version, "4.1.4", "release.effect-peer-version");
+    for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
+      assert.deepEqual(peer[field] ?? {}, {}, "release.effect-peer-closure");
+    }
     await writeFile(join(consumer, "package.json"), JSON.stringify({ name: "registry-type-consumer", private: true, type: "module",
-      dependencies: Object.fromEntries(manifest.packages.map(entry => [entry.name, `file:${join(registry, entry.file)}`])) }));
+      dependencies: { ...Object.fromEntries(manifest.packages.map(entry => [entry.name, `file:${join(registry, entry.file)}`])),
+        effect: pathToFileURL(effectPeerPath).href } }));
     run("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], consumer,
       { npm_config_cache: join(consumer, "cache"), npm_config_engine_strict: "true" });
     await copyFile(join(root, "tests/npm-release-consumer.ts"), join(consumer, "consumer.ts"));
+    // The fixture typechecks against this package's built public carrier in its own
+    // boundary; the isolated consumer must resolve the downloaded package root.
+    const effectFixture = await readFile(join(root, "packages/effect/tests/installed-release.ts"), "utf8");
+    const localCarrier = 'from "../dist/index.js"';
+    assert.equal(effectFixture.split(localCarrier).length, 2, "release.effect-fixture-carrier");
+    await writeFile(join(consumer, "effect-consumer.ts"), effectFixture.replace(localCarrier, 'from "@get-modular/effect"'));
     run(process.execPath, [join(root, "node_modules/typescript/bin/tsc"), "--strict", "--noUncheckedIndexedAccess", "--exactOptionalPropertyTypes", "--skipLibCheck", "false",
-      "--target", "ES2024", "--lib", "ES2024,DOM,ESNext.Disposable", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--noEmit", "consumer.ts"], consumer);
+      "--target", "ES2024", "--lib", "ES2024,DOM,ESNext.Disposable,ESNext.Promise", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--noEmit", "consumer.ts", "effect-consumer.ts"], consumer);
     run(process.execPath, ["consumer.ts"], consumer);
+    run(process.execPath, ["effect-consumer.ts"], consumer);
     console.log("Downloaded registry archives: installed consumer runtime and strict public types passed");
   } finally { await rm(consumer, { recursive: true, force: true }); }
 }
