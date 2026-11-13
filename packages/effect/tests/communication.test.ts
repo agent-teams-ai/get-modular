@@ -43,7 +43,7 @@ async function nativeGraph() {
 test("communication: GM selects one native source; early or failed subscriber exit leaves its sibling alive", { timeout: 10000 }, async () => {
   const graph = await nativeGraph();
   for (const failLeft of [false, true]) {
-    const retained: { publisher?: ProgressPublisher } = {};
+    const retained: { publisher?: ProgressPublisher; left?: Stream.Stream<ProgressEvent> } = {};
     const result = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const roots = yield* Roots;
       assert.equal(roots.left, roots.right);
@@ -54,6 +54,7 @@ test("communication: GM selects one native source; early or failed subscriber ex
       const rightWork = yield* Effect.forkScoped(Stream.runCollect(Stream.take(right, 3)));
       yield* Effect.scoped(Effect.gen(function* () {
         const left = yield* roots.left.subscribe;
+        retained.left = left;
         const duplicate = event(1);
         yield* roots.source.publisher.publish(duplicate);
         yield* roots.source.publisher.publish(duplicate);
@@ -66,6 +67,9 @@ test("communication: GM selects one native source; early or failed subscriber ex
           assert.deepEqual(yield* Stream.runCollect(Stream.take(left, 2)), [duplicate, duplicate]);
         }
       }));
+      assert.ok(retained.left);
+      const closedReader = yield* Effect.forkScoped(Stream.runDrain(Stream.take(retained.left, 1)));
+      assert.ok(Exit.hasInterrupts(yield* Fiber.await(closedReader)), "closed subscriber must be detached");
       yield* roots.source.publisher.publish(event(2));
       return yield* Fiber.join(rightWork);
     })).pipe(Effect.provide(graph.layer(Roots))));
@@ -181,11 +185,13 @@ test("communication: Observation projection preserves latest-state semantics and
   try {
     await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const ready = yield* Deferred.make<void>();
+      const resume = yield* Deferred.make<void>();
       const seen: number[] = [];
       const reader = yield* Effect.forkScoped(Stream.runCollect(Stream.take(Stream.tap(
         observedProgress(facet), snapshot => Effect.gen(function* () {
           seen.push(snapshot.values.completed);
           yield* Deferred.succeed(ready, undefined);
+          if (snapshot.values.completed === 0) yield* Deferred.await(resume);
         }),
       ), 2)));
       yield* Deferred.await(ready);
@@ -194,7 +200,11 @@ test("communication: Observation projection preserves latest-state semantics and
       yield* Effect.promise(() => delivered({ stores: [facet] }));
       assert.deepEqual(seen, [0]);
       store.set({ completed: 1 });
+      yield* Effect.promise(() => delivered({ stores: [facet] }));
       store.set({ completed: 2 });
+      yield* Effect.promise(() => delivered({ stores: [facet] }));
+      assert.deepEqual(seen, [0], "a slow consumer has not processed the queued snapshots");
+      yield* Deferred.succeed(resume, undefined);
       const snapshots = yield* Fiber.join(reader);
       assert.deepEqual(snapshots.map(snapshot => snapshot.values.completed), [0, 2]);
       assert.equal(liveSubscriptions(facet), 0);
@@ -240,18 +250,18 @@ test("communication: unexpected Observation source close is owner-reported, not 
   try {
     await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
       const ready = yield* Deferred.make<void>();
-      let completed = false;
+      let settled = false;
       const reader = yield* Effect.forkScoped(Stream.runDrain(Stream.tap(
         observedProgress(facet), () => Deferred.succeed(ready, undefined),
-      )).pipe(Effect.andThen(Effect.sync(() => { completed = true; }))));
+      )).pipe(Effect.ensuring(Effect.sync(() => { settled = true; }))));
       yield* Deferred.await(ready);
       store.close();
       yield* Effect.promise(() => delivered({ stores: [facet] }));
       assert.equal(liveSubscriptions(facet), 0);
       assert.equal(reports.length, 1);
-      assert.equal(completed, false);
+      assert.equal(settled, false, "no successful or failed terminal signal is invented");
       yield* Fiber.interrupt(reader);
-      assert.equal(completed, false);
+      assert.equal(settled, true, "the Host owns consumer retirement");
     })));
     const closedRead = await Effect.runPromiseExit(Stream.runDrain(observedProgress(facet)));
     assert.ok(Exit.isFailure(closedRead));

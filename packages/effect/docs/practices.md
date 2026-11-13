@@ -410,9 +410,9 @@ The GM test wires that reader through an ordinary required slot into two modules
 
 ```ts
 // Inside the operation retained by the graph's owning Effect Scope:
-const events = yield* roots.reader.subscribe;
+const events = yield* roots.left.subscribe;
 // The subscription is registered now, before the first publication.
-yield* roots.publisher.publish({ jobId: "example", completed: 1 });
+yield* roots.source.publisher.publish({ jobId: "example", completed: 1 });
 const first = yield* Stream.runCollect(Stream.take(events, 1));
 ```
 
@@ -512,9 +512,9 @@ Do not write the watched state back from this projection. Test any deliberate
 command/reconciliation feedback in the product that owns it.
 
 The maintained tests check initial/latest values, irrelevant-key updates,
-independent watch closure, source lifetime, unexpected source close and failed
-bridge cleanup. These are Node qualification cases, not browser parity or a
-thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
+independent watch closure, latest-only buffering for a held consumer, source
+lifetime, unexpected source close and failed bridge cleanup. These are Node
+qualification cases, not browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
 replacements: choose intentionally rather than renaming methods during migration.
 
 For a bounded delivery contract, count all retained stages, including data already
@@ -711,7 +711,8 @@ mapper's implementation.
 | Distribution and optionality | [Archive test][gm-archive-test]: repeat native cases from matched installed packages, check portable public types and ordinary Assembly without Effect |
 
 On a clean checkout, first build the public prerequisites with `bun run assembly:build`,
-`bun run resources:build` and `bun run observation:build`. Then, from the repository
+`bun run resources:build`, `bun run conformance:build` and `bun run observation:build`.
+Then, from the repository
 root, `bun run effect:check` runs the focused build, strict
 source/type/test-tooling checks, native cases and archive qualification under the
 pinned repository toolchain. Follow the repository instructions for the full gate.
