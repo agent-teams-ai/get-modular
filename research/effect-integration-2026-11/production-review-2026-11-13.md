@@ -68,6 +68,21 @@ preexisting cases passed. After the two-line guard and a normal Assembly build,
 the focused profile-boundary, wiring and bounds run passed **21/21**, with no
 failures, cancellations or skips. The exact mixed boundary passed on both subjects.
 
+### Complete-gate finding: standard custody
+
+The first full local gate and hosted CI at `c25a498` rejected the changed current
+Consumer Module Standard digest. The implementation and focused tests passed,
+but the six-line preparation clarification required a reviewed successor to the
+standard pin. The existing gate correctly detected the incomplete migration.
+
+The [plan addendum](production-review-plan-2026-11-13.md#full-gate-finding-reviewed-standard-successor)
+records the correction before implementation: retain the complete new document,
+raw delta and previous review/source authority; authenticate the native Effect
+review as a predecessor; advance current guidance and its pin together. Historical
+evidence, accepted ADRs, release baselines and pending SDK authority remain intact.
+The full-gate rejection is not counted as acceptance. The PR records fresh results
+after the coherent successor and its rejecting controls are complete.
+
 ## New industry cases
 
 These are primary-source observations, not executions of the external projects.

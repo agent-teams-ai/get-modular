@@ -21,7 +21,12 @@ const WORKFLOW_PATH = "architecture/foundation/repository-agent-workflow.yaml";
 const CMS_PATH = "architecture/sdk-growth/evidence/consumer-module-standard.json";
 const FEASIBILITY_PATH = "architecture/sdk-growth/evidence/p0-feasibility.json";
 const ROOT_CLASSIFICATION_PATH = "architecture/sdk-growth/root-classification.json";
-const CMS_SHA256 = "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8";
+const CMS_SHA256 = "8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b";
+const NATIVE_CMS = Object.freeze({
+  "commit": "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
+  "gitBlob": "465c3645a8108205a2026c965e5ff1269f32e75e",
+  "sha256": "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8"
+});
 const DESCRIPTOR_CMS = Object.freeze({
   "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
   "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
@@ -70,7 +75,7 @@ const DESCRIPTOR_EVIDENCE = Object.freeze({
   "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
   "growthPreviousReviewSha256": "6dfd3cdbdaabf03439a62bca765f150c447e879ff88dc756f4b10945a1382c27"
 });
-const CMS_EVIDENCE = Object.freeze({
+const NATIVE_EVIDENCE = Object.freeze({
   "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.txt",
   "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
   "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
@@ -83,6 +88,20 @@ const CMS_EVIDENCE = Object.freeze({
   "growthDeltaSha256": "84504a2a316d6ce93e9e02807a91a6e8f736efb12e9f9e8337a7eeb917abff1a",
   "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/growth-previous-source.ts.txt",
   "growthPreviousReviewSha256": "debec46a5590ff46106201bcd671ef1f7a25196d2cb124a16775a4d99634970f"
+});
+const CMS_EVIDENCE = Object.freeze({
+  "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.txt",
+  "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.txt",
+  "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
+  "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.diff",
+  "deltaSha256": "51453afb49f2c2aab94e2b5d3c41e6f1bc6f5ecf244e79ac0b7aae111d25dd54",
+  "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/previous-review.json",
+  "previousReviewSha256": "70826c9ea77b66409abf83de4fef7843f3571c60037a66d420f9927db246cf81",
+  "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.txt",
+  "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.diff",
+  "growthDeltaSha256": "51453afb49f2c2aab94e2b5d3c41e6f1bc6f5ecf244e79ac0b7aae111d25dd54",
+  "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/growth-previous-source.ts.txt",
+  "growthPreviousReviewSha256": "b850eca94356b196a83b6c6a6b9b3e2e33ed4b3bb4cf8bad345ff4a45500905c"
 });
 const CMS_NATIVE_REVIEW = Object.freeze({
   "decision": {
@@ -120,23 +139,22 @@ const CMS_AUTHORING_REVIEW = Object.freeze({
   "qualification": "fresh-current-source-required"
 });
 const CMS_DELTA = Object.freeze({
-  "classification": "optional-native-effect-composition-successor",
+  "classification": "preparation-envelope-clarification",
   "fromAcceptedCurrent": {
-    "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
-    "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
-    "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
+    "commit": "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
+    "gitBlob": "465c3645a8108205a2026c965e5ff1269f32e75e",
+    "sha256": "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8"
   },
-  "changedHunks": 5,
-  "removedLines": 8,
-  "addedLines": 52,
+  "changedHunks": 1,
+  "removedLines": 0,
+  "addedLines": 6,
   "semanticChanges": [
-    "ADR-0043 admits optional native Effect construction over Assembly-owned authenticated inert preparation. Core wire, compilation, diagnostics and digest remain unchanged; ordinary consumers do not acquire an Effect dependency.",
-    "Ordinary Promise factories retain their entry brands, adapters, sequential execution, created journal and returned-product custody. Explicit native factories instead retain native construction errors, requirements and resource ownership; one resource never receives two independent disposers.",
-    "GM remains the authority for local provider selection. Native Layers preserve selected implementation sharing and fresh per-call identities; typed variants, borrowed inputs and Host-owned sequencing require no plugin runtime, scheduler, cache or lifetime language.",
-    "Resource-using work, lazy streams and asynchronous finalizers remain inside their owner lifetime. Native cleanup does not claim Promise journals, cleanup debt, retryable release, product adoption or publication.",
-    "The earlier complete descriptor-union authoring contract and historical evidence remain unchanged. SDK growth remains fixed development tooling without native Effect adoption; HOLD, four authority blockers and fresh current-source qualification remain required."
+    "Clarify the existing 4096 selected-entry ceiling: module entries and borrowed input entries count together before metadata collection or profile completion.",
+    "The separate 4096 module-tree budget counts module entries and group nodes, not borrowed inputs. Grouping can preserve a valid mixed inventory at the selected-entry limit.",
+    "This corrects enforcement of the existing preparation envelope without changing valid composition semantics, public error vocabulary, Core compilation or distinct Promise and native resource ownership.",
+    "SDK growth remains fixed development tooling without native Effect adoption; complete descriptor-union authoring, HOLD, four authority blockers, historical evidence and fresh current-source qualification remain unchanged."
   ],
-  "changesGetModularCompositionContract": true,
+  "changesGetModularCompositionContract": false,
   "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
 });
 const CMS_300E = Object.freeze({
@@ -178,11 +196,11 @@ const DESCRIPTOR_GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
 });
 const GROWTH_CMS_SCOPE_REVIEW = Object.freeze({
   "previousCurrent": {
-    "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
-    "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
-    "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
+    "commit": "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
+    "gitBlob": "465c3645a8108205a2026c965e5ff1269f32e75e",
+    "sha256": "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8"
   },
-  "classification": "optional-native-effect-guidance",
+  "classification": "preparation-envelope-guidance",
   "changesSelectedFlatCompositionContract": false,
   "authoringRepresentation": "complete-descriptor-union-separate-bases",
   "observation": "not-selected",
@@ -318,6 +336,12 @@ export async function loadSdkGrowthModel(root = process.cwd()) {
     cmsDescriptorGrowthDeltaBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.growthDeltaPath)),
     cmsDescriptorGrowthReviewBytes: await readFile(join(root, DESCRIPTOR_EVIDENCE.growthPreviousReviewPath)),
     cmsNativeDecisionBytes: await readFile(join(root, CMS_NATIVE_REVIEW.decision.path)),
+    cmsNativePreviousBytes: await readFile(join(root, NATIVE_EVIDENCE.previousDocumentPath)),
+    cmsNativeDeltaBytes: await readFile(join(root, NATIVE_EVIDENCE.deltaPath)),
+    cmsNativeReviewBytes: await readFile(join(root, NATIVE_EVIDENCE.previousReviewPath)),
+    cmsNativeGrowthPreviousBytes: await readFile(join(root, NATIVE_EVIDENCE.growthPreviousDocumentPath)),
+    cmsNativeGrowthDeltaBytes: await readFile(join(root, NATIVE_EVIDENCE.growthDeltaPath)),
+    cmsNativeGrowthReviewBytes: await readFile(join(root, NATIVE_EVIDENCE.growthPreviousReviewPath)),
     feasibility: await readJson(root, FEASIBILITY_PATH),
     rootClassification: await readJson(root, ROOT_CLASSIFICATION_PATH),
     tracked,
@@ -425,11 +449,11 @@ export function validateCmsGuidance(model) {
     sha256: "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553",
   }, "original CMS pin");
   same(cms.acceptedCurrent, {
-    commit: "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
-    gitBlob: "465c3645a8108205a2026c965e5ff1269f32e75e",
+    commit: "c25a498e4ac6d959072571e1b2e7cccc95258e23",
+    gitBlob: "3cd861ac20e6ee825c4f54c1ffb325b622f60d08",
     sha256: CMS_SHA256,
   }, "current CMS pin");
-  same(cms.delta.fromAcceptedCurrent, DESCRIPTOR_CMS, "previous CMS pin");
+  same(cms.delta.fromAcceptedCurrent, NATIVE_CMS, "previous CMS pin");
   same(cms.delta, CMS_DELTA, "CMS delta review");
   same(cms.authoringReview, CMS_AUTHORING_REVIEW, "CMS authoring contract review");
   same(cms.nativeReview, CMS_NATIVE_REVIEW, "CMS native construction review");
@@ -438,7 +462,9 @@ export function validateCmsGuidance(model) {
   same(cms.growthScopeReview, GROWTH_CMS_SCOPE_REVIEW, "growth CMS scope review");
   for (const [bytes, pin, label] of [
     [model.cmsBytes, cms.acceptedCurrent, "CMS document bytes"],
-    [model.cmsPreviousBytes, DESCRIPTOR_CMS, "previous CMS document bytes"],
+    [model.cmsPreviousBytes, NATIVE_CMS, "previous CMS document bytes"],
+    [model.cmsNativePreviousBytes, DESCRIPTOR_CMS, "CMS native predecessor bytes"],
+    [model.cmsNativeGrowthPreviousBytes, DESCRIPTOR_CMS, "CMS native growth predecessor bytes"],
     [model.cmsDescriptorPreviousBytes, PREVIOUS_CMS, "CMS descriptor predecessor bytes"],
     [model.cmsDescriptorGrowthPreviousBytes, DESCRIPTOR_GROWTH_CMS_SCOPE_REVIEW.previousCurrent, "CMS descriptor growth predecessor bytes"],
     [model.cmsNativeDecisionBytes, CMS_NATIVE_REVIEW.decision, "CMS native construction decision bytes"],
@@ -476,6 +502,10 @@ export function validateCmsGuidance(model) {
     [model.cmsDescriptorReviewBytes, DESCRIPTOR_EVIDENCE.previousReviewSha256],
     [model.cmsDescriptorGrowthDeltaBytes, DESCRIPTOR_EVIDENCE.growthDeltaSha256],
     [model.cmsDescriptorGrowthReviewBytes, DESCRIPTOR_EVIDENCE.growthPreviousReviewSha256],
+    [model.cmsNativeDeltaBytes, NATIVE_EVIDENCE.deltaSha256],
+    [model.cmsNativeReviewBytes, NATIVE_EVIDENCE.previousReviewSha256],
+    [model.cmsNativeGrowthDeltaBytes, NATIVE_EVIDENCE.growthDeltaSha256],
+    [model.cmsNativeGrowthReviewBytes, NATIVE_EVIDENCE.growthPreviousReviewSha256],
   ]) {
     if (createHash("sha256").update(bytes).digest("hex") !== expected) fail("CMS historical successor evidence bytes drifted");
   }

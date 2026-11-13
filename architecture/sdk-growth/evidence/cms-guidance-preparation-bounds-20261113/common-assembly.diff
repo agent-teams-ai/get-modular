@@ -1,0 +1,17 @@
+diff --git a/docs/architecture/common-assembly.md b/docs/architecture/common-assembly.md
+index 465c364..3cd861a 100644
+--- a/docs/architecture/common-assembly.md
++++ b/docs/architecture/common-assembly.md
+@@ -1214,6 +1214,12 @@ entries. Validate alias own-key counts too. These are structural allocation
+ ceilings, not another graph engine. No private Core imports. Changes to supported
+ Core require rechecking this table against its successful-plan envelope.
+ 
++The selected-entry ceiling includes module entries and borrowed input entries
++together. Check it before collecting their metadata or completing a profile.
++The module-tree budget separately counts module entries and group nodes; inputs
++do not consume that tree budget. A group may therefore organize a valid mixed
++inventory at the selected-entry limit without making its inputs extra group nodes.
++
+ With `profileId`, complete the profile from the captured entries and the captured
+ `bindings`, counting rows and provider occurrences against the same ceilings first,
+ and compile it once through public `compileComposition`; the returned plan is the
