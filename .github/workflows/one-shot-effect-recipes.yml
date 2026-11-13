@@ -1,0 +1,106 @@
+name: One-shot communication recipe qualification
+on:
+  push:
+    branches: [work/effect-recipes-stage-20261114]
+permissions:
+  contents: read
+jobs:
+  qualify:
+    if: github.repository == 'agent-teams-ai/get-modular' && github.actor == '777genius' && github.ref == 'refs/heads/work/effect-recipes-stage-20261114'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    env:
+      SOURCE_SHA: 0448b38aac3036bb05af13b9ad4a35931a684338
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Preserve reviewed edit inputs and select exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          mkdir -p "$RUNNER_TEMP/recipe-edit"
+          cp .recipe-ops/apply.ts .recipe-ops/guide.md "$RUNNER_TEMP/recipe-edit/"
+          printf '{"type":"module"}\n' > "$RUNNER_TEMP/recipe-edit/package.json"
+          git checkout --detach "$SOURCE_SHA"
+          test ! -e .recipe-ops
+          test ! -e .github/workflows/one-shot-effect-recipes.yml
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
+        with:
+          version: 11.20.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version-file: .bun-version
+      - name: Install the unchanged pinned workspace
+        run: |
+          node architecture/tooling/runtime/retained-history.ts
+          node architecture/tooling/runtime/dev.ts install
+          node architecture/tooling/runtime/dev.ts peers
+      - name: Read owning documentation policy and typecheck the bounded edit
+        run: |
+          node architecture/tooling/runtime/command.ts tool docs-protocol info --consumer . --profile architecture/foundation/docs-protocol.yaml
+          node architecture/tooling/runtime/command.ts tool docs-protocol find --consumer . --profile architecture/foundation/docs-protocol.yaml --text communication
+          node node_modules/typescript/bin/tsc --strict --noEmit --target ES2024 --module NodeNext --moduleResolution NodeNext --types node --typeRoots "$PWD/node_modules/@types" "$RUNNER_TEMP/recipe-edit/apply.ts"
+      - name: Apply exact-blob edits and publish only the source staging ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          node "$RUNNER_TEMP/recipe-edit/apply.ts" "$PWD" "$RUNNER_TEMP/recipe-edit/guide.md"
+          git diff --check
+          test "$(git diff --name-only | wc -l | tr -d ' ')" = 6
+          git add package.json packages/effect/package.json packages/effect/tests/packed-root.test.ts packages/effect/docs/practices.md packages/observation/README.md research/effect-integration-2026-11/README.md
+          git config --local user.name iliya
+          git config --local user.email iliyazelenkog@gmail.com
+          git commit -m 'docs(effect): integrate executable communication recipes and archive checks'
+          test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
+          test "$(git show -s --format='%an|%ae|%cn|%ce' HEAD)" = 'iliya|iliyazelenkog@gmail.com|iliya|iliyazelenkog@gmail.com'
+          test ! -e .recipe-ops
+          test ! -e .github/workflows/one-shot-effect-recipes.yml
+          cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token;;
+            *Password*) printf '%s\n' "$GH_TOKEN";;
+            *) exit 1;;
+          esac
+          SH
+          chmod 700 "$RUNNER_TEMP/recipe-askpass"
+          ref="work/effect-recipes-source-$GITHUB_RUN_ID"
+          GIT_ASKPASS="$RUNNER_TEMP/recipe-askpass" git -c credential.helper= push https://github.com/agent-teams-ai/get-modular.git "HEAD:refs/heads/$ref"
+          printf 'Source commit: %s\nSource ref: %s\n' "$(git rev-parse HEAD)" "$ref" | tee "$RUNNER_TEMP/recipe-source.txt" >> "$GITHUB_STEP_SUMMARY"
+          echo "EXPECTED_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/recipe-source.tar.gz"
+      - name: Qualify maintained examples through workspace and installed public packages
+        run: |
+          bun run assembly:build
+          bun run resources:build
+          bun run observation:build
+          bun run effect:check
+      - name: Verify documentation and changed-source gate
+        run: |
+          bun run docs:protocol:check
+          bun run check:changed
+      - name: Verify tracked source integrity
+        if: always()
+        run: node architecture/tooling/runtime/dev.ts verify
+      - name: Retain source and staged identity without credentials
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: recipe-source-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/recipe-source.txt
+            ${{ runner.temp }}/recipe-source.tar.gz
+          if-no-files-found: ignore
+          retention-days: 7
