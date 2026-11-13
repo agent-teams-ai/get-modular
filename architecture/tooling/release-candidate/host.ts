@@ -261,6 +261,11 @@ export function versionPreparedRelease(prepared: PreparedRelease): CheckedCandid
 }
 export function generateRelease(root: string): CheckedCandidate { return versionPreparedRelease(prepareRelease(root)); }
 
+/** Compare the whole observed candidate with the independently produced replay. */
+export function assertReplayDiff(actual: readonly FileChange[], replay: readonly FileChange[]): void {
+  assert.deepEqual(actual, replay, "candidate.generated-output-drift");
+}
+
 /** Independent current-base replay; candidate versions never provide expected versions or release membership. */
 export function verifyRelease(root: string, base: string, head: string): CheckedCandidate {
   assert.match(base, /^[a-f0-9]{40}$/u); assert.match(head, /^[a-f0-9]{40}$/u);
@@ -292,7 +297,7 @@ export function verifyRelease(root: string, base: string, head: string): Checked
     assert.equal(candidateExecution.engine.digest, expected.execution.engine.digest, "candidate.substituted-engine");
     assert.deepEqual(candidateExecution.producer, expected.execution.producer, "candidate.substituted-producer");
     const result = check(expected, actual, { ...candidateExecution, source: base }, `commit:${head}:${treeDigest(actual)}`);
-    assert.deepEqual(result.observed.diff, generated.observed.diff, "candidate.generated-output-drift");
+    assertReplayDiff(result.observed.diff, generated.observed.diff);
     return result;
   } finally {
     for (const path of owned.toReversed()) {git(replayRepository, "worktree", "remove", "--force", path);}

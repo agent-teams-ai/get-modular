@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { parse, stringify } from "yaml";
 import { checkReleaseCandidate } from "@agent-teams/release-checks";
 import { releaseCandidateConformanceCases } from "@agent-teams/release-checks/conformance";
-import { checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
+import { assertReplayDiff, checkGeneratedCandidate, difference, prepareRelease, verifyRelease, versionPreparedRelease } from "../architecture/tooling/release-candidate/host.ts";
 import { assertNodeQualification, array, custody, engineAt, git, historicalFile, historicalSnapshot, decodeHistoricalBatch, hash, record, snapshot, text } from "../architecture/tooling/release-candidate/io.ts";
 import { assertRetainedBuildInputs, retainedBuildPaths, retainedSource, type RetainedToolingSuccessor } from "../architecture/tooling/npm-release/policy.ts";
 import { RELEASE_POLICY_DECISION } from "../architecture/checks/assembly-admission.mjs";
@@ -665,11 +665,12 @@ await test("coordinated Effect release uses authenticated authority and replays 
       assert.equal(record(JSON.parse(read(root, path)))["packageVersion"], "0.8.0");
     }
     const head = commit(root, "test(release): retain coordinated Effect candidate");
-    assert.equal(verifyRelease(root, accepted, head).report.outcome, "passed");
+    const replay = verifyRelease(root, accepted, head);
+    assert.equal(replay.report.outcome, "passed");
     const assemblyBaseline = record(JSON.parse(read(root, baselinePaths[1])));
     write(root, baselinePaths[1], { ...assemblyBaseline, entrypoints: [] });
-    const forgedHead = commit(root, "test(release): forge Assembly baseline");
-    assert.throws(() => verifyRelease(root, accepted, forgedHead), /candidate.generated-output-drift/u);
+    assert.throws(() => assertReplayDiff(difference(prepared.before, snapshot(root)), replay.observed.diff),
+      /candidate.generated-output-drift/u);
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 });
 
