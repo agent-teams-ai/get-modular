@@ -12,7 +12,7 @@ jobs:
     permissions:
       contents: write
     env:
-      SOURCE_SHA: 24844e3f06b35468a72a94410517505946899efb
+      SOURCE_SHA: c50e24d8db1b3d24338259b1d4dab5b2c1e4bfe8
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -49,10 +49,10 @@ jobs:
           git apply --check "$RUNNER_TEMP/qualification.patch"
           git apply --index "$RUNNER_TEMP/qualification.patch"
           git diff --cached --check
-          test "$(git diff --cached --name-only)" = "$(printf 'packages/effect/docs/practices.md\npackages/effect/tests/communication.test.ts')"
+          test "$(git diff --cached --name-only)" = "$(printf 'architecture/checks/leaf-packages.ts\npackages/effect/docs/practices.md\npackages/effect/tests/communication.test.ts')"
           git config --local user.name iliya
           git config --local user.email iliyazelenkog@gmail.com
-          git commit -m 'test(effect): strengthen subscription retirement and slow-state consumer evidence'
+          git commit -m 'test(effect): preserve qualified peer outcomes and admit the recipe test command'
           test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
           test "$(git show -s --format='%an|%ae|%cn|%ce' HEAD)" = 'iliya|iliyazelenkog@gmail.com|iliya|iliyazelenkog@gmail.com'
           cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
@@ -69,19 +69,6 @@ jobs:
           printf 'Source commit: %s\nSource ref: %s\n' "$(git rev-parse HEAD)" "$ref" | tee "$RUNNER_TEMP/recipe-source.txt" >> "$GITHUB_STEP_SUMMARY"
           echo "EXPECTED_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           git archive --format=tar.gz HEAD > "$RUNNER_TEMP/recipe-source.tar.gz"
-      - name: Retain an offline copy of the exact installed qualification environment
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/recipe-tools/bin"
-          cp "$(command -v node)" "$RUNNER_TEMP/recipe-tools/bin/node"
-          cp "$(command -v bun)" "$RUNNER_TEMP/recipe-tools/bin/bun"
-          node --version > "$RUNNER_TEMP/recipe-tools/versions.txt"
-          bun --version >> "$RUNNER_TEMP/recipe-tools/versions.txt"
-          node node_modules/typescript/bin/tsc --version >> "$RUNNER_TEMP/recipe-tools/versions.txt"
-          tar -czf "$RUNNER_TEMP/recipe-dependencies.tar.gz" node_modules
-          tar -czf "$RUNNER_TEMP/recipe-tools.tar.gz" -C "$RUNNER_TEMP/recipe-tools" .
-          git bundle create "$RUNNER_TEMP/recipe-history.bundle" --all HEAD
-          sha256sum bun.lock package.json > "$RUNNER_TEMP/recipe-inputs.sha256"
       - name: Qualify maintained examples through workspace and installed public packages
         run: |
           bun run assembly:build
@@ -96,7 +83,7 @@ jobs:
       - name: Verify tracked source integrity
         if: always()
         run: node architecture/tooling/runtime/dev.ts verify
-      - name: Retain source and frozen test environment without credentials
+      - name: Retain exact qualification source without credentials
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -104,9 +91,5 @@ jobs:
           path: |
             ${{ runner.temp }}/recipe-source.txt
             ${{ runner.temp }}/recipe-source.tar.gz
-            ${{ runner.temp }}/recipe-dependencies.tar.gz
-            ${{ runner.temp }}/recipe-tools.tar.gz
-            ${{ runner.temp }}/recipe-history.bundle
-            ${{ runner.temp }}/recipe-inputs.sha256
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7

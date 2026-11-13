@@ -1,117 +1,100 @@
+diff --git a/architecture/checks/leaf-packages.ts b/architecture/checks/leaf-packages.ts
+--- a/architecture/checks/leaf-packages.ts
++++ b/architecture/checks/leaf-packages.ts
+@@ -215,6 +215,7 @@ export const LEAF_PACKAGES: readonly LeafPackage[] = Object.freeze([
+       "packages/effect/tests/construction.test.ts",
+       "packages/effect/tests/consumer.test.ts",
+       "packages/effect/tests/lifecycle.test.ts",
++      "packages/effect/tests/communication.test.ts",
+       "packages/effect/tests/packed-root.test.ts",
+     ]),
+     commands: Object.freeze({
+@@ -223,7 +224,7 @@ export const LEAF_PACKAGES: readonly LeafPackage[] = Object.freeze([
+         "node node_modules/typescript/bin/tsc -p packages/effect/tsconfig.json --noEmit"
+         + " && node architecture/tooling/test-assembly-types.mjs --projects packages/effect/tsconfig.types.json"
+         + " packages/effect/tsconfig.types.bundler.json packages/effect/tsconfig.test-tooling.json",
+-      "effect:test": "node --test packages/effect/tests/construction.test.ts packages/effect/tests/consumer.test.ts packages/effect/tests/lifecycle.test.ts tests/effect-admission.test.ts",
++      "effect:test": "node --test packages/effect/tests/construction.test.ts packages/effect/tests/consumer.test.ts packages/effect/tests/lifecycle.test.ts packages/effect/tests/communication.test.ts tests/effect-admission.test.ts",
+       "effect:pack": "node --test packages/effect/tests/packed-root.test.ts",
+       "effect:check": "node architecture/tooling/runtime/command.ts run effect:build && node architecture/tooling/runtime/command.ts run effect:typecheck && node architecture/tooling/runtime/command.ts run effect:test && node architecture/tooling/runtime/command.ts run effect:pack",
+     }),
 diff --git a/packages/effect/docs/practices.md b/packages/effect/docs/practices.md
 --- a/packages/effect/docs/practices.md
 +++ b/packages/effect/docs/practices.md
-@@ -410,9 +410,9 @@ The GM test wires that reader through an ordinary required slot into two modules
+@@ -426,8 +426,8 @@ multicast subscriber. Merely obtaining a lazy Stream does not prove readiness.
+ There is no replay in this recipe. Two identical payloads are two occurrences.
+ A bounded source can wait for a slow subscriber; publication confirms admission,
+ not that every handler finished. Subscriber cancellation releases only its own
+-subscription. Source shutdown interrupts this recipe's pending reads; it does
+-not pretend to be a graceful business-completion event. The Host separately
++subscription. Source shutdown interrupts this recipe's pending reads and subsequent publication
++returns `false`; neither is a graceful business-completion event. The Host separately
+ chooses whether one consumer failure ends the application or is handled locally.
+ The tests exercise both early successful exit and locally handled failure while
+ a sibling remains active, and verify that the source stops with its graph.
+@@ -451,8 +451,13 @@ Every consumption acquires its own foreign subscription through
+ created queue. If subscribe throws before returning a disposer, the source must
+ roll back its own partial acquisition; no adapter can recover an undisclosed
+ handle. A returned disposer remains owned through early completion, processing
+-failure and interruption. A throwing disposer remains a native defect. No second
+-GM Resources disposer is installed for that same subscription.
++failure and interruption. A throwing disposer remains a native defect. In the
++qualified peer, a simultaneous processing failure and disposer failure preserve
++both original error objects as defects; without failed cleanup, the processing
++error retains its typed failure channel. Inspect the complete Cause rather than
++assuming every original error remains a `Fail` after finalization fails. The
++recipe preserves native behavior instead of reconstructing an artificial Exit.
++No second GM Resources disposer is installed for that same subscription.
  
- ```ts
- // Inside the operation retained by the graph's owning Effect Scope:
--const events = yield* roots.reader.subscribe;
-+const events = yield* roots.left.subscribe;
- // The subscription is registered now, before the first publication.
--yield* roots.publisher.publish({ jobId: "example", completed: 1 });
-+yield* roots.source.publisher.publish({ jobId: "example", completed: 1 });
- const first = yield* Stream.runCollect(Stream.take(events, 1));
- ```
- 
-@@ -512,9 +512,9 @@ Do not write the watched state back from this projection. Test any deliberate
- command/reconciliation feedback in the product that owns it.
- 
- The maintained tests check initial/latest values, irrelevant-key updates,
--independent watch closure, source lifetime, unexpected source close and failed
--bridge cleanup. These are Node qualification cases, not browser parity or a
--thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
-+independent watch closure, latest-only buffering for a held consumer, source
-+lifetime, unexpected source close and failed bridge cleanup. These are Node
-+qualification cases, not browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
- replacements: choose intentionally rather than renaming methods during migration.
- 
- For a bounded delivery contract, count all retained stages, including data already
-@@ -711,7 +711,8 @@ mapper's implementation.
- | Distribution and optionality | [Archive test][gm-archive-test]: repeat native cases from matched installed packages, check portable public types and ordinary Assembly without Effect |
- 
- On a clean checkout, first build the public prerequisites with `bun run assembly:build`,
--`bun run resources:build` and `bun run observation:build`. Then, from the repository
-+`bun run resources:build`, `bun run conformance:build` and `bun run observation:build`.
-+Then, from the repository
- root, `bun run effect:check` runs the focused build, strict
- source/type/test-tooling checks, native cases and archive qualification under the
- pinned repository toolchain. Follow the repository instructions for the full gate.
+ This source cannot wait for backpressure. The recipe uses a bounded queue and
+ turns a refused offer into `ProgressOverflow`, closes admission, and discards its
 diff --git a/packages/effect/tests/communication.test.ts b/packages/effect/tests/communication.test.ts
 --- a/packages/effect/tests/communication.test.ts
 +++ b/packages/effect/tests/communication.test.ts
-@@ -43,7 +43,7 @@ async function nativeGraph() {
- test("communication: GM selects one native source; early or failed subscriber exit leaves its sibling alive", { timeout: 10000 }, async () => {
-   const graph = await nativeGraph();
-   for (const failLeft of [false, true]) {
--    const retained: { publisher?: ProgressPublisher } = {};
-+    const retained: { publisher?: ProgressPublisher; left?: Stream.Stream<ProgressEvent> } = {};
-     const result = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
-       const roots = yield* Roots;
-       assert.equal(roots.left, roots.right);
-@@ -54,6 +54,7 @@ test("communication: GM selects one native source; early or failed subscriber ex
-       const rightWork = yield* Effect.forkScoped(Stream.runCollect(Stream.take(right, 3)));
-       yield* Effect.scoped(Effect.gen(function* () {
-         const left = yield* roots.left.subscribe;
-+        retained.left = left;
-         const duplicate = event(1);
-         yield* roots.source.publisher.publish(duplicate);
-         yield* roots.source.publisher.publish(duplicate);
-@@ -66,6 +67,9 @@ test("communication: GM selects one native source; early or failed subscriber ex
-           assert.deepEqual(yield* Stream.runCollect(Stream.take(left, 2)), [duplicate, duplicate]);
-         }
-       }));
-+      assert.ok(retained.left);
-+      const closedReader = yield* Effect.forkScoped(Stream.runDrain(Stream.take(retained.left, 1)));
-+      assert.ok(Exit.hasInterrupts(yield* Fiber.await(closedReader)), "closed subscriber must be detached");
-       yield* roots.source.publisher.publish(event(2));
-       return yield* Fiber.join(rightWork);
+@@ -75,8 +75,8 @@ test("communication: GM selects one native source; early or failed subscriber ex
      })).pipe(Effect.provide(graph.layer(Roots))));
-@@ -181,11 +185,13 @@ test("communication: Observation projection preserves latest-state semantics and
-   try {
-     await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
-       const ready = yield* Deferred.make<void>();
-+      const resume = yield* Deferred.make<void>();
-       const seen: number[] = [];
-       const reader = yield* Effect.forkScoped(Stream.runCollect(Stream.take(Stream.tap(
-         observedProgress(facet), snapshot => Effect.gen(function* () {
-           seen.push(snapshot.values.completed);
-           yield* Deferred.succeed(ready, undefined);
-+          if (snapshot.values.completed === 0) yield* Deferred.await(resume);
-         }),
-       ), 2)));
-       yield* Deferred.await(ready);
-@@ -194,7 +200,11 @@ test("communication: Observation projection preserves latest-state semantics and
-       yield* Effect.promise(() => delivered({ stores: [facet] }));
-       assert.deepEqual(seen, [0]);
-       store.set({ completed: 1 });
-+      yield* Effect.promise(() => delivered({ stores: [facet] }));
-       store.set({ completed: 2 });
-+      yield* Effect.promise(() => delivered({ stores: [facet] }));
-+      assert.deepEqual(seen, [0], "a slow consumer has not processed the queued snapshots");
-+      yield* Deferred.succeed(resume, undefined);
-       const snapshots = yield* Fiber.join(reader);
-       assert.deepEqual(snapshots.map(snapshot => snapshot.values.completed), [0, 2]);
-       assert.equal(liveSubscriptions(facet), 0);
-@@ -240,18 +250,18 @@ test("communication: unexpected Observation source close is owner-reported, not
-   try {
-     await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
-       const ready = yield* Deferred.make<void>();
--      let completed = false;
-+      let settled = false;
-       const reader = yield* Effect.forkScoped(Stream.runDrain(Stream.tap(
-         observedProgress(facet), () => Deferred.succeed(ready, undefined),
--      )).pipe(Effect.andThen(Effect.sync(() => { completed = true; }))));
-+      )).pipe(Effect.ensuring(Effect.sync(() => { settled = true; }))));
-       yield* Deferred.await(ready);
-       store.close();
-       yield* Effect.promise(() => delivered({ stores: [facet] }));
-       assert.equal(liveSubscriptions(facet), 0);
-       assert.equal(reports.length, 1);
--      assert.equal(completed, false);
-+      assert.equal(settled, false, "no successful or failed terminal signal is invented");
-       yield* Fiber.interrupt(reader);
--      assert.equal(completed, false);
-+      assert.equal(settled, true, "the Host owns consumer retirement");
-     })));
-     const closedRead = await Effect.runPromiseExit(Stream.runDrain(observedProgress(facet)));
-     assert.ok(Exit.isFailure(closedRead));
+     assert.deepEqual(result.map(value => value.completed), [1, 1, 2]);
+     assert.ok(retained.publisher);
+-    const afterClose = await Effect.runPromiseExit(retained.publisher.publish(event(3)));
+-    assert.ok(Exit.hasInterrupts(afterClose), "the graph's source is no longer live");
++    const afterClose = await Effect.runPromise(retained.publisher.publish(event(3)));
++    assert.equal(afterClose, false, "the closed source refuses publication");
+   }
+ });
+ 
+@@ -148,15 +148,26 @@ test("communication: a failed foreign subscribe retains its error and the source
+ });
+ 
+ test("communication: processing failure and foreign teardown defect are not converted into success", async () => {
+-  const processing = new Error("processing failed"), cleanup = new Error("unsubscribe failed");
+-  const fixture = progressFixture({ initial: [event(1)], releaseFailure: cleanup });
+-  const result = await Effect.runPromiseExit(Stream.runDrain(
+-    Stream.mapEffect(callbackProgress(fixture.source), () => Effect.fail(processing)),
+-  ));
+-  assert.ok(Exit.isFailure(result));
+-  assert.ok(result.cause.reasons.filter(Cause.isFailReason).some(reason => reason.error === processing));
+-  assert.ok(result.cause.reasons.filter(Cause.isDieReason).some(reason => reason.defect === cleanup));
+-  assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
++  for (const brokenCleanup of [false, true]) {
++    const processing = new Error("processing failed"), cleanup = new Error("unsubscribe failed");
++    const fixture = progressFixture({ initial: [event(1)], ...(brokenCleanup ? { releaseFailure: cleanup } : {}) });
++    const result = await Effect.runPromiseExit(Stream.runDrain(
++      Stream.mapEffect(callbackProgress(fixture.source), () => Effect.fail(processing)),
++    ));
++    assert.ok(Exit.isFailure(result));
++    if (brokenCleanup) {
++      // Native finalization retains both original error objects as defects here.
++      // Do not fabricate the original typed Fail classification after failed cleanup.
++      const defects = result.cause.reasons.filter(Cause.isDieReason).map(reason => reason.defect);
++      assert.equal(defects.length, 2);
++      assert.ok(defects.includes(processing));
++      assert.ok(defects.includes(cleanup));
++    } else {
++      assert.deepEqual(result.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error), [processing]);
++      assert.equal(result.cause.reasons.some(Cause.isDieReason), false);
++    }
++    assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
++  }
+ });
+ 
+ test("communication: native interruption waits for callback subscription teardown", { timeout: 10000 }, async () => {
