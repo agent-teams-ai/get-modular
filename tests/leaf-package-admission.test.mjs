@@ -6,8 +6,8 @@ import test from "node:test";
 import { validateLeafPackageAdmission } from "../architecture/checks/leaf-package-admission.mjs";
 import {
   assertLeafPackageTable, expectedLeafExports, expectedLeafImporter, expectedPeerDependencies, LEAF_PACKAGES,
-  leafBuildOutputs, leafEntrySources, leafManifestPath, leafPackageById, leafSubpaths, PRIVATE_CANDIDATE,
-  PUBLIC, PUBLIC_FILES, PUBLIC_PUBLISH_CONFIG, publicRepository,
+  leafBuildOutputs, leafEntrySources, leafFiles, leafImportPeers, leafManifestPath, leafPackageById, leafSubpaths, PRIVATE_CANDIDATE,
+  PUBLIC, PUBLIC_PUBLISH_CONFIG, publicRepository,
 } from "../architecture/checks/leaf-packages.ts";
 
 const registryPath = "architecture/decisions/accepted-decisions.json";
@@ -109,7 +109,7 @@ const rootExport = () => ({ ".": {
 const manifestFor = leaf => leaf.publication === PUBLIC
   ? {
     name: leaf.name, type: "module", exports: leaf.id === "observation" ? twoEntryExports() : rootExport(),
-    files: [...PUBLIC_FILES],
+    files: leafFiles(leaf),
     publishConfig: { ...PUBLIC_PUBLISH_CONFIG }, repository: publicRepository(leaf),
     ...expectedPeerDependencies(leaf) === undefined ? {} : { peerDependencies: expectedPeerDependencies(leaf) },
   }
@@ -550,11 +550,12 @@ for (const leaf of ROWS) {
 
   test(`${leaf.id}: type-only, runtime and deep imports cannot pierce the package boundary`, async () => {
     const { input, sources, sourcePath, admitted } = fixture(leaf);
-    const peers = leaf.peers ?? [];
+    const peers = leafImportPeers(leaf);
     for (const edge of [
       ...[
         'import type { Core } from "@get-modular/core";',
         'type Secret = import("@get-modular/assembly").Secret;',
+        'import { Effect } from "effect";',
       ].filter(edge => !peers.some(peer => edge.includes(`"${peer}"`))),
       'import "node:fs";',
       'import type { Lease } from "@get-modular/lifecycle-kernel";',

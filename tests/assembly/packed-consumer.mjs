@@ -6,7 +6,7 @@ import * as assembly from "@get-modular/assembly";
 import * as core from "@get-modular/core";
 
 const require = createRequire(import.meta.url);
-assert.deepEqual(Object.keys(assembly).sort(), ["AssemblyBindingError", "assemblyFor", "declareModule", "defineContract", "entriesOf", "formatFailure", "group", "implement", "input"]);
+assert.deepEqual(Object.keys(assembly).sort(), ["AssemblyBindingError", "assemblyFor", "captureWiringInputs", "createEntryFamily", "declareModule", "defineContract", "entriesOf", "formatFailure", "group", "implement", "injectionDependencies", "input", "snapshotFactoryProduct"]);
 assert.deepEqual(Object.keys(core).sort(), ["compileComposition", "compileCompositionJson", "defineModule", "many", "optional", "required"]);
 assert.match(assembly.formatFailure({ ok: false, diagnostics: [{
   code: "binding.missing", phase: "binding", path: [],

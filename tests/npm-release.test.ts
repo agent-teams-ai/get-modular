@@ -15,6 +15,7 @@ import {
 } from "../architecture/tooling/npm-release/policy.ts";
 
 import { registryArchive, registryVersion } from "../architecture/tooling/npm-release/registry.ts";
+import { sourcePackages } from "../architecture/tooling/npm-release/source-packages.ts";
 import { assertArchivePayload, assertCurrentArchiveSource, currentArchivesFor, currentOriginalArchives,
   metadataCohort, qualifyCurrentArchive } from "../architecture/tooling/npm-release/current-archives.ts";
 import { metadataDecision } from "../architecture/tooling/release-candidate/metadata-authority.ts";
@@ -42,8 +43,13 @@ test("release qualification requires the complete actual CI matrix and successfu
       `check (${host}${runtime})`,
       ...["core", "assembly", "packaging", "governance", "static", "observation"].map(lane => `check lane (${host}${runtime}, ${lane})`),
     ]));
-  independentNames.push("Node 24 package root compatibility");
-  assert.equal(independentNames.length, 64);
+  independentNames.push(
+    "Node 24 package root compatibility",
+    "CI impact selection",
+    "CI impact contract tests",
+    "Scoped docs protocol",
+  );
+  assert.equal(independentNames.length, 67);
   assert.deepEqual(expected, independentNames.sort());
   assertQualifiedCi(ciRun(), jobs(), expected, source);
   for (const name of independentNames.filter(name => name.includes("Node 26 rollback"))) {
@@ -298,6 +304,39 @@ function archiveSourceFixture() {
   };
   return { root, source: commit(), commit, dispose: () => rmSync(root, { recursive: true, force: true }) };
 }
+
+test("real source inventory defers the admitted Effect candidate without expanding publication", async () => {
+  const subject = archiveSourceFixture();
+  const names = ["core", "assembly", "resources", "conformance", "observation"];
+  const expectedPackages = names.map(id => ({ id, name: `@get-modular/${id}`,
+    version: metadataCohort.find(item => item.name === `@get-modular/${id}`)!.version,
+    tree: git(subject.root, "rev-parse", `HEAD:packages/${id}`).trim() }));
+  const writeManifest = (id: string, value: unknown): void => {
+    const path = join(subject.root, "packages", id, "package.json");
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify(value));
+  };
+  const candidate = record(json(await readFile("packages/effect/package.json", "utf8")));
+  try {
+    writeManifest("lifecycle-kernel", json(await readFile("packages/lifecycle-kernel/package.json", "utf8")));
+    assert.deepEqual(await sourcePackages(subject.root), { packages: expectedPackages, pendingAdmission: false });
+    writeManifest("effect", candidate);
+    assert.deepEqual(await sourcePackages(subject.root), { packages: expectedPackages, pendingAdmission: true });
+    for (const mutation of [{ name: "@foreign/effect" }, { version: "0.1.0" }, { version: "1.0.0" },
+      { private: true }, { private: false }]) {
+      writeManifest("effect", { ...candidate, ...mutation });
+      await assert.rejects(sourcePackages(subject.root), /release.unclassified-public-package/u);
+    }
+    writeManifest("effect", candidate);
+    // A pending row must not terminate inventory before a later unknown public root.
+    writeManifest("z-foreign", { name: "@foreign/public", version: "0.0.0" });
+    await assert.rejects(sourcePackages(subject.root), /release.unclassified-public-package/u);
+    writeManifest("z-foreign", { name: "@foreign/private", version: "0.0.0", private: true });
+    assert.deepEqual(await sourcePackages(subject.root), { packages: expectedPackages, pendingAdmission: true });
+    writeManifest("core", { name: "@get-modular/core", version: "0.7.1", private: true });
+    await assert.rejects(sourcePackages(subject.root), /release.private-package/u);
+  } finally { subject.dispose(); }
+});
 
 test("current archive selection rejects foreign source, tracked drift, changed authority and nonpublic byte pins", () => {
   const subject = archiveSourceFixture();

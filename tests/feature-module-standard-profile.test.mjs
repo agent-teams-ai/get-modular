@@ -81,7 +81,7 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
       workspaceContainers: ["packages"],
       productionRoots: [
         "packages/core/src", "packages/assembly/src", "packages/lifecycle-kernel/src", "packages/resources/src",
-        "packages/conformance/src", "packages/observation/src",
+        "packages/conformance/src", "packages/observation/src", "packages/effect/src",
       ],
       modules: [
         {
@@ -113,6 +113,11 @@ test("exposes the qualified nested FMS v1 topology consumed by Foundation", () =
           moduleRoot: "packages/observation",
           sourceRoot: "packages/observation/src",
           testRoot: "packages/observation/tests",
+        },
+        {
+          moduleRoot: "packages/effect",
+          sourceRoot: "packages/effect/src",
+          testRoot: "packages/effect/tests",
         },
       ],
     },

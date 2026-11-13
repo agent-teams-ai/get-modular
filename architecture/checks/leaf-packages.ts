@@ -17,6 +17,10 @@ export interface LeafPackage {
   readonly commands: Readonly<Record<string, string>>;
   readonly gate: string;
   readonly peers?: readonly string[];
+  /** Qualified registry peers, declared through the exact workspace catalog. */
+  readonly externalPeers?: Readonly<Record<string, string>>;
+  /** Additional source documentation shipped in this row's archive. */
+  readonly documentation?: readonly string[];
   readonly subpaths?: readonly string[];
 }
 
@@ -31,7 +35,7 @@ export const publicRepository = (leaf: LeafPackage) => ({
 // Optional leaf packages admitted beside Core and Assembly. Each row is bound to
 // its accepted decision; the governance, workspace, manifest, build and profile
 // checks read this table instead of naming a package. A leaf has no runtime
-// dependency except the Get Modular peers its row declares. Core and Assembly
+// dependency except the exact peers its row declares. Core and Assembly
 // import no leaf; a leaf imports another leaf only as a declared peer.
 export const LEAF_PACKAGES: readonly LeafPackage[] = Object.freeze([
   Object.freeze({
@@ -188,6 +192,43 @@ export const LEAF_PACKAGES: readonly LeafPackage[] = Object.freeze([
     }),
     gate: "observation:check",
   }),
+  Object.freeze({
+    id: "effect",
+    name: "@get-modular/effect",
+    root: "packages/effect",
+    publication: PUBLIC,
+    version: /^0\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u,
+    peers: Object.freeze(["@get-modular/assembly", "@get-modular/core"]),
+    externalPeers: Object.freeze({ effect: "4.1.4" }),
+    documentation: Object.freeze(["docs/practices.md"]),
+    decision: Object.freeze({
+      id: "ADR-0043",
+      path: "docs/decisions/0043-plan-optional-native-effect-composition.md",
+      fileDigest: "sha256:0fc55d28a5b1cdedbba703fa6a438f6787b37188e2906133cdabb70d6bc07ece",
+      immutableDigest: "sha256:765fae287d9e893618fb5a4b1259810281323c76a6f6aad1a1c5a93af4daa716",
+    }),
+    extension: Object.freeze({
+      id: "native-effect-composition",
+      authority: "docs/decisions/0043-plan-optional-native-effect-composition.md",
+    }),
+    requiredTests: Object.freeze([
+      "packages/effect/tests/construction.test.ts",
+      "packages/effect/tests/consumer.test.ts",
+      "packages/effect/tests/lifecycle.test.ts",
+      "packages/effect/tests/packed-root.test.ts",
+    ]),
+    commands: Object.freeze({
+      "effect:build": "node architecture/tooling/build-leaf-package.ts effect",
+      "effect:typecheck":
+        "node node_modules/typescript/bin/tsc -p packages/effect/tsconfig.json --noEmit"
+        + " && node architecture/tooling/test-assembly-types.mjs --projects packages/effect/tsconfig.types.json"
+        + " packages/effect/tsconfig.types.bundler.json packages/effect/tsconfig.test-tooling.json",
+      "effect:test": "node --test packages/effect/tests/construction.test.ts packages/effect/tests/consumer.test.ts packages/effect/tests/lifecycle.test.ts tests/effect-admission.test.ts",
+      "effect:pack": "node --test packages/effect/tests/packed-root.test.ts",
+      "effect:check": "node architecture/tooling/runtime/command.ts run effect:build && node architecture/tooling/runtime/command.ts run effect:typecheck && node architecture/tooling/runtime/command.ts run effect:test && node architecture/tooling/runtime/command.ts run effect:pack",
+    }),
+    gate: "effect:check",
+  }),
 ]);
 
 // Get Modular packages that any public row may declare as a peer.
@@ -196,6 +237,9 @@ const BASE_PEERS = Object.freeze(["@get-modular/core", "@get-modular/assembly"])
 // A row without `peers` has none. Only a public row declares them, and each one
 // is Core, Assembly or an earlier public row, so row order is also gate order.
 export const leafPeers = (leaf: LeafPackage): readonly string[] => leaf.peers ?? [];
+export const leafExternalPeers = (leaf: LeafPackage): Readonly<Record<string, string>> => leaf.externalPeers ?? {};
+export const leafImportPeers = (leaf: LeafPackage): readonly string[] => [...leafPeers(leaf), ...Object.keys(leafExternalPeers(leaf))];
+export const leafFiles = (leaf: LeafPackage): readonly string[] => [...PUBLIC_FILES, ...(leaf.documentation ?? [])];
 
 // Each admitted subpath has one source entry and one ESM carrier.
 export const leafSubpaths = (leaf: LeafPackage): readonly string[] => leaf.subpaths ?? ["."];
@@ -212,25 +256,54 @@ export const leafEntrySources = (leaf: LeafPackage): string[] => leafSubpaths(le
 export const leafBuildOutputs = (leaf: LeafPackage): string[] => leafSubpaths(leaf)
   .flatMap(subpath => [`dist/${subpathFile(subpath)}.js`, `dist/${subpathFile(subpath)}.d.ts`]);
 
-// Peers are declared with the workspace caret range, which `node architecture/tooling/runtime/command.ts run pack` turns
-// into the caret range of the one 0.x minor in the workspace.
+// GM peers use the workspace caret range, which packing turns into the caret
+// range of the one 0.x minor in the workspace. Registry peers use the exact catalog.
 export const PEER_SPECIFIER = "workspace:^";
 
 export const expectedPeerDependencies = (leaf: LeafPackage) =>
-  leafPeers(leaf).length === 0
+  leafImportPeers(leaf).length === 0
     ? undefined
-    : Object.fromEntries(leafPeers(leaf).toSorted().map(name => [name, PEER_SPECIFIER]));
+    : Object.fromEntries([
+      ...leafPeers(leaf).map(name => [name, PEER_SPECIFIER]),
+      ...Object.keys(leafExternalPeers(leaf)).map(name => [name, "catalog:"]),
+    ].toSorted(([left], [right]) => left!.localeCompare(right!)));
 
-// The lock importer of a row: empty without peers, otherwise one workspace link
-// per declared peer and nothing else.
+// The lock importer is empty without peers. Each declared GM peer is a workspace
+// link; each qualified registry peer is its exact catalog version.
 export const expectedLeafImporter = (leaf: LeafPackage) =>
-  leafPeers(leaf).length === 0
+  leafImportPeers(leaf).length === 0
     ? {}
     : {
-      dependencies: Object.fromEntries(leafPeers(leaf).toSorted().map(name => [name, {
-        specifier: PEER_SPECIFIER, version: `link:../${name.slice("@get-modular/".length)}`,
-      }])),
+      dependencies: Object.fromEntries([
+        ...leafPeers(leaf).map(name => [name, {
+          specifier: PEER_SPECIFIER, version: `link:../${name.slice("@get-modular/".length)}`,
+        }]),
+        ...Object.entries(leafExternalPeers(leaf)).map(([name, version]) => [name, {
+          specifier: "catalog:", version,
+        }]),
+      ]),
     };
+
+function externalPeerProblem(leaf: LeafPackage): string | undefined {
+  if (leaf.externalPeers === undefined) return undefined;
+  const peers = leaf.externalPeers;
+  if (leaf.publication !== PUBLIC || peers === null || typeof peers !== "object" || Array.isArray(peers)
+    || Object.keys(peers).length === 0) return "externalPeers";
+  return Object.entries(peers).every(([name, version]) =>
+    /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u.test(name)
+    && !name.startsWith("@get-modular/") && !leafPeers(leaf).includes(name)
+    && typeof version === "string" && /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(version))
+    ? undefined : "externalPeers";
+}
+
+function documentationProblem(leaf: LeafPackage): string | undefined {
+  if (leaf.documentation === undefined) return undefined;
+  const paths = leaf.documentation;
+  return leaf.publication === PUBLIC && Array.isArray(paths) && paths.length > 0
+    && new Set(paths).size === paths.length && Array.from(paths).every(path => typeof path === "string"
+      && /^docs\/[a-z0-9][a-z0-9/-]*\.md$/u.test(path) && !path.includes("//"))
+    ? undefined : "documentation";
+}
 
 function peerProblem(leaf: LeafPackage, rows: readonly LeafPackage[], index: number): string | undefined {
   if (leaf.peers === undefined) return undefined;
@@ -262,7 +335,7 @@ function identityProblem(leaf: LeafPackage, rows: readonly LeafPackage[], index:
     || rows.findIndex(other => other.decision?.id === decision.id
       || other.decision?.path === decision.path) !== index) return "decision";
   if (leaf.extension?.authority !== decision.path) return "extension";
-  return peerProblem(leaf, rows, index);
+  return peerProblem(leaf, rows, index) ?? externalPeerProblem(leaf) ?? documentationProblem(leaf);
 }
 
 // Every command belongs to the row's namespace, its gate runs exactly the other

@@ -17,6 +17,7 @@ related:
   - ADR-0036
   - ADR-0037
   - ADR-0041
+  - ADR-0043
   - ARCH-CURRENT-CONTRACT
   - ARCH-MVP-IMPLEMENTATION-ROADMAP
 ---
@@ -60,8 +61,10 @@ The linked local profile maps Get Modular itself, not all consumers.
 
 The [current contract](current-contract.md) and this Assembly contract own graph
 compilation, exact bindings, preparation and construction handoff. Host owns
-permissions, readiness, lifecycle decisions and cleanup authority; modules
-register their own cleanup through the optional resources package. The local accepted adoption
+permissions, readiness, lifecycle decisions and cleanup authority. Promise modules
+can register cleanup through the optional resources package; an explicitly native
+Effect scope uses its own acquisition/finalization under
+[native ownership](#optional-native-effect-construction). The local accepted adoption
 ADR and consumer profile own concrete roots, composition owners, package pins,
 legacy boundaries, exceptions and actual verification commands. None may weaken
 organization rules or infer repository-wide conformance from one adopted slice.
@@ -111,11 +114,13 @@ or broad casts to hide capability, token or slot mismatches. A justified exact
 exception needs an accepted rationale and a rejecting test; it cannot authorize
 a false type claim.
 
-Construction may be async without making domain APIs async. Preserve Host-owned
-cleanup, the created journal and untransferred returned-product handoff. Do not
-introduce a generic lifecycle manager for passive construction. Module-registered
-cleanup uses the optional resources package; see
-[Module resource scopes](#module-resource-scopes).
+Construction may be async without making domain APIs async. Ordinary Promise
+execution preserves Host-owned cleanup, the created journal and untransferred
+returned-product handoff. Its module-registered cleanup uses the optional
+resources package; see [Module resource scopes](#module-resource-scopes).
+Explicit native Effect construction instead keeps its native Scope/error
+contract; see [native construction](#optional-native-effect-construction).
+Do not introduce a generic lifecycle manager for passive construction.
 
 ### Optional dynamic Host lifecycle candidate
 
@@ -1124,7 +1129,7 @@ level; `C` is a Host map or a module's own map, usually derived with
 `implement<C>()(declaration, asyncFactory, adapter?)` returns an
 identity-authenticated module entry, a frozen null-prototype
 `{ declaration, factory }`, and `input<C>()(declaration)` an input entry
-`{ declaration }`. A private WeakSet authenticates each kind; copying descriptors,
+`{ declaration }`. Private identity tables authenticate each kind; copying descriptors,
 symbols, prototype or fields cannot forge one. This is identity checking, not code
 authorization. The optional `adapter` turns a factory written for another context
 into one for `FactoryContext`: Assembly calls `adapter(implementationId, factory)`
@@ -1209,6 +1214,12 @@ entries. Validate alias own-key counts too. These are structural allocation
 ceilings, not another graph engine. No private Core imports. Changes to supported
 Core require rechecking this table against its successful-plan envelope.
 
+The selected-entry ceiling includes module entries and borrowed input entries
+together. Check it before collecting their metadata or completing a profile.
+The module-tree budget separately counts module entries and group nodes; inputs
+do not consume that tree budget. A group may therefore organize a valid mixed
+inventory at the selected-entry limit without making its inputs extra group nodes.
+
 With `profileId`, complete the profile from the captured entries and the captured
 `bindings`, counting rows and provider occurrences against the same ceilings first,
 and compile it once through public `compileComposition`; the returned plan is the
@@ -1228,6 +1239,45 @@ Metadata is cooperative Host-owned data. Reflection on executable Proxy objects
 may run code; these are not safe data. Modified intrinsics, arbitrary heap pressure
 and a fixed wall-clock bound are outside the contract. No raw-byte input ceiling
 is misrepresented as an enriched plan ceiling.
+
+## Optional native Effect construction
+
+[ADR-0043](../decisions/0043-plan-optional-native-effect-composition.md) admits an
+optional `@get-modular/effect` package over the same neutral preparation owner.
+Core and ordinary Assembly remain usable without Effect. The package README owns
+its exact qualified peer and source-candidate availability; adopting it is explicit.
+
+Assembly's additive `createEntryFamily<F>()` authenticates and captures a callable
+factory family, groups, completed profiles and verified `Wiring<F>`. The bridge
+returns inert steps, exact injections, roots and input declarations. It exposes
+no compiler replacement, runtime or executor. Inputs have no factory. The neutral
+`snapshotFactoryProduct`, `captureWiringInputs` and `injectionDependencies` helpers
+keep record/descriptor and cardinality policy shared. Ordinary Promise entries
+and Conformance wrappers still reject other carriers.
+
+Native `effectFor<C>().prepare()` consumes native entries and returns the same
+preparation failures or a prepared `.layer(Roots, { inputs })` constructor. The
+native Layer retains construction E/R from the selected typed inventory and owns
+its construction Scope. Returned operations retain their own errors and request
+requirements. Invalid borrowed input records fail through `InvalidInputs` before
+factory acquisition. Native failures/defects/interruption do not become Promise
+created journals, cleanup debt or a promise of retryable release.
+
+GM slots remain the inter-module selection authority; private native services and
+operation context are allowed. Use typed inventories before preparation for
+live/fake replacement. Each `.layer()` call captures fresh mapper identities and
+inputs; reuse its returned Layer deliberately to share within a native build.
+Independent factories may acquire in parallel; root listing order is not startup
+sequencing. A borrowed capability keeps its external owner and no disposer is
+registered for it.
+
+The application Host owns the work using its roots, including lazy streams and
+asynchronous finalizers. It must retain the owning resource scope until that work
+settles. Shared application/local session lifetimes and setup before workers are
+documented recipes, not a new runtime, automatic cache or lifetime-tag language.
+Follow the single [Effect integration practices](../../packages/effect/docs/practices.md)
+guide. The installed archive qualification exercises a real-resource test Host;
+product-specific adoption and shutdown guarantees require a named actual consumer.
 
 ## Execution and Promise carrier
 

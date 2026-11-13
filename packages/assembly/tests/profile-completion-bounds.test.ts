@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assemblyFor, declareModule, defineContract, implement, type CapabilitiesOf } from "../dist/index.js";
-import { optional, required, type CompositionProfile, type ModuleDeclaration } from "@get-modular/core";
+import { assemblyFor, declareModule, defineContract, formatFailure, implement, input, type CapabilitiesOf } from "../dist/index.js";
+import { compileComposition, many, optional, required, type CompositionProfile, type ModuleDeclaration } from "@get-modular/core";
 import { deriveProfile } from "../dist/features/construction/derive-profile.js";
-import type { Metadata } from "../dist/features/construction/ports.js";
+import type { ExecutableFactory, Metadata } from "../dist/features/construction/ports.js";
 import { prepareConstruction } from "../dist/features/construction/prepare.js";
+import { createEntryFamily } from "../dist/features/construction/wiring.js";
 
 const Value = defineContract<number>()({ id: "completion/value", revision: 1 });
 type Capabilities = CapabilitiesOf<typeof Value>;
@@ -97,7 +98,98 @@ test("completed row and provider occurrence ceilings include inferred required b
   }
 });
 
-const neverCalled: Metadata["factory"] = () => { throw new Error("profile analysis must not execute factories"); };
+function mixedInventory() {
+  const compilations: number[] = [];
+  let factoryCalls = 0;
+  const family = createEntryFamily<() => undefined>({ compileComposition: async request => {
+    compilations.push(Array.isArray(request.declarations) ? request.declarations.length : -1);
+    return compileComposition(request);
+  } });
+  const factory = (): undefined => { factoryCalls += 1; return undefined; };
+  const makeDeclaration = (name: string) => declareModule({
+    moduleId: `completion/${name}`, implementationId: `completion/${name}`,
+    owner: { authority: "completion", path: ["mixed"] }, provides: [Value.provide()], slots: [],
+  });
+  const providers = Array.from({ length: 4095 }, (_, index) => family.capture(makeDeclaration(`mixed-${String(index)}`), factory));
+  const borrowed = input<Capabilities>()(makeDeclaration("borrowed"));
+  const second = input<Capabilities>()(makeDeclaration("second"));
+  return { family, factory, providers, borrowed, second, compilations, factoryCalls: () => factoryCalls };
+}
+
+test("selected-entry bounds include borrowed inputs and retain the separate module-tree budget", async context => {
+  const f = mixedInventory();
+  const root = f.family.capture(declareModule({
+    moduleId: "completion/mixed-root", implementationId: "completion/mixed-root",
+    owner: { authority: "completion", path: ["mixed"] }, provides: [],
+    slots: [0, 1, 2, 3].map(index => Value.slot(`part-${String(index)}`, many({ min: 0, max: 1024 }))),
+  }), f.factory);
+  const bindingsFor = (providers: readonly typeof f.providers[number][]): CompositionProfile["bindings"] => {
+    const ids = [...providers.map(entry => entry.declaration.implementationId), f.borrowed.declaration.implementationId];
+    return [0, 1, 2, 3].map(index => ({ consumerImplementationId: root.declaration.implementationId,
+      slotId: `part-${String(index)}`, providerImplementationIds: ids.slice(index * 1024, (index + 1) * 1024) }));
+  };
+  const atBoundary = f.providers.slice(0, 4094);
+  // 4095 module entries + one group consume 4096 module-tree nodes. The
+  // borrowed provider separately makes exactly 4096 selected declarations.
+  const accepted = await f.family.prepare({ profileId: "completion/mixed", roots: { root }, inputs: { borrowed: f.borrowed },
+    modules: [f.family.group("boundary", [...atBoundary, root])], bindings: bindingsFor(atBoundary) });
+  assert.equal(accepted.status, "prepared");
+  if (accepted.status !== "prepared") throw new Error("the exact mixed boundary must prepare");
+  assert.deepEqual(f.compilations, [4096]);
+  assert.equal(accepted.wiring.steps.length, 4096);
+  assert.deepEqual(accepted.composition.plan.selections.map(entry => entry.implementationId).sort(),
+    [...atBoundary.map(entry => entry.declaration.implementationId), root.declaration.implementationId,
+      f.borrowed.declaration.implementationId].sort());
+  assert.equal(f.factoryCalls(), 0);
+
+  for (const mode of ["profile", "composition"] as const) {
+    await context.test(`${mode}: one additional selected entry is rejected before Core`, async () => {
+      f.compilations.length = 0;
+      const common = { modules: [...f.providers, root], roots: { root }, inputs: { borrowed: f.borrowed } };
+      const rejected = await f.family.prepare(mode === "profile"
+        ? { ...common, profileId: "completion/mixed", bindings: bindingsFor(f.providers) }
+        : { ...common, composition: accepted.composition });
+      assert.equal(rejected.status, "failed");
+      if (rejected.status !== "failed") throw new Error("oversized selected entries prepared");
+      assert.equal(rejected.error.code, "assembly.prepare.limit");
+      assert.deepEqual(rejected.diagnostics, []);
+      assert.deepEqual(f.compilations, []);
+      assert.equal(f.factoryCalls(), 0);
+    });
+  }
+});
+
+test("mixed-entry overflow is rejected before returning oversized unresolved candidates", async context => {
+  const f = mixedInventory();
+  const root = f.family.capture(consumerDeclaration, f.factory);
+  const roots = { root };
+  const inputs = { borrowed: f.borrowed, second: f.second };
+  const atBoundary = await f.family.prepare({ profileId: "completion/mixed-unresolved", roots, inputs,
+    modules: [...f.providers.slice(0, 4093), root] });
+  assert.equal(atBoundary.status, "failed");
+  if (atBoundary.status !== "failed") throw new Error("ambiguous boundary unexpectedly prepared");
+  assert.equal(atBoundary.error.code, "assembly.prepare.unresolved-binding");
+  assert.deepEqual(atBoundary.error.cause, [{
+    consumerImplementationId: consumerDeclaration.implementationId, slotId: "value", capabilityId: Value.id,
+    cardinality: "required", groupPath: [], candidates: [...f.providers.slice(0, 4093).map(entry => entry.declaration.implementationId),
+      f.borrowed.declaration.implementationId, f.second.declaration.implementationId].sort(),
+  }]);
+  assert.doesNotMatch(formatFailure(atBoundary, { includeAuthoringContext: true }), /Authoring context unavailable/u);
+  for (const count of [4094, 4095]) {
+    await context.test(`${String(count + 3)} selected entries fail the shared census`, async () => {
+      const rejected = await f.family.prepare({ profileId: "completion/mixed-unresolved", roots, inputs,
+        modules: [...f.providers.slice(0, count), root] });
+      assert.equal(rejected.status, "failed");
+      if (rejected.status !== "failed") throw new Error("oversized unresolved inventory prepared");
+      assert.equal(rejected.error.code, "assembly.prepare.limit");
+      assert.deepEqual(rejected.diagnostics, []);
+      assert.deepEqual(f.compilations, []);
+      assert.equal(f.factoryCalls(), 0);
+    });
+  }
+});
+
+const neverCalled: ExecutableFactory = () => { throw new Error("profile analysis must not execute factories"); };
 function metadata(id: string, provides: ModuleDeclaration["provides"], slots: ModuleDeclaration["slots"]): Metadata {
   return { factory: neverCalled, declaration: {
     kind: "get-modular.module-declaration", schemaVersion: 1, moduleId: id, implementationId: id,

@@ -13,6 +13,7 @@ catalog:
   ajv: 8.20.0
   canonicalize: 4.0.0
   cspell: 10.0.1
+  effect: 4.1.4
   json-canonicalize: 3.0.0
   jsonc-parser: 3.3.1
   markdownlint-cli2: 0.23.2

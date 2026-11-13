@@ -257,10 +257,12 @@ test("full-scan roots retain Core metadata coverage within the published schema 
   assert.equal(maximum, 64);
   const paths = currentPolicy.fullScanPaths;
   assert.ok(isStrings(paths));
-  assert.equal(paths.length, 64);
+  assert.equal(paths.length, 62);
   assert.ok(paths.length <= maximum);
   assert.equal(new Set(paths).size, paths.length);
-  assert.ok(paths.includes("packages/core"));
+  for (const root of ["packages/core", "packages/assembly", "packages/effect"]) {
+    assert.ok(paths.includes(root), root);
+  }
   for (const path of coreMetadataPaths) {
     assert.ok(paths.some(prefix => path === prefix || path.startsWith(`${prefix}/`)), path);
   }

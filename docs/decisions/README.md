@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0043: Admit optional native Effect composition](0043-plan-optional-native-effect-composition.md)
+
 - [ADR-0042: Admit the coordinated 0.7.1 metadata release](0042-admit-the-coordinated-0-7-1-metadata-release.md)
 
 - [ADR-0041: Preserve complete feature maps with descriptor unions](0041-preserve-complete-feature-maps-with-descriptor-unions.md)

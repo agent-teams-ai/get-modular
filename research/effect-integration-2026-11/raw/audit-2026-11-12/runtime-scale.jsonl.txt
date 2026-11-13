@@ -1,0 +1,7 @@
+{"shape":"chain","count":100,"preparationMs":29.44994200000002,"buildAndReleaseMs":9.396243999999967,"acquired":100,"released":100,"rssMB":114.6015625}
+{"shape":"chain","count":500,"preparationMs":74.004729,"buildAndReleaseMs":20.506074000000012,"acquired":500,"released":500,"rssMB":148.03515625}
+{"shape":"chain","count":1000,"preparationMs":96.92726100000004,"buildAndReleaseMs":25.430903999999998,"acquired":1000,"released":1000,"rssMB":165.57421875}
+{"shape":"chain","count":2048,"preparationMs":242.3491170000001,"buildAndReleaseMs":83.07747500000005,"acquired":2048,"released":2048,"rssMB":242.265625}
+{"shape":"fanout","count":100,"preparationMs":9.726571000000035,"buildAndReleaseMs":5.973054000000047,"acquired":100,"released":100,"maxActive":100,"outerConcurrency":2,"rssMB":242.015625}
+{"shape":"fanout","count":500,"preparationMs":33.502290000000016,"buildAndReleaseMs":9.606078000000025,"acquired":500,"released":500,"maxActive":500,"outerConcurrency":2,"rssMB":242.640625}
+{"shape":"fanout","count":1000,"preparationMs":49.87416500000006,"buildAndReleaseMs":16.39772400000004,"acquired":1000,"released":1000,"maxActive":1000,"outerConcurrency":2,"rssMB":243.390625}

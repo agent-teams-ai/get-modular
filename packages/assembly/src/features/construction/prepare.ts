@@ -2,6 +2,11 @@ import type { CompositionPlan, CompositionProfile, Diagnostic, ModuleDeclaration
 import type { AssemblyPreparationResult, AssemblyPrepareInput, InputEntries, ModuleItem, PreparedAssembly, RootEntries, RunOptions, SuccessfulComposition } from "./types.js";
 import type { ConstructionPorts } from "./ports.js";
 import { appendCreated } from "./ports.js";
+import type { EntryStore } from "./entry-store.js";
+import type { GroupCollection } from "./group-collection.js";
+import type { WiringPreparationResult } from "./wiring-types.js";
+import { promiseEntries } from "./entry.js";
+import { promiseGroups } from "./group.js";
 import { SnapshotFault, copyPlan, data, dataObject, denseArray, envelope, inspectPlan, limits, record, rootKeys, snapshotPlan } from "./snapshot.js";
 import { runAttempt } from "./run.js";
 import { deriveProfile } from "./derive-profile.js";
@@ -44,7 +49,8 @@ function profileFrom(plan: CompositionPlan): CompositionProfile {
   });
 }
 
-function rejectedByCore(diagnostics: readonly Diagnostic[]): AssemblyPreparationResult<never> {
+type PreparationFailure = Extract<AssemblyPreparationResult<never>, { readonly status: "failed" }>;
+function rejectedByCore(diagnostics: readonly Diagnostic[]): PreparationFailure {
   return Object.freeze({
     status: "failed", error: Object.freeze({ code: "assembly.prepare.core-rejected", cause: undefined }),
     diagnostics: Object.freeze([...diagnostics]),
@@ -53,10 +59,10 @@ function rejectedByCore(diagnostics: readonly Diagnostic[]): AssemblyPreparation
 // Root entries name the profile roots; a missing, borrowed or repeated entry is a roots fault.
 type Completion = { readonly plan: CompositionPlan; readonly composition: SuccessfulComposition };
 async function completeProfile(compile: ConstructionPorts["compileComposition"], declarations: readonly ModuleDeclaration[],
-  input: Parameters<typeof deriveProfile>[0]): Promise<Completion | AssemblyPreparationResult<never>> {
+  input: Parameters<typeof deriveProfile>[0]): Promise<Completion | PreparationFailure> {
   const derived = deriveProfile(input);
   if (!derived.ok) {
-    return Object.freeze<AssemblyPreparationResult<never>>({
+    return Object.freeze<PreparationFailure>({
       status: "failed", error: Object.freeze({ code: "assembly.prepare.unresolved-binding", cause: derived.unresolved }),
       diagnostics: Object.freeze([]),
     });
@@ -78,7 +84,7 @@ function explicitComposition(supplied: Supplied): { readonly header: Readonly<Re
   return { header: envelope(composition), census: inspectPlan(data(composition, "plan")) };
 }
 async function verifyExplicit(compile: ConstructionPorts["compileComposition"], declarations: readonly ModuleDeclaration[],
-  plan: CompositionPlan, explicit: ReturnType<typeof explicitComposition>): Promise<AssemblyPreparationResult<never> | SuccessfulComposition> {
+  plan: CompositionPlan, explicit: ReturnType<typeof explicitComposition>): Promise<PreparationFailure | SuccessfulComposition> {
   const checked = await compile({ declarations, profile: profileFrom(plan) });
   if (!checked.ok) {return rejectedByCore(checked.diagnostics);}
   if (!sameEnvelope(explicit.header, envelope(checked)) || !samePlan(plan, snapshotPlan(checked.plan))) {
@@ -86,10 +92,9 @@ async function verifyExplicit(compile: ConstructionPorts["compileComposition"], 
   }
   return checked;
 }
-export async function prepareConstruction<C, R extends RootEntries<C>, N extends InputEntries<C>,
-  M extends readonly ModuleItem<C>[]>(
-  input: AssemblyPrepareInput<C, R, N, M>, ports: ConstructionPorts,
-): Promise<AssemblyPreparationResult<R, N>> {
+export async function prepareWiring<F>(input: unknown, compile: ConstructionPorts["compileComposition"],
+  entries: EntryStore<F>, groups: GroupCollection,
+): Promise<WiringPreparationResult<F>> {
   try {
     const supplied = record(input, ["modules", "roots"], ["composition", "profileId", "bindings", "inputs"]);
     const { withComposition, given } = preparationMode(supplied);
@@ -100,9 +105,8 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
     const inputEntries = inputAliases.keys.map((alias) => data(inputAliases.object, alias));
     const explicit = withComposition ? explicitComposition(supplied) : undefined;
     // All individual and aggregate counts precede proportional snapshot copies.
-    const { byEntry, byId, groupPaths } = collectMetadata(modules, inputEntries, inputAliases.keys);
+    const { byEntry, byId, groupPaths } = collectMetadata(modules, inputEntries, inputAliases.keys, entries, groups);
     const declarations = Object.freeze(Array.from(byId.values(), (metadata) => metadata.declaration));
-    const compile = ports.compileComposition, commit = ports.commitCreated ?? appendCreated;
     const resolved = explicit
       ? { plan: copyPlan(explicit.census), supplied: explicit }
       : await completeProfile(compile, declarations, {
@@ -120,11 +124,7 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
       ? await verifyExplicit(compile, declarations, plan, resolved.supplied) : resolved.composition;
     if ("status" in composition) {return composition;}
     const program = createProgram(plan, roots, inputs, byId);
-    // Run options are checked at run time; the declared shape exists only for callers.
-    const prepared = Object.freeze({
-      run: async (options?: RunOptions) => runAttempt<R>(program, options, commit),
-    }) as PreparedAssembly<R, N>;
-    return Object.freeze({ status: "prepared", prepared, composition });
+    return Object.freeze({ status: "prepared", wiring: program, composition });
   } catch (cause) {
     if (cause instanceof DuplicateFault) {
       return Object.freeze({
@@ -139,4 +139,18 @@ export async function prepareConstruction<C, R extends RootEntries<C>, N extends
       status: "failed", error: Object.freeze({ code, cause }), diagnostics: Object.freeze([]),
     });
   }
+}
+
+/** Promise construction keeps its execution and ownership contract above shared inert preparation. */
+export async function prepareConstruction<C, R extends RootEntries<C>, N extends InputEntries<C>,
+  M extends readonly ModuleItem<C>[]>(
+  input: AssemblyPrepareInput<C, R, N, M>, ports: ConstructionPorts,
+): Promise<AssemblyPreparationResult<R, N>> {
+  const commit = ports.commitCreated ?? appendCreated;
+  const result = await prepareWiring(input, ports.compileComposition, promiseEntries, promiseGroups);
+  if (result.status === "failed") {return result;}
+  const prepared = Object.freeze({
+    run: async (options?: RunOptions) => runAttempt<R>(result.wiring, options, commit),
+  }) as PreparedAssembly<R, N>;
+  return Object.freeze({ status: "prepared", prepared, composition: result.composition });
 }

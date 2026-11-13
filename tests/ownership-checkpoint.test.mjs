@@ -112,6 +112,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
     {"id": "ADR-0040", "path": "docs/decisions/0040-admit-the-core-and-assembly-0-7-diagnostic-release-pair.md", "immutableDigest": "sha256:3b157ee807f65a6d58a91ab9540232e71a9ac0df84872dad775f90869a0ed305"},
     {"id": "ADR-0041", "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md", "immutableDigest": "sha256:1876caeaec5aa79bc8a007e544f9c9303dda6a6f40f82e0de6e42ac37e02fdb2"},
     {"id": "ADR-0042", "path": "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md", "immutableDigest": "sha256:1abf9f97ebe089f82c2183dc45a15f8528b09322184b6c19ecdc95df1dd0557f"},
+    {"id": "ADR-0043", "path": "docs/decisions/0043-plan-optional-native-effect-composition.md", "immutableDigest": "sha256:765fae287d9e893618fb5a4b1259810281323c76a6f6aad1a1c5a93af4daa716"},
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");
@@ -188,10 +189,11 @@ test("observations bind historical lock bytes, production importers and reviewed
   const historicalCms = execFileSync("git", ["show", `${checkpoint.evidence.base}:${cmsPath}`]);
   assert.equal(digest(historicalCms), checkpoint.evidence.cms.digest,
     "C0 retains the CMS bytes observed at its base");
-  // ADR-0041 updates complete-map authoring; historical C0 bytes above stay frozen.
+  // The reviewed preparation-envelope clarification preserves ADR-0043,
+  // complete-map authoring and every historical C0 observation.
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86",
+    "sha256:8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

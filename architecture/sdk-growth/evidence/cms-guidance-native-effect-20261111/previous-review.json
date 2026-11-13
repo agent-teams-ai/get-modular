@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "kind": "consumer-module-standard-pin-review",
+  "repository": "agent-teams-ai/get-modular",
+  "path": "docs/architecture/common-assembly.md",
+  "anchor": "consumer-module-standard",
+  "pinned": {
+    "commit": "669a750d8db451e04f075cdeb36576c6606fba6e",
+    "gitBlob": "7bf511f88d4f3547b107cad9ec85d54b009ed033",
+    "sha256": "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553"
+  },
+  "acceptedCurrent": {
+    "commit": "b2fec1fa15fe3998f51449d7df249f302645973f",
+    "gitBlob": "df4eff7235ac781ec574903c6b2aec13bcd7bfaa",
+    "sha256": "3c5814ebf1ab1bd17688e49955aa0baa2ee91dd3a369adcea4d38aaccd53ba86"
+  },
+  "delta": {
+    "classification": "complete-descriptor-union-authoring-successor",
+    "fromAcceptedCurrent": {
+      "commit": "0c2ea846f11532b216520e0e84e19ea1abf58342",
+      "gitBlob": "4bd50920f9b81d9f41456ceb3df9500b497e0453",
+      "sha256": "d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec"
+    },
+    "changedHunks": 5,
+    "removedLines": 9,
+    "addedLines": 42,
+    "semanticChanges": [
+      "ADR-0041 succeeds direct inherited feature maps with complete descriptor unions and separate CapabilitiesOf bases for each imported union plus own descriptors; both lists use the same sources.",
+      "Complete transitive, unused and private-child contracts retain exact keys, values and compatibility tokens; each source interface remains checked. Separate bases reject unused value or revision conflicts with TS2320 before Host selection; identical overlaps remain valid.",
+      "Upward references use the ancestor descriptor rather than its aggregate; Hosts still use complete public parent interfaces. Declarations, entry brands, graph, inputs, groups, exact revisions, ownership and construction do not change.",
+      "Custom handwritten properties, index/call/construct signatures and map-level polymorphic this retain the existing complete interface until a separate compatibility proof; descriptor-owned value types are unchanged.",
+      "Existing TypeScript unions and Assembly CapabilitiesOf own the shared mechanism. CMS owns the authoring recipe; no new runtime, API alias, local type framework or selected-only map is introduced.",
+      "The merged current document retains five Bun repository verification commands relative to the descriptor-union upstream guide. SDK classification, HOLD, four authority blockers and historical evidence remain unchanged; changed growth source identities require fresh qualification."
+    ],
+    "changesGetModularCompositionContract": true,
+    "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
+  },
+  "retainedEvidence": {
+    "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.txt",
+    "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/common-assembly.txt",
+    "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
+    "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/common-assembly.diff",
+    "deltaSha256": "2806f5a2fee13a6ff06bbebd33867a7fea6989d57f3b113a30d9b04456d9bde2",
+    "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/previous-review.json",
+    "previousReviewSha256": "60ac927f3271ad8af6c1c0ed6095a0a9f51fbc72289b6dd62497f987ce8befec",
+    "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-common-assembly.txt",
+    "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-common-assembly.diff",
+    "growthDeltaSha256": "6e2482d1c056aec002c3e203ad5b40415c05b4fd86e24ce960a00db41ff2568f",
+    "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-descriptor-unions-bun-20261025/growth-previous-source.ts.txt",
+    "growthPreviousReviewSha256": "6dfd3cdbdaabf03439a62bca765f150c447e879ff88dc756f4b10945a1382c27"
+  },
+  "scopeReview": {
+    "scope": "sdk-growth-development-tooling",
+    "classification": "fixed-development-tooling",
+    "assemblyRuntime": "not-used",
+    "guidanceReview": "complete",
+    "qualification": "pending",
+    "activation": "hold",
+    "outstanding": [
+      "trusted-external-authority-transport-unavailable",
+      "trusted-pr-base-and-exact-candidate-binding-unavailable",
+      "authenticated-released-artifact-source-binding-unavailable",
+      "released-growth-observations-and-custody-receipts-unavailable"
+    ]
+  },
+  "growthScopeReview": {
+    "previousCurrent": {
+      "commit": "b70ba39304ac71964175c42a77309406a7c30ca2",
+      "gitBlob": "bf6c64f5057c18cb3439c6b0e1a97b60428b0c53",
+      "sha256": "11a389b223506dc303fa986a7a37350b847013d85beb2de9d74cb8c97363e824"
+    },
+    "classification": "repository-verification-command-guidance",
+    "changesSelectedFlatCompositionContract": false,
+    "authoringRepresentation": "complete-descriptor-union-separate-bases",
+    "observation": "not-selected",
+    "productionAdoption": "unchanged",
+    "qualification": "pending-current-subject"
+  },
+  "authoringReview": {
+    "decision": {
+      "id": "ADR-0041",
+      "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
+      "commit": "b70ba39304ac71964175c42a77309406a7c30ca2",
+      "gitBlob": "1c0060afb1ecbe6ab38289fa7c7969b73c7a97aa",
+      "sha256": "747f926982bbf9065fb247c457a70538872a86b96a501a0306a1bf76f272b660"
+    },
+    "descriptorUnion": "complete-own-transitive-unused-private-child-contracts",
+    "capabilityBases": "separate-per-imported-union-plus-own-descriptors",
+    "sourceLists": "same-sources-generated-from-one-dependency-list",
+    "parity": "exact-keys-values-and-compatibility-tokens",
+    "conflicts": "TS2320-at-feature-or-team-before-selection",
+    "upwardReferences": "ancestor-descriptor-only",
+    "customMaps": "retain-complete-interface-until-separate-equivalence-proof",
+    "runtimeAndPublicApi": "unchanged",
+    "qualification": "fresh-current-source-required"
+  }
+}

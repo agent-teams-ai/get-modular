@@ -31,10 +31,7 @@ fullScanPaths:
   - .markdownlint-cli2.jsonc
   - tsconfig.base.json
   - packages/core
-  - packages/assembly/tsconfig.json
-  - packages/assembly/package.json
-  - packages/assembly/tsconfig.types.json
-  - packages/assembly/tsconfig.types.bundler.json
+  - packages/assembly
   - packages/lifecycle-kernel/tsconfig.json
   - packages/lifecycle-kernel/package.json
   - packages/lifecycle-kernel/tsconfig.types.json
@@ -53,6 +50,7 @@ fullScanPaths:
   - packages/observation/tsconfig.types.json
   - packages/observation/tsconfig.types.bundler.json
   - packages/observation/tsconfig.test-tooling.json
+  - packages/effect
   - tests/tsconfig.repository-runtime.json
   - tests/tsconfig.tooling-node-policy.json
   - tests/tsconfig.native-tooling.json

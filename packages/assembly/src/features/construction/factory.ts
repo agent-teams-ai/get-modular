@@ -12,3 +12,6 @@ export function createConstruction<C>(ports: ConstructionPorts): Assembly<C> {
 export { AssemblyBindingError, implement, input } from "./entry.js";
 export { entriesOf, group } from "./group.js";
 export { declareModule, defineContract } from "./contract.js";
+
+export { createEntryFamily } from "./wiring.js";
+export { captureWiringInputs, injectionDependencies, snapshotFactoryProduct } from "./wiring-values.js";

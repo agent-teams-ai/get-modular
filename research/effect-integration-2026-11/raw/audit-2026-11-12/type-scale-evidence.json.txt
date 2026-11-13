@@ -1,0 +1,77 @@
+{
+  "sourceBase": "0ff54371967e4b56a9978f784f568a48731a324d",
+  "node": "v24.22.1",
+  "typescript": "7.0.2",
+  "effect": "4.1.4",
+  "os": "linux",
+  "architecture": "x64",
+  "release": "6.18.57",
+  "observations": [
+    {
+      "count": 100,
+      "teams": 20,
+      "resolution": "NodeNext",
+      "preparation": "passed",
+      "generatedSourceSha256": "4184dc73d4b4f6394adad90a58c29e743fc9a6c151fec08cbc419212b9d0dd4c",
+      "types": "141002",
+      "instantiations": "285355",
+      "checkTime": "1.245s",
+      "memoryUsed": "239812K"
+    },
+    {
+      "count": 100,
+      "teams": 20,
+      "resolution": "Bundler",
+      "preparation": "passed",
+      "generatedSourceSha256": "4184dc73d4b4f6394adad90a58c29e743fc9a6c151fec08cbc419212b9d0dd4c",
+      "types": "141002",
+      "instantiations": "285355",
+      "checkTime": "0.669s",
+      "memoryUsed": "239773K"
+    },
+    {
+      "count": 500,
+      "teams": 20,
+      "resolution": "NodeNext",
+      "preparation": "passed",
+      "generatedSourceSha256": "52ec8daf08e7ac2b6f50187ea5c885417a64424c2c3f37f24312699edc7b612c",
+      "types": "203431",
+      "instantiations": "729185",
+      "checkTime": "1.577s",
+      "memoryUsed": "341549K"
+    },
+    {
+      "count": 500,
+      "teams": 20,
+      "resolution": "Bundler",
+      "preparation": "passed",
+      "generatedSourceSha256": "52ec8daf08e7ac2b6f50187ea5c885417a64424c2c3f37f24312699edc7b612c",
+      "types": "203431",
+      "instantiations": "729185",
+      "checkTime": "1.501s",
+      "memoryUsed": "341846K"
+    },
+    {
+      "count": 1000,
+      "teams": 20,
+      "resolution": "NodeNext",
+      "preparation": "passed",
+      "generatedSourceSha256": "abfb08000fbabd3cec13bf4eebcf413f8a22dd18a12eb1c0f598ebbceba61ad4",
+      "types": "281437",
+      "instantiations": "1283621",
+      "checkTime": "3.241s",
+      "memoryUsed": "462595K"
+    },
+    {
+      "count": 1000,
+      "teams": 20,
+      "resolution": "Bundler",
+      "preparation": "passed",
+      "generatedSourceSha256": "abfb08000fbabd3cec13bf4eebcf413f8a22dd18a12eb1c0f598ebbceba61ad4",
+      "types": "281437",
+      "instantiations": "1283621",
+      "checkTime": "2.739s",
+      "memoryUsed": "462411K"
+    }
+  ]
+}

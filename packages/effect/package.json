@@ -1,0 +1,33 @@
+{
+  "name": "@get-modular/effect",
+  "version": "0.0.0",
+  "description": "Native Effect construction for verified Get Modular compositions.",
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agent-teams-ai/get-modular.git",
+    "directory": "packages/effect"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "engines": { "node": ">=24.18.0 <25 || >=26.10.0 <27" },
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "LICENSE", "README.md", "CHANGELOG.md", "docs/practices.md"],
+  "peerDependencies": {
+    "@get-modular/assembly": "workspace:^",
+    "@get-modular/core": "workspace:^",
+    "effect": "catalog:"
+  },
+  "scripts": {
+    "build": "node ../../architecture/tooling/build-leaf-package.ts effect",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.types.json && tsc -p tsconfig.types.bundler.json && tsc -p tsconfig.test-tooling.json",
+    "test": "node --test tests/construction.test.ts tests/consumer.test.ts tests/lifecycle.test.ts tests/packed-root.test.ts",
+    "check": "pnpm build && pnpm typecheck && pnpm test"
+  }
+}

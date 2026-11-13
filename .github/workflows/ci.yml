@@ -13,8 +13,99 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  impact:
+    name: CI impact selection
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tier: ${{ steps.select.outputs.tier }}
+    steps:
+      - name: Check out reviewed merge source
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+      - name: Select safe scope from the reviewed base branch
+        id: select
+        env:
+          PR_BASE_REF: ${{ github.base_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != pull_request ]]; then
+            echo "tier=full" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # GitHub's event base.sha may lag changes on stacked PR base branches.
+          # Only inspect the current base if it is an ancestor of this exact
+          # reviewed merge SHA; otherwise conservatively require full CI.
+          if [[ "$PR_BASE_REF" =~ ^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,199}$ ]] &&
+             [[ "$PR_BASE_REF" != *..* && "$PR_BASE_REF" != *//* ]] &&
+             git fetch --no-tags origin "refs/heads/$PR_BASE_REF" &&
+             CI_BASE_SHA="$(git rev-parse FETCH_HEAD)" &&
+             [[ "$CI_BASE_SHA" =~ ^[a-f0-9]{40}$ ]] &&
+             git merge-base --is-ancestor "$CI_BASE_SHA" "$GITHUB_SHA" &&
+             git cat-file -e "${CI_BASE_SHA}:architecture/tooling/ci-impact.mjs"; then
+            git show "${CI_BASE_SHA}:architecture/tooling/ci-impact.mjs" > "$RUNNER_TEMP/gm-ci-impact-trusted.mjs"
+            CI_BASE_SHA="$CI_BASE_SHA" node "$RUNNER_TEMP/gm-ci-impact-trusted.mjs"
+          else
+            echo "Trusted current base not part of reviewed merge; full native CI"
+            echo "tier=full" >> "$GITHUB_OUTPUT"
+          fi
+
+  ci-impact-tests:
+    name: CI impact contract tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+      - run: node --test tests/ci-impact.test.mjs
+
+  docs-protocol:
+    name: Scoped docs protocol
+    needs: [impact, ci-impact-tests]
+    if: needs.impact.result == 'success' && needs.ci-impact-tests.result == 'success' && (needs.impact.outputs.tier == 'docs' || github.event_name != 'pull_request')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
+        with:
+          version: 11.20.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version-file: .bun-version
+      - name: Install and verify frozen workspace
+        run: |
+          node architecture/tooling/runtime/retained-history.ts
+          node architecture/tooling/runtime/dev.ts install
+          node architecture/tooling/runtime/dev.ts peers
+      - name: Qualify maintained docs protocol and quality
+        run: bun run docs:protocol:check
+      - name: Verify tracked workspace integrity
+        run: node architecture/tooling/runtime/dev.ts verify
   lanes-ubuntu:
     name: check lane (ubuntu-24.04, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -22,17 +113,17 @@ jobs:
       matrix: &check-lane-matrix
         include:
           - lane: core
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build core:typecheck:prepared core:test
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build core:typecheck:prepared core:test
           - lane: assembly
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build assembly:typecheck assembly:test
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build assembly:typecheck assembly:test
           - lane: packaging
-            scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check conformance:check observation:build foundation:check sdk-growth:check lint:typed
+            scripts: runtime:preflight governance:check assembly:build lifecycle:check resources:check conformance:check observation:build effect:check foundation:check sdk-growth:check lint:typed
           - lane: governance
-            scripts: ownership:checkpoint:test runtime:preflight runtime:policy:typecheck runtime:policy:test governance:check release-owned-files:check assembly:build lifecycle:build resources:build conformance:build observation:build governance:test
+            scripts: ownership:checkpoint:test runtime:preflight runtime:policy:typecheck runtime:policy:test governance:check release-owned-files:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build governance:test
           - lane: static
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build docs:protocol:check architecture:feature-module-profile architecture:feature-module-profile:test contracts:check contracts:test qualification:resource-profile qualification:v1-diagnostics-protocol qualification:v1-graph-semantics qualification:self-composition-templates
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:build effect:build docs:protocol:check architecture:feature-module-profile architecture:feature-module-profile:test contracts:check contracts:test qualification:resource-profile qualification:v1-diagnostics-protocol qualification:v1-graph-semantics qualification:self-composition-templates
           - lane: observation
-            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:check
+            scripts: runtime:preflight governance:check assembly:build lifecycle:build resources:build conformance:build observation:check effect:build
     steps: &check-lane-steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -91,6 +182,8 @@ jobs:
 
   lanes-macos:
     name: check lane (macos-15, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: macos-15
     timeout-minutes: 15
     strategy:
@@ -100,6 +193,8 @@ jobs:
 
   lanes-windows:
     name: check lane (windows-2025, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: windows-2025
     timeout-minutes: 15
     strategy:
@@ -110,32 +205,47 @@ jobs:
   check-ubuntu:
     name: check (ubuntu-24.04)
     runs-on: ubuntu-24.04
-    needs: [lanes-ubuntu]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-ubuntu]
     if: always()
     steps: &check-aggregate-steps
-      - name: Require every check lane to succeed
+      - name: Enforce exact docs/full CI evidence
         shell: bash
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
+          IMPACT_TIER: ${{ needs.impact.outputs.tier }}
+          CI_EVENT_NAME: ${{ github.event_name }}
         run: |
-          jq -e 'to_entries | length > 0 and all(.value.result == "success")' <<< "$NEEDS_JSON"
+          set -euo pipefail
+          jq -e --arg tier "$IMPACT_TIER" --arg event "$CI_EVENT_NAME" '
+            (.impact.result == "success") and
+            (.["ci-impact-tests"].result == "success") and
+            (if $tier == "docs" or ($tier == "full" and $event != "pull_request")
+              then .["docs-protocol"].result == "success"
+             elif $tier == "full" and $event == "pull_request"
+              then .["docs-protocol"].result == "skipped"
+             else false end) and
+            (to_entries | map(select(.key != "impact" and .key != "ci-impact-tests" and .key != "docs-protocol"))
+             | length > 0 and all(.value.result == (if $tier == "full" then "success" else "skipped" end)))
+          ' <<< "$NEEDS_JSON"
 
   check-macos:
     name: check (macos-15)
     runs-on: ubuntu-24.04
-    needs: [lanes-macos]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-macos]
     if: always()
     steps: *check-aggregate-steps
 
   check-windows:
     name: check (windows-2025)
     runs-on: windows-2025
-    needs: [lanes-windows]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-windows]
     if: always()
     steps: *check-aggregate-steps
 
   lanes-node24-ubuntu:
     name: check lane (ubuntu-24.04, Node 24, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env: &node24-root-runtime
@@ -148,6 +258,8 @@ jobs:
 
   lanes-node24-macos:
     name: check lane (macos-15, Node 24, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: macos-15
     timeout-minutes: 15
     env: *node24-root-runtime
@@ -158,6 +270,8 @@ jobs:
 
   lanes-node24-windows:
     name: check lane (windows-2025, Node 24, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: windows-2025
     timeout-minutes: ${{ matrix.lane == 'governance' && 20 || 15 }}
     env: *node24-root-runtime
@@ -169,26 +283,28 @@ jobs:
   check-node24-ubuntu:
     name: check (ubuntu-24.04, Node 24)
     runs-on: ubuntu-24.04
-    needs: [lanes-node24-ubuntu]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-node24-ubuntu, node-24-compatibility]
     if: always()
     steps: *check-aggregate-steps
 
   check-node24-macos:
     name: check (macos-15, Node 24)
     runs-on: ubuntu-24.04
-    needs: [lanes-node24-macos]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-node24-macos]
     if: always()
     steps: *check-aggregate-steps
 
   check-node24-windows:
     name: check (windows-2025, Node 24)
     runs-on: windows-2025
-    needs: [lanes-node24-windows]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-node24-windows]
     if: always()
     steps: *check-aggregate-steps
 
   lanes-node26-ubuntu:
     name: check lane (ubuntu-24.04, Node 26 rollback, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -202,12 +318,14 @@ jobs:
   check-node26-ubuntu:
     name: check (ubuntu-24.04, Node 26 rollback)
     runs-on: ubuntu-24.04
-    needs: [lanes-node26-ubuntu]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-node26-ubuntu]
     if: always()
     steps: *check-aggregate-steps
 
   lanes-node26-macos:
     name: check lane (macos-15, Node 26 rollback, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: macos-15
     timeout-minutes: 15
     env:
@@ -221,12 +339,14 @@ jobs:
   check-node26-macos:
     name: check (macos-15, Node 26 rollback)
     runs-on: ubuntu-24.04
-    needs: [lanes-node26-macos]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-node26-macos]
     if: always()
     steps: *check-aggregate-steps
 
   lanes-node26-windows:
     name: check lane (windows-2025, Node 26 rollback, ${{ matrix.lane }})
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     runs-on: windows-2025
     timeout-minutes: ${{ matrix.lane == 'governance' && 20 || 15 }}
     env:
@@ -240,12 +360,14 @@ jobs:
   check-node26-windows:
     name: check (windows-2025, Node 26 rollback)
     runs-on: windows-2025
-    needs: [lanes-node26-windows]
+    needs: [impact, ci-impact-tests, docs-protocol, lanes-node26-windows]
     if: always()
     steps: *check-aggregate-steps
 
   node-24-compatibility:
     name: Node 24 package root compatibility
+    needs: impact
+    if: needs.impact.outputs.tier == 'full'
     env:
       ROOT_CI_RUNTIME_PROFILE: node
     runs-on: ubuntu-24.04
