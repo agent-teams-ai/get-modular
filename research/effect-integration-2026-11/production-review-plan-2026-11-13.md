@@ -113,3 +113,35 @@ Complexity: **3/10**. Confidence in the bounded plan: **9/10**. Achievable relia
 within the stated construction contract: **9/10**. These are engineering judgments,
 not measured availability. The existing native runtime and verification tools
 remain the only execution mechanisms.
+
+## Full-gate finding: reviewed standard successor
+
+The first complete local gate and PR CI at `c25a498` rejected the changed current
+CMS digest. The six-line preparation-envelope clarification is correct, but its
+consumer review still pins the previous native Effect successor. The focused
+package checks did not exercise this custody requirement. Treat the rejection as
+an incomplete current-guidance migration, not a reason to narrow the gate.
+
+Before implementing this follow-up, retain the exact `c25a498` CMS document and
+its one-hunk, six-addition delta from `49f09f51`. Preserve the complete previous
+review and growth-source authority in a new dated evidence directory. Advance
+only the current review and growth pin, authenticate the native successor as an
+additional historical predecessor, and update the current profile and release
+tooling explanation. The existing selected-entry ceiling is being clarified;
+this does not introduce a new composition contract or require an ADR successor.
+
+Extend the existing byte-substitution and missing-evidence rejecting controls.
+Keep all older evidence, accepted ADRs, release baselines, SDK HOLD, its four
+authority blockers, pending qualification and non-adoption of native Effect
+unchanged. Update the separate current-CMS ownership assertion without changing
+its frozen C0 checks. The existing `.mjs` guards and tests receive localized
+maintenance to their established pin/evidence mechanism; migrating those entire
+legacy files would add unrelated tooling scope. No new runtime mechanism or
+JavaScript module is introduced.
+
+Expected incremental work: about 80–160 changed lines of existing validation and
+tests, 60–120 lines of current review/explanation, and the immutable snapshot
+copies required by the existing procedure. Complexity is **2/10**. Independently
+review the complete predecessor chain, run ownership, SDK growth and consumer
+growth checks, then repeat the full and fast gates and exact-head CI. No earlier
+failed full-gate attempt counts as acceptance evidence.
