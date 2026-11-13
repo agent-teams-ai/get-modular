@@ -1,6 +1,7 @@
 # GM + Effect production review — 2026-11-13
 
-Status: planned; implementation and verification are pending.
+Status: implementation and focused acceptance complete; repository gates and
+exact-source delivery are tracked in [PR #240](https://github.com/agent-teams-ai/get-modular/pull/240).
 Base: `144cbde065c00afbf98905b79a1db12234572857` (merged PR #239).
 Owner: Assembly's existing preparation boundary and the optional native Effect
 constructor, with their maintained tests and packaged practices guide.
@@ -16,7 +17,7 @@ This is library qualification. The coordinated registry release and adoption by
 a named application remain separate recorded outcomes.
 
 The previous audit and hardening records remain historical evidence. This pass
-adds a mixed-inventory boundary, a reconvergent graph topology and rejection after
+adds a mixed-inventory boundary, a graph with repeated diamonds and rejection after
 a factory acquires its own real resource. It does not repeat the previous scale
 measurements or assume that more lines mean stronger architecture.
 
@@ -36,7 +37,7 @@ measurements or assume that more lines mean stronger architecture.
    mutable whole-graph map. It is a bounded implementation refactor, not a new
    runtime, cache, public API or changed memoization policy.
 3. **Repeated diamonds.** Add a finite public-entrypoint graph with repeated
-   reconvergence, a real FileHandle provider and dependent asynchronous cleanup.
+   diamonds, a real FileHandle provider and dependent asynchronous cleanup.
    Assert exact acquisition/finalization counts, shared instance identities,
    provider liveness and physical close. A hung-test timeout is not a performance
    assertion. Leaf acquisition counts alone do not prove linear native traversal;

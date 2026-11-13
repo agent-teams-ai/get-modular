@@ -39,6 +39,17 @@ practice rules and executable-check map. [PR #239](https://github.com/agent-team
 owns reviewed delivery and exact-source CI; public release and product admission
 retain their separate owners.
 
+## Production review, 2026-11-13
+
+The [follow-up review](production-review-2026-11-13.md) covers the reproduced
+combined preparation-ceiling defect, a smaller native node representation,
+repeated-diamond resource ownership and malformed products after owned acquisition.
+It records new upstream evidence about composed Layers, service identity, registry
+isolation, concurrent disposal and packed dependency graphs. The
+[upfront plan](production-review-plan-2026-11-13.md) precedes implementation;
+[PR #240](https://github.com/agent-teams-ai/get-modular/pull/240) owns current review,
+execution and merge evidence. The same packaged practices guide owns usage rules.
+
 ## Implementation candidate
 
 The current source uses Effect **4.1.4**, TypeScript **7.0.2** and the repository's

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdtemp, open, rm, writeFile, type FileHandle } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { assemblyFor, declareModule, defineContract, implement as implementPromise, type CapabilitiesOf } from "@get-modular/assembly";
 import { compileComposition, many, required, type CompositionProfile } from "@get-modular/core";
@@ -66,6 +69,39 @@ test("invalid inventory, forged entries, mixed carriers and plan tampering fail 
   assertPreparationFailure(await uncheckedPreparation(effectFor<TestMap>(), { ...base,
     composition: { ...good.composition, plan: { ...good.composition.plan, dependencyOrder: [] } } }));
   assert.deepEqual(f.stats, { acquired: 0, released: 0, calls: 0 });
+});
+
+test("public native and Promise preparation reject combined module and borrowed-input overflow", async () => {
+  const External = defineContract<number>()({ id: "bounds/external", revision: 1 });
+  interface BoundsMap extends CapabilitiesOf<typeof External> {}
+  const owner = { authority: "bounds", path: ["public"] };
+  const external = input<BoundsMap>()(declareModule({ moduleId: "bounds/external", implementationId: "bounds/external",
+    owner, provides: [External.provide()], slots: [] }));
+  for (const mode of ["native", "promise"] as const) {
+    let factoryCalls = 0;
+    const modules = Array.from({ length: 4096 }, (_, index) => {
+      const declaration = declareModule({ moduleId: `bounds/module-${index}`, implementationId: `bounds/module-${index}`,
+        owner, provides: [], slots: [] });
+      return mode === "native" ? implement<BoundsMap>()(declaration, () => {
+        factoryCalls += 1;
+        return Effect.succeed({ instance: index, capabilities: {} });
+      }) : implementPromise<BoundsMap>()(declaration, async () => {
+        factoryCalls += 1;
+        return { instance: index, capabilities: {} };
+      });
+    });
+    const app = modules[0];
+    assert.ok(app);
+    // Deliberately cross the tuple-only typed profile boundary with an oversized
+    // dynamic inventory. The public wrappers must reject it before compilation.
+    const result = await uncheckedPreparation(mode === "native" ? effectFor<BoundsMap>() : assemblyFor<BoundsMap>(), {
+      profileId: `bounds/${mode}`, modules, roots: { app }, inputs: { external },
+    });
+    assertPreparationFailure(result, "assembly.prepare.limit");
+    assert.ok(result !== null && typeof result === "object" && "diagnostics" in result);
+    assert.deepEqual(result.diagnostics, []);
+    assert.equal(factoryCalls, 0, mode);
+  }
 });
 
 test("independent providers acquire concurrently without weakening dependency order", { timeout: 5000 }, async () => {
@@ -292,5 +328,137 @@ test("thousand-node chain and wide graphs acquire once and release dependencies 
     if (shape === "chain") {
       assert.deepEqual(releaseOrder, Array.from({ length: count }, (_, index) => count - 1 - index));
     }
+  }
+});
+
+test("repeated diamonds share exact nodes and retain a real provider through asynchronous cleanup", { timeout: 10000 }, async context => {
+  interface NodeValue {
+    readonly index: number;
+    readonly paths: number;
+    readonly file: FileHandle;
+    readonly dependencies: readonly NodeValue[];
+  }
+  const NodePort = defineContract<NodeValue>()({ id: "diamond/node", revision: 1 });
+  interface DiamondMap extends CapabilitiesOf<typeof NodePort> {}
+  class DiamondRoots extends Context.Service<DiamondRoots, { readonly app: NodeValue }>()("native-tests/DiamondRoots") {}
+  const directory = await mkdtemp(join(tmpdir(), "gm-effect-diamonds-"));
+  const filename = join(directory, "resource.txt");
+  const levels = 20;
+  const count = 2 * levels + 2;
+  const factoryCalls = new Array<number>(count).fill(0);
+  const acquisitions = new Array<number>(count).fill(0);
+  const releases = new Array<number>(count).fill(0);
+  const values: NodeValue[] = [];
+  const active = new Set<number>();
+  const releaseOrder: number[] = [];
+  const files: FileHandle[] = [];
+  let fileAcquisitions = 0;
+  let fileReleases = 0;
+  const id = (index: number): string => `diamond/node-${index}`;
+  const assertAlive = async (file: FileHandle): Promise<void> => {
+    const { bytesRead, buffer } = await file.read(new Uint8Array(5), 0, 5, 0);
+    assert.equal(bytesRead, 5);
+    assert.equal(new TextDecoder().decode(buffer), "alive");
+  };
+  try {
+    await writeFile(filename, "alive");
+    const modules = Array.from({ length: count }, (_, index) => implement<DiamondMap>()(declareModule({
+      moduleId: id(index), implementationId: id(index), owner: { authority: "diamond", path: ["test"] },
+      provides: [NodePort.provide()], slots: [NodePort.slot("dependencies", many({ min: 0, max: 2 }))],
+    }), ({ dependencies }) => {
+      factoryCalls[index] = (factoryCalls[index] ?? 0) + 1;
+      return Effect.gen(function* () {
+        const file = index === 0 ? yield* Effect.acquireRelease(
+          Effect.promise(async () => {
+            const opened = await open(filename, "r");
+            files.push(opened);
+            fileAcquisitions += 1;
+            return opened;
+          }),
+          opened => Effect.promise(async () => {
+            assert.equal(active.size, 0);
+            assert.deepEqual(releases, new Array<number>(count).fill(1));
+            await opened.close();
+            fileReleases += 1;
+          }),
+        ) : dependencies[0]?.file;
+        assert.ok(file);
+        const instance = yield* Effect.acquireRelease(Effect.sync(() => {
+          for (const dependency of dependencies) {
+            assert.equal(dependency, values[dependency.index]);
+            assert.equal(dependency.file, file);
+            assert.ok(active.has(dependency.index));
+          }
+          acquisitions[index] = (acquisitions[index] ?? 0) + 1;
+          active.add(index);
+          const value: NodeValue = { index, file, dependencies,
+            paths: index === 0 ? 1 : dependencies.reduce((sum, dependency) => sum + dependency.paths, 0) };
+          values[index] = value;
+          return value;
+        }), value => Effect.promise(async () => {
+          await assertAlive(value.file);
+          for (const dependency of value.dependencies) assert.ok(active.has(dependency.index));
+          releases[index] = (releases[index] ?? 0) + 1;
+          releaseOrder.push(index);
+          active.delete(index);
+        }));
+        return { instance, capabilities: { [NodePort.id]: instance } };
+      });
+    }));
+    const root = modules.at(-1);
+    assert.ok(root);
+    const profile: CompositionProfile = {
+      kind: "get-modular.composition-profile", schemaVersion: 1, profileId: "diamond/repeated",
+      roots: [root.declaration.moduleId],
+      selections: modules.map(entry => ({ moduleId: entry.declaration.moduleId, implementationId: entry.declaration.implementationId })),
+      bindings: modules.map((entry, index) => {
+        const previous = index === count - 1 ? count - 3 : 2 * Math.floor((index - 1) / 2) - 1;
+        return { consumerImplementationId: entry.declaration.implementationId, slotId: "dependencies",
+          providerImplementationIds: index === 0 ? [] : index <= 2 ? [id(0)] : [id(previous), id(previous + 1)] };
+      }),
+    };
+    const composition = await compileComposition({ declarations: modules.map(entry => entry.declaration), profile });
+    assert.ok(composition.ok);
+    const graph = prepared(await effectFor<DiamondMap>().prepare({ modules, roots: { app: root }, composition }));
+    const layer = graph.layer(DiamondRoots);
+    assert.deepEqual(factoryCalls, new Array<number>(count).fill(0));
+    assert.equal(fileAcquisitions, 0);
+    await Effect.runPromise(Effect.gen(function* () {
+      const { app } = yield* DiamondRoots;
+      assert.equal(app, values[count - 1]);
+      assert.equal(app.paths, 2 ** levels);
+      assert.equal(active.size, count);
+      assert.equal(fileAcquisitions, 1);
+      assert.equal(fileReleases, 0);
+      assert.deepEqual(acquisitions, new Array<number>(count).fill(1));
+      // State the split/rejoin identity oracle independently from profile generation.
+      for (let level = 0; level < levels; level++) {
+        const left = values[2 * level + 1];
+        const right = values[2 * level + 2];
+        assert.ok(left && right);
+        assert.notEqual(left, right);
+        assert.equal(left.dependencies.length, level === 0 ? 1 : 2);
+        assert.equal(right.dependencies.length, left.dependencies.length);
+        assert.equal(left.dependencies[0], level === 0 ? values[0] : values[2 * level - 1]);
+        assert.equal(right.dependencies[0], left.dependencies[0]);
+        if (level > 0) {
+          assert.equal(left.dependencies[1], values[2 * level]);
+          assert.equal(right.dependencies[1], left.dependencies[1]);
+        }
+      }
+      assert.equal(app.dependencies[0], values[count - 3]);
+      assert.equal(app.dependencies[1], values[count - 2]);
+      yield* Effect.promise(() => assertAlive(app.file));
+    }).pipe(Effect.provide(layer)), { signal: context.signal });
+    assert.deepEqual(factoryCalls, new Array<number>(count).fill(1));
+    assert.deepEqual(releases, new Array<number>(count).fill(1));
+    assert.equal(active.size, 0);
+    assert.equal(releaseOrder[0], count - 1);
+    assert.equal(releaseOrder.at(-1), 0);
+    assert.equal(fileReleases, 1);
+    assert.equal(files[0]?.fd, -1);
+  } finally {
+    for (const file of files) if (file.fd !== -1) await file.close();
+    await rm(directory, { recursive: true, force: true });
   }
 });
