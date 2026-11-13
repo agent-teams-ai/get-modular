@@ -183,9 +183,16 @@ async function verify(original: string, registry: string): Promise<void> {
     run("npm", ["install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false"], consumer,
       { npm_config_cache: join(consumer, "cache"), npm_config_engine_strict: "true" });
     await copyFile(join(root, "tests/npm-release-consumer.ts"), join(consumer, "consumer.ts"));
+    // The fixture typechecks against this package's built public carrier in its own
+    // boundary; the isolated consumer must resolve the downloaded package root.
+    const effectFixture = await readFile(join(root, "packages/effect/tests/installed-release.ts"), "utf8");
+    const localCarrier = 'from "../dist/index.js"';
+    assert.equal(effectFixture.split(localCarrier).length, 2, "release.effect-fixture-carrier");
+    await writeFile(join(consumer, "effect-consumer.ts"), effectFixture.replace(localCarrier, 'from "@get-modular/effect"'));
     run(process.execPath, [join(root, "node_modules/typescript/bin/tsc"), "--strict", "--noUncheckedIndexedAccess", "--exactOptionalPropertyTypes", "--skipLibCheck", "false",
-      "--target", "ES2024", "--lib", "ES2024,DOM,ESNext.Disposable,ESNext.Promise", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--noEmit", "consumer.ts"], consumer);
+      "--target", "ES2024", "--lib", "ES2024,DOM,ESNext.Disposable,ESNext.Promise", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--noEmit", "consumer.ts", "effect-consumer.ts"], consumer);
     run(process.execPath, ["consumer.ts"], consumer);
+    run(process.execPath, ["effect-consumer.ts"], consumer);
     console.log("Downloaded registry archives: installed consumer runtime and strict public types passed");
   } finally { await rm(consumer, { recursive: true, force: true }); }
 }
