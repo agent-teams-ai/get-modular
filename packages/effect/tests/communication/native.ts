@@ -21,7 +21,7 @@ export function nativeProgress(capacity = 16): Effect.Effect<NativeProgressOwner
     if (!Number.isSafeInteger(capacity) || capacity < 1) return Effect.die(new RangeError("positive capacity required"));
     return Effect.map(Effect.acquireRelease(PubSub.bounded<ProgressEvent>(capacity), PubSub.shutdown), hub => ({
       events: {
-        subscribe: Effect.map(PubSub.subscribe(hub), subscription => Stream.repeatEffect(PubSub.take(subscription))),
+        subscribe: Effect.map(PubSub.subscribe(hub), subscription => Stream.fromEffectRepeat(PubSub.take(subscription))),
       },
       publisher: { publish: (event: ProgressEvent) => PubSub.publish(hub, event) },
     }));
