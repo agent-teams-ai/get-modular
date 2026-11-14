@@ -1,6 +1,6 @@
 {
   "name": "@get-modular/effect",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Native Effect construction for verified Get Modular compositions.",
   "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
   "repository": {
