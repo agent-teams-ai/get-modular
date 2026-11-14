@@ -196,7 +196,7 @@ jobs:
     needs: impact
     if: needs.impact.outputs.tier == 'full'
     runs-on: windows-2025
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.lane == 'governance' && 20 || 15 }}
     strategy:
       fail-fast: false
       matrix: *check-lane-matrix
