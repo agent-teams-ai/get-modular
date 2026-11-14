@@ -41,11 +41,11 @@ consume both.
   Host-authorized factories from a successful Core plan. It passes closed,
   typed dependency records to each factory; the Host retains lifecycle,
   readiness, permissions, and cleanup ownership.
-- [`@get-modular/effect`](packages/effect/README.md) is an optional implementation
-  candidate for native Effect factories and Layers over the same verified
+- [`@get-modular/effect`](packages/effect/README.md) is a published, optional integration
+  for native Effect factories and Layers over the same verified
   bindings. It retains typed construction errors/environments and native resource
   ownership. Core and ordinary Assembly need no Effect installation. The package
-  README records its qualified peer, matched candidates and publication status.
+  README records its qualified peer and installation requirements.
 - [`@get-modular/lifecycle-kernel`](packages/lifecycle-kernel/README.md) is an
   unreleased candidate for a dynamic Host that must revoke old generations
   while retaining calls or resources across async work and cleanup. The Host
@@ -72,11 +72,17 @@ owned fixtures prove that an implementation follows the contract. The
 conformance package has peer dependencies on Core, Assembly and resources; Core and
 Assembly never depend on it.
 
-Core and Assembly `0.1.0` are available from npm. Install both when the Host
+Core and Assembly are available from npm. Install both when the Host
 needs construction, or Core alone when it only needs a portable plan:
 
 ```sh
-npm install @get-modular/core@0.1.0 @get-modular/assembly@0.1.0
+npm install @get-modular/core@0.8.0 @get-modular/assembly@0.8.0
+```
+
+For native Effect construction, install the integration and its qualified peer:
+
+```sh
+npm install @get-modular/effect effect@4.1.4
 ```
 
 Start with the [consumer quickstart](docs/guides/consumer-quickstart.md) and its
