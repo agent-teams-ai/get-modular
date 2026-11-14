@@ -12,16 +12,20 @@ jobs:
     permissions:
       contents: write
     env:
-      SOURCE_SHA: c50e24d8db1b3d24338259b1d4dab5b2c1e4bfe8
+      SOURCE_SHA: 7b7187c6dbf096f645d26ae9bbdf4fe49ea0ca2c
+      BASE_SHA: ea5c3ade592ce5367dcae11694a20471464e4ab6
+      COMMON_SHA: 6c91ff1c3c8ce7088db215af9705f7ee3a9db103
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Preserve reviewed patch and select exact source
+      - name: Preserve reviewed edit and select exact source
         run: |
           set -euo pipefail
-          cp .recipe-ops/qualification.patch "$RUNNER_TEMP/qualification.patch"
+          cp .recipe-ops/ownership.ts "$RUNNER_TEMP/ownership.ts"
+          printf '{"type":"module"}\n' > "$RUNNER_TEMP/package.json"
+          test "$(git merge-base "$SOURCE_SHA" "$BASE_SHA")" = "$COMMON_SHA"
           git checkout --detach "$SOURCE_SHA"
           test ! -e .recipe-ops
           test ! -e .github/workflows/one-shot-effect-recipes.yml
@@ -40,21 +44,55 @@ jobs:
           node architecture/tooling/runtime/retained-history.ts
           node architecture/tooling/runtime/dev.ts install
           node architecture/tooling/runtime/dev.ts peers
-      - name: Apply exact-source patch and publish only a staging ref
+          node node_modules/typescript/bin/tsc --strict --noEmit --target ES2024 --module NodeNext --moduleResolution NodeNext --types node --typeRoots "$PWD/node_modules/@types" "$RUNNER_TEMP/ownership.ts"
+      - name: Apply verified owner correction and reconcile released main
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
-          git apply --check "$RUNNER_TEMP/qualification.patch"
-          git apply --index "$RUNNER_TEMP/qualification.patch"
-          git diff --cached --check
-          test "$(git diff --cached --name-only)" = "$(printf 'architecture/checks/leaf-packages.ts\npackages/effect/docs/practices.md\npackages/effect/tests/communication.test.ts')"
+          node "$RUNNER_TEMP/ownership.ts" "$PWD"
           git config --local user.name iliya
           git config --local user.email iliyazelenkog@gmail.com
-          git commit -m 'test(effect): preserve qualified peer outcomes and admit the recipe test command'
-          test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
+          git commit -m 'test(effect): assign mixed communication qualification to its consumer owner'
+          if ! git merge --no-commit --no-ff "$BASE_SHA"; then
+            test "$(git diff --name-only --diff-filter=U)" = packages/effect/docs/practices.md
+            node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { execFileSync } from 'node:child_process';
+          import { writeFileSync } from 'node:fs';
+          const path = 'packages/effect/docs/practices.md';
+          const read = ref => execFileSync('git', ['show', `${ref}:${path}`], {encoding:'utf8'});
+          const previous = read(process.env.COMMON_SHA), current = read(process.env.BASE_SHA), own = read('HEAD');
+          const marker = 'The current [Consumer Module Standard]';
+          const tail = text => { const i=text.indexOf(marker); assert.ok(i>0); return text.slice(i); };
+          assert.equal(tail(previous),tail(current),'main changed more than its reviewed release header');
+          writeFileSync(path,current.slice(0,current.indexOf(marker))+tail(own));
+          JS
+            git add packages/effect/docs/practices.md
+          fi
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git diff --cached --check
+          git commit -m 'chore: reconcile communication recipes with the independently merged release authority'
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
           test "$(git show -s --format='%an|%ae|%cn|%ce' HEAD)" = 'iliya|iliyazelenkog@gmail.com|iliya|iliyazelenkog@gmail.com'
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { execFileSync } from 'node:child_process';
+          const path='architecture/foundation/source-dependencies.yaml';
+          const read=ref=>execFileSync('git',['show',`${ref}:${path}`],{encoding:'utf8'});
+          const base=read(process.env.BASE_SHA),at=base.indexOf('  - id: repository.development\n');
+          assert.ok(at>0);
+          let tail=base.slice(at);
+          const oldEntry='      - tests/effect-carrier.types.ts\n',oldPackage='        - canonicalize\n';
+          assert.equal(tail.split(oldEntry).length,2); assert.equal(tail.split(oldPackage).length,2);
+          tail=tail.replace(oldEntry,oldEntry+'      - tests/qualification/effect-communication/native.ts\n      - tests/qualification/effect-communication/progress.ts\n').replace(oldPackage,oldPackage+'        - effect\n');
+          assert.equal(read('HEAD'),base.slice(0,at)+tail,'only reviewed development edges may differ');
+          JS
+          # Every unrelated release file remains byte-identical to accepted main.
+          while IFS= read -r path; do
+            case "$path" in packages/effect/docs/practices.md|architecture/foundation/source-dependencies.yaml) continue;; esac
+            git diff --exit-code "$BASE_SHA" HEAD -- "$path"
+          done < <(git diff --name-only "$COMMON_SHA" "$BASE_SHA")
           cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
           #!/bin/sh
           case "$1" in
@@ -69,15 +107,15 @@ jobs:
           printf 'Source commit: %s\nSource ref: %s\n' "$(git rev-parse HEAD)" "$ref" | tee "$RUNNER_TEMP/recipe-source.txt" >> "$GITHUB_STEP_SUMMARY"
           echo "EXPECTED_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           git archive --format=tar.gz HEAD > "$RUNNER_TEMP/recipe-source.tar.gz"
-      - name: Qualify maintained examples through workspace and installed public packages
+          git bundle create "$RUNNER_TEMP/recipe-history.bundle" --all HEAD
+      - name: Qualify recipes, policy and documentation with the normal gates
         run: |
           bun run assembly:build
           bun run resources:build
           bun run conformance:build
           bun run observation:build
           bun run effect:check
-      - name: Verify documentation and changed-source gate
-        run: |
+          bun run foundation:check
           bun run docs:protocol:check
           bun run check:changed
       - name: Verify tracked source integrity
@@ -91,5 +129,6 @@ jobs:
           path: |
             ${{ runner.temp }}/recipe-source.txt
             ${{ runner.temp }}/recipe-source.tar.gz
+            ${{ runner.temp }}/recipe-history.bundle
           if-no-files-found: error
           retention-days: 7
