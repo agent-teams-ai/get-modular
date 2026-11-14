@@ -124,7 +124,7 @@ test("Assembly admission rejects malformed manifests, dependencies and package r
       { access: "public", registry: "https://registry.npmjs.org/", tag: "latest" }]
       .map(publishConfig => ({ publishConfig })),
     ...[undefined, null, {}, { type: "git", url: "https://example.com/", directory: "packages/assembly" }]
-      .map(repository => ({ repository })), { version: "0.8.0" },
+      .map(repository => ({ repository })), { version: "0.8.0-rc.0" },
     ...[undefined, null, [], {}, true].map(dependencies => ({ dependencies })),
     { dependencies: { "@get-modular/core": "^0.1.0" } },
     { dependencies: { ...manifest.dependencies, extra: "1.0.0" } },
@@ -627,7 +627,7 @@ test("next pair requires the exact accepted successor and retains first-release 
     readBytes: candidate => candidate === path ? replacement : next.readBytes(candidate),
   }), /ADR-002[357]/u);
   for (const [coreVersion, assemblyVersion] of [["0.1.0", "0.2.0"], ["0.2.0", "0.1.0"],
-    ["0.7.1", "0.7.0"], ["0.7.0", "0.7.1"], ["0.7.2", "0.7.2"], ["0.8.0", "0.8.0"], ["0.7.0", "0.6.0"], ["0.6.0", "0.7.0"], ["0.4.0", "0.3.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
+    ["0.7.1", "0.7.0"], ["0.7.0", "0.7.1"], ["0.7.2", "0.7.2"], ["1.0.0", "1.0.0"], ["0.7.0", "0.6.0"], ["0.6.0", "0.7.0"], ["0.4.0", "0.3.0"], ["0.3.0", "0.2.0"], ["0.2.0", "0.3.0"], ["0.2.0-rc.0", "0.2.0-rc.0"]]) {
     await assert.rejects(admit({ ...next, readPackageManifest: async path => ({
       ...JSON.parse(read(path)), version: path === ASSEMBLY_MANIFEST_PATH ? assemblyVersion : coreVersion,
     }) }), /pair|manifest violates/u);
@@ -759,10 +759,15 @@ test(`${version} pair requires the exact accepted ${decision} and retains earlie
   const others = registry.decisions.filter(row => row.id !== decision
     && row.path !== decisionPath);
   const withDecisions = decisions => Buffer.from(JSON.stringify({ ...registry, decisions }));
+  const metadataLeaves = new Map([
+    ["packages/conformance/package.json", "0.5.1"],
+    ["packages/resources/package.json", "0.2.1"],
+    ["packages/observation/package.json", "0.2.0"],
+  ]);
   const next = {
-    // The next Core/Assembly pair leaves every leaf package at its own version.
-    readPackageManifest: async path => version === "0.7.1" && path === "packages/conformance/package.json"
-      ? { ...JSON.parse(read(path)), version: "0.5.1" }
+    // The metadata-only cohort retains its three historical leaf versions.
+    readPackageManifest: async path => version === "0.7.1" && metadataLeaves.has(path)
+      ? { ...JSON.parse(read(path)), version: metadataLeaves.get(path) }
       : LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
         ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version },
   };
@@ -785,6 +790,40 @@ test(`${version} pair requires the exact accepted ${decision} and retains earlie
 });
 
 }
+
+test("stable public 0.8+ pairs authenticate the release policy without weakening historical admission", async () => {
+  const authority = ASSEMBLY_PAIR_DECISIONS["0.8.0"];
+  const registryPath = "architecture/decisions/accepted-decisions.json";
+  const registry = JSON.parse(read(registryPath));
+  const decision = read(authority.path);
+  const manifests = version => async path => {
+    const manifest = JSON.parse(read(path));
+    return [ASSEMBLY_MANIFEST_PATH, "packages/core/package.json"].includes(path)
+      ? { ...manifest, version } : manifest;
+  };
+  for (const version of ["0.8.0", "0.8.1", "0.9.0", "0.10.0"]) {
+    assert.deepEqual(await admit({ readPackageManifest: manifests(version) }), artifacts.slice(2));
+  }
+  for (const [path, replacement, message] of [
+    [authority.path, Buffer.from(`${decision.toString("utf8")}\nchanged`), /accepted ADR-0044/u],
+    [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: registry.decisions.filter(row => row.id !== "ADR-0044") })), /registered ADR-0044/u],
+    [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: registry.decisions.map(row => row.id === "ADR-0044"
+      ? { ...row, immutableDigest: `sha256:${"0".repeat(64)}` } : row) })), /registered ADR-0044/u],
+  ]) {
+    await assert.rejects(admit({ readPackageManifest: manifests("0.8.1"),
+      readBytes: candidate => candidate === path ? replacement : read(candidate) }), message);
+  }
+  for (const [coreVersion, assemblyVersion, change] of [
+    ["0.8.0", "0.8.1", {}], ["0.8.0-rc.0", "0.8.0-rc.0", {}], ["1.0.0", "1.0.0", {}],
+    ["0.8.1", "0.8.1", { private: true }],
+  ]) {
+    await assert.rejects(admit({ readPackageManifest: async path => {
+      const manifest = JSON.parse(read(path));
+      return path === ASSEMBLY_MANIFEST_PATH ? { ...manifest, version: assemblyVersion, ...change }
+        : path === "packages/core/package.json" ? { ...manifest, version: coreVersion } : manifest;
+    } }), /pair|manifest violates/u);
+  }
+});
 
 test("metadata pair requires every exact coordinated leaf manifest", async () => {
   const versions = new Map([
