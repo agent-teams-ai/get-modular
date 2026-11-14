@@ -229,8 +229,12 @@ export function packageIdentityViolations(inventory) {
 
 // ADR-0023 historical private shape and ADR-0025 public shape. Authority is
 // authenticated separately by assembly-admission through its supplied reader.
-// ADR-0027, ADR-0031, ADR-0035, ADR-0036 and ADR-0038 extend the public shape to the exact next pairs; shape is not authority.
+// Historical decisions admit exact pairs. ADR-0044 admits subsequent stable
+// 0.x releases; carrier shape alone never authenticates the decision.
 const PUBLIC_ASSEMBLY_VERSIONS = Object.freeze(["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.7.1"]);
+export function isStableAssemblyReleaseVersion(version) {
+  return typeof version === "string" && /^0\.(?:[89]|[1-9]\d+)\.(?:0|[1-9]\d*)$/u.test(version);
+}
 export function assemblyManifestViolations(manifest) {
   if (manifest?.name !== "@get-modular/assembly") return [];
   const violations = [];
@@ -251,8 +255,9 @@ export function assemblyManifestViolations(manifest) {
     }
   }
   if (manifest.version !== "0.1.0"
-    && !(PUBLIC_ASSEMBLY_VERSIONS.includes(manifest.version) && manifest.private === undefined)) {
-    violations.push("Assembly version requires historical 0.1.0 or public 0.2.0/0.3.0/0.4.0/0.5.0/0.6.0/0.7.0/0.7.1 admission");
+    && !((PUBLIC_ASSEMBLY_VERSIONS.includes(manifest.version) || isStableAssemblyReleaseVersion(manifest.version))
+      && manifest.private === undefined)) {
+    violations.push("Assembly version requires historical 0.1.0, an admitted historical public version, or public stable 0.8.0+ below 1.0.0");
   }
   if (!plainObject(manifest.dependencies)
     || Object.keys(manifest.dependencies).length !== 1
