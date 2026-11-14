@@ -609,7 +609,7 @@ test("next pair requires the exact accepted successor and retains first-release 
     [registryPath, Buffer.from(JSON.stringify({ ...registry, decisions: [...registry.decisions, entry] }))]]);
   const next = {
     readBytes: path => bytes.get(path) ?? read(path),
-    // The metadata-only cohort retains its three historical leaf versions.
+    // The next Core/Assembly pair leaves every leaf package at its own version.
     readPackageManifest: async path => LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
       ? JSON.parse(read(path)) : { ...JSON.parse(read(path)), version: "0.2.0" },
   };
@@ -765,7 +765,7 @@ test(`${version} pair requires the exact accepted ${decision} and retains earlie
     ["packages/observation/package.json", "0.2.0"],
   ]);
   const next = {
-    // The next Core/Assembly pair leaves every leaf package at its own version.
+    // The metadata-only cohort retains its three historical leaf versions.
     readPackageManifest: async path => version === "0.7.1" && metadataLeaves.has(path)
       ? { ...JSON.parse(read(path)), version: metadataLeaves.get(path) }
       : LEAF_PACKAGES.some(leaf => leafManifestPath(leaf) === path)
