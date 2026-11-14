@@ -1,5 +1,11 @@
 # @get-modular/effect
 
+## 0.1.1
+
+### Patch Changes
+
+- 56b98f8: Document the published package and its qualified Effect peer in the npm README.
+
 ## 0.1.0
 
 ### Minor Changes
