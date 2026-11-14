@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [e6e9746]
+- Updated dependencies [28500bb]
+- Updated dependencies [f311b13]
+- Updated dependencies [558d3fc]
+  - @get-modular/core@0.8.0
+  - @get-modular/assembly@0.8.0
+  - @get-modular/resources@0.2.2
+
 ## 0.5.1
 
 ### Patch Changes
