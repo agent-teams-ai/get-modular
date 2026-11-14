@@ -8,7 +8,8 @@ import { isDeepStrictEqual } from "node:util";
 import type { ExpectedInputs } from "@agent-teams/release-checks";
 import type { PreparedRelease } from "./host.ts";
 import { assertCustody, custody, execute, git, hash, identity, record, snapshot, treeDigest, type SourceTree } from "./io.ts";
-import { assertMetadataAuthority, metadataDecision } from "./metadata-authority.ts";
+import { RELEASE_POLICY_DECISION } from "../../checks/assembly-admission.mjs";
+import { assertReleasePolicyAuthority, assertMetadataAuthority, metadataDecision } from "./metadata-authority.ts";
 
 export const baselinePaths = ["architecture/public-api/core.json", "architecture/public-api/assembly.json"] as const;
 const configPath = "architecture/foundation/public-api-compatibility.yaml";
@@ -17,6 +18,55 @@ const admittedMetadataCohort = [
   ["@get-modular/conformance", "0.5.0", "0.5.1", "patch"],
   ["@get-modular/core", "0.7.0", "0.7.1", "patch"],
 ] as const;
+const publicNames = ["assembly", "conformance", "core", "effect", "observation", "resources"]
+  .map(id => `@get-modular/${id}`);
+const firstEffectCohort = [
+  ["@get-modular/assembly", "0.7.1", "0.8.0", "minor"],
+  ["@get-modular/conformance", "0.5.1", "0.5.2", "patch"],
+  ["@get-modular/core", "0.7.1", "0.8.0", "minor"],
+  ["@get-modular/effect", "0.0.0", "0.1.0", "minor"],
+  ["@get-modular/observation", "0.2.0", "0.2.1", "patch"],
+  ["@get-modular/resources", "0.2.1", "0.2.2", "patch"],
+] as const;
+function hasReleasePolicy(tree: SourceTree): boolean {
+  return RELEASE_POLICY_DECISION !== undefined && tree[RELEASE_POLICY_DECISION.path] !== undefined;
+}
+function requireReleaseAuthority(tree: SourceTree): void {
+  const authority = RELEASE_POLICY_DECISION;
+  assert(authority, "candidate.effect-release-authority-missing");
+  assertReleasePolicyAuthority(tree[authority.path]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
+}
+/** Changesets supplies versions. This policy admits only known stable packages
+ * and an exact Core/Assembly pair; it never computes or substitutes a plan. */
+function assertStablePlan(tree: SourceTree, plan: ExpectedInputs["plan"]): void {
+  requireReleaseAuthority(tree);
+  const changed = plan.releases.filter(row => row.oldVersion !== row.newVersion);
+  const effect = record(JSON.parse(tree["packages/effect/package.json"]?.contents ?? "{}"));
+  if (effect["version"] === "0.0.0" && changed.length > 0) {
+    assert.deepEqual(releaseRows(plan), firstEffectCohort, "candidate.first-effect-release-cohort");
+  }
+  assert.equal(new Set(changed.map(row => row.packageName)).size, changed.length, "candidate.release-duplicate-package");
+  for (const row of changed) {
+    assert(publicNames.includes(row.packageName), "candidate.release-unknown-package");
+    assert(["major", "minor", "patch"].includes(row.type), "candidate.release-type");
+    assert(typeof row.oldVersion === "string" && /^\d+\.\d+\.\d+$/u.test(row.oldVersion)
+      && typeof row.newVersion === "string" && /^\d+\.\d+\.\d+$/u.test(row.newVersion), "candidate.release-stable-version");
+    assert(row.oldVersion.startsWith("0.") && row.newVersion.startsWith("0."), "candidate.release-mvp-version");
+    const path = `packages/${row.packageName.slice("@get-modular/".length)}/package.json`;
+    const manifest = record(JSON.parse(tree[path]?.contents ?? "{}"));
+    assert.equal(row.manifestPath, path, "candidate.release-manifest-path");
+    assert.equal(manifest["name"], row.packageName, "candidate.release-package-name");
+    assert.notEqual(manifest["private"], true, "candidate.release-private-package");
+    assert.equal(manifest["version"], row.oldVersion, "candidate.release-source-version");
+  }
+  const core = changed.find(row => row.packageName === "@get-modular/core");
+  const assembly = changed.find(row => row.packageName === "@get-modular/assembly");
+  assert((core === undefined) === (assembly === undefined), "candidate.release-pair-required");
+  if (core && assembly) {
+    assert.deepEqual([core.oldVersion, core.newVersion, core.type], [assembly.oldVersion, assembly.newVersion, assembly.type],
+      "candidate.release-pair-version");
+  }
+}
 function releaseRows(plan: ExpectedInputs["plan"]): string[][] {
   return plan.releases.filter(item => item.oldVersion !== item.newVersion)
     .map(item => [item.packageName, item.oldVersion ?? "", item.newVersion ?? "", item.type]).toSorted();
@@ -27,6 +77,11 @@ function releaseRows(plan: ExpectedInputs["plan"]): string[][] {
  */
 export function pendingMetadataCohort(tree: SourceTree, plan: ExpectedInputs["plan"]): boolean {
   if (tree[configPath] === undefined) {return false;}
+  if (hasReleasePolicy(tree)) {
+    try { assertStablePlan(tree, plan); return false; }
+    catch { return true; }
+  }
+  if (tree["packages/effect/package.json"] !== undefined && releaseRows(plan).length > 0) {return true;}
   const pair = plan.releases.some(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
     && item.oldVersion !== item.newVersion);
   if (!pair) {return false;}
@@ -35,15 +90,22 @@ export function pendingMetadataCohort(tree: SourceTree, plan: ExpectedInputs["pl
 }
 export function plannedBaselines(tree: SourceTree, plan: ExpectedInputs["plan"]): readonly string[] {
   if (tree[configPath] === undefined) {return [];}
+  const currentPolicy = hasReleasePolicy(tree);
+  if (currentPolicy) {assertStablePlan(tree, plan);}
+  else if (tree["packages/effect/package.json"] !== undefined && releaseRows(plan).length > 0) {
+    throw new Error("candidate.release-policy-authority-missing");
+  }
   const pair = plan.releases.filter(item => ["@get-modular/core", "@get-modular/assembly"].includes(item.packageName)
     && item.oldVersion !== item.newVersion);
   if (pair.length === 0) {return [];}
-  assertMetadataAuthority(tree[metadataDecision]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
-  for (const [name, version] of [["resources", "0.2.1"], ["observation", "0.2.0"]]) {
-    assert.equal(record(JSON.parse(tree[`packages/${name}/package.json`]?.contents ?? "{}"))["version"], version,
-      "candidate.metadata-release-unchanged-leaves");
+  if (!currentPolicy) {
+    assertMetadataAuthority(tree[metadataDecision]?.contents ?? "", tree["architecture/decisions/accepted-decisions.json"]?.contents ?? "{}");
+    for (const [name, version] of [["resources", "0.2.1"], ["observation", "0.2.0"]]) {
+      assert.equal(record(JSON.parse(tree[`packages/${name}/package.json`]?.contents ?? "{}"))["version"], version,
+        "candidate.metadata-release-unchanged-leaves");
+    }
+    assert.deepEqual(releaseRows(plan), admittedMetadataCohort, "candidate.metadata-release-cohort");
   }
-  assert.deepEqual(releaseRows(plan), admittedMetadataCohort, "candidate.metadata-release-cohort");
   const policy = record(parse(tree[configPath].contents));
   assert(Array.isArray(policy["packages"]), "candidate.public-baseline-policy");
   assert.deepEqual(policy["packages"].map(value => {
@@ -51,13 +113,28 @@ export function plannedBaselines(tree: SourceTree, plan: ExpectedInputs["plan"])
   }), [["@get-modular/core", baselinePaths[0]], ["@get-modular/assembly", baselinePaths[1]]], "candidate.public-baseline-policy");
   return baselinePaths;
 }
-export function assertMetadataBaseline(path: string, before: SourceTree, after: SourceTree): void {
+export function assertMetadataBaseline(path: string, before: SourceTree, after: SourceTree, plan: ExpectedInputs["plan"]): void {
   const old = before[path]; const current = after[path]; assert(old && current, "candidate.baseline-missing");
   assert.deepEqual([old.leaf.type, old.leaf.mode, current.leaf.type, current.leaf.mode], ["file", "100644", "file", "100644"], "candidate.baseline-file");
   const previous = record(JSON.parse(old.contents)); const promoted = record(JSON.parse(current.contents));
-  assert.equal(previous["packageVersion"], "0.7.0", "candidate.baseline-preimage-version");
-  assert.equal(promoted["packageVersion"], "0.7.1", "candidate.baseline-release-version");
-  assert.deepEqual({ ...promoted, packageVersion: previous["packageVersion"] }, previous, "candidate.baseline-api-changed");
+  const currentPolicy = hasReleasePolicy(before);
+  const name = path === baselinePaths[0] ? "@get-modular/core" : "@get-modular/assembly";
+  const release = plan.releases.find(row => row.packageName === name);
+  assert(release, "candidate.baseline-release-missing");
+  assert.equal(previous["packageVersion"], release.oldVersion, "candidate.baseline-preimage-version");
+  assert.equal(promoted["packageVersion"], release.newVersion, "candidate.baseline-release-version");
+  if (!currentPolicy) {
+    assert.deepEqual({ ...promoted, packageVersion: previous["packageVersion"] }, previous, "candidate.baseline-api-changed");
+  } else {
+    // The actual producer and independent candidate replay own the API bytes;
+    // the headers bind the result to the same schema and package.
+    for (const key of ["schemaVersion", "packageName"]) {
+      assert.deepEqual(promoted[key], previous[key], `candidate.baseline-${key}`);
+    }
+    assert(typeof promoted["extractorVersion"] === "string" && promoted["extractorVersion"].length > 0,
+      "candidate.baseline-extractorVersion");
+    assert(Array.isArray(promoted["entrypoints"]) && promoted["entrypoints"].length > 0, "candidate.baseline-entrypoints");
+  }
 }
 function assertBuildTools(prepared: PreparedRelease, work: string): void {
   const observed = custody(work);
@@ -65,7 +142,7 @@ function assertBuildTools(prepared: PreparedRelease, work: string): void {
   assert.deepEqual(observed.producer, prepared.execution.producer, "candidate.promotion-producer-drift");
   assert.deepEqual(observed.buildTools, prepared.execution.buildTools, "candidate.promotion-build-tool-drift");
 }
-function linkInstall(source: string, target: string): void {
+function linkInstall(source: string, target: string, currentPolicy: boolean, expectedVersion: string): void {
   mkdirSync(join(target, "node_modules"));
   for (const entry of readdirSync(join(source, "node_modules"))) {
     if (entry === "@get-modular" || !statSync(join(source, "node_modules", entry)).isDirectory()) {continue;}
@@ -73,13 +150,13 @@ function linkInstall(source: string, target: string): void {
   }
   mkdirSync(join(target, "node_modules/@get-modular"));
   const observed: { name: string; version: unknown; path: string }[] = [];
-  for (const name of ["core", "assembly", "conformance", "resources", "observation", "lifecycle-kernel"]) {
+  for (const name of ["core", "assembly", "conformance", "resources", "observation", "lifecycle-kernel", ...(currentPolicy ? ["effect"] : [])]) {
     const owned = resolve(target, "packages", name);
     const alias = join(target, "node_modules/@get-modular", name);
     symlinkSync(owned, alias, process.platform === "win32" ? "junction" : "dir");
     assert.equal(realpathSync(alias), realpathSync(owned), "candidate.promotion-workspace-alias");
     const manifest = record(JSON.parse(readFileSync(join(alias, "package.json"), "utf8")));
-    if (name === "core" || name === "assembly") {assert.equal(manifest["version"], "0.7.1", "candidate.promotion-workspace-version");}
+    if (name === "core" || name === "assembly") {assert.equal(manifest["version"], expectedVersion, "candidate.promotion-workspace-version");}
     observed.push({ name, version: manifest["version"], path: realpathSync(alias) });
   }
   console.log(JSON.stringify({ phase: "public-promotion-workspace", packages: observed }));
@@ -164,13 +241,17 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
       assert(file.leaf.type === "file" && file.leaf.mode === "100644", "candidate.promotion-input-file");
       mkdirSync(dirname(join(work, path)), { recursive: true }); writeFileSync(join(work, path), file.contents);
     }
-    linkInstall(caller, work);
+    const currentPolicy = hasReleasePolicy(prepared.before);
+    const pair = prepared.expected.plan.releases.find(row => row.packageName === "@get-modular/core");
+    assert(pair && typeof pair.newVersion === "string", "candidate.promotion-workspace-version");
+    linkInstall(caller, work, currentPolicy, pair.newVersion);
     assert.equal(treeDigest(snapshot(work)), treeDigest(candidate), "candidate.promotion-input-drift");
     assertBuildTools(prepared, work);
-    // ADR-0042 admits the retained metadata cohort. Its authenticated source
-    // owns these build paths; today's tooling migration cannot rewrite them.
-    execute(work, process.execPath, ["architecture/tooling/build-core.mjs"]);
-    execute(work, process.execPath, ["architecture/tooling/build-assembly.mjs"]);
+    // The historical cohort retains its original build paths. The Effect
+    // cohort uses the current source's authenticated TypeScript builders.
+    const extension = currentPolicy ? "ts" : "mjs";
+    execute(work, process.execPath, [`architecture/tooling/build-core.${extension}`]);
+    execute(work, process.execPath, [`architecture/tooling/build-assembly.${extension}`]);
     assertBuildTools(prepared, work);
     const built = snapshot(work);
     for (const [path, file] of Object.entries(candidate)) {assert.deepEqual(built[path], file, "candidate.build-source-drift");}
@@ -189,7 +270,7 @@ export function produceBaselines(prepared: PreparedRelease, candidate: SourceTre
     const changed = [...new Set([...Object.keys(built), ...Object.keys(promoted)])]
       .filter(path => identity(built[path]?.leaf ?? null) !== identity(promoted[path]?.leaf ?? null)).toSorted();
     assert.deepEqual(changed, [...paths].toSorted(), "candidate.producer-extra-output");
-    for (const path of paths) {assertMetadataBaseline(path, prepared.before, promoted);}
+    for (const path of paths) {assertMetadataBaseline(path, prepared.before, promoted, prepared.expected.plan);}
     assertCustody(prepared.execution, custody(caller));
     assert.equal(treeDigest(snapshot(caller)), treeDigest(candidate), "candidate.promotion-caller-drift");
     // Re-observe every source and baseline preimage before the first caller write.

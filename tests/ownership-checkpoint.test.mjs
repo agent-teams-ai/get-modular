@@ -113,6 +113,7 @@ test("the scoped decision is accepted and earlier accepted decisions retain exac
     {"id": "ADR-0041", "path": "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md", "immutableDigest": "sha256:1876caeaec5aa79bc8a007e544f9c9303dda6a6f40f82e0de6e42ac37e02fdb2"},
     {"id": "ADR-0042", "path": "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md", "immutableDigest": "sha256:1abf9f97ebe089f82c2183dc45a15f8528b09322184b6c19ecdc95df1dd0557f"},
     {"id": "ADR-0043", "path": "docs/decisions/0043-plan-optional-native-effect-composition.md", "immutableDigest": "sha256:765fae287d9e893618fb5a4b1259810281323c76a6f6aad1a1c5a93af4daa716"},
+    {"id": "ADR-0044", "path": "docs/decisions/0044-admit-checked-public-release-automation-and-effect.md", "immutableDigest": "sha256:b20b22948285a90f914cd0e20d3ccda30e9bafa00db13787767726fd37e9e565"},
   ]);
   const paths = execFileSync("git", ["ls-tree", "-r", "--name-only", checkpoint.evidence.base,
     "docs/decisions"], { encoding: "utf8" }).trim().split("\n");

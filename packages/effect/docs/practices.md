@@ -1,9 +1,9 @@
 # Effect integration practices
 
-Status: implementation-candidate guidance, updated 2026-11-14. The native package and its
+The native package and its
 public API are implemented under [ADR-0043](https://github.com/agent-teams-ai/get-modular/blob/main/docs/decisions/0043-plan-optional-native-effect-composition.md).
-The current candidate uses **Effect 4.1.4** and matched candidate Core/Assembly;
-the package README distinguishes source availability from registry publication.
+The initial release uses **Effect 4.1.4** and matched Core/Assembly 0.8.0;
+the package README explains the source candidate and version requirements.
 The current [Consumer Module Standard](https://github.com/agent-teams-ai/get-modular/blob/main/docs/architecture/common-assembly.md#consumer-module-standard)
 owns GM authoring policy. Native and Promise construction retain different
 execution contracts.

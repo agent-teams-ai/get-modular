@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { setTimeout } from "node:timers/promises";
-import { record, text } from "./policy.ts";
+import { packageIds, record, text } from "./policy.ts";
 
 type RegistryRequest = (url: string, options: { signal: AbortSignal; redirect: "error" }) => Promise<Response>;
-export async function registryVersion(name: string, selector: string, options: {
+export async function registryMetadata(name: string, selector: string, options: {
   request?: RegistryRequest;
   pause?: (milliseconds: number) => Promise<void>;
-} = {}): Promise<string | undefined> {
+} = {}): Promise<Record<string, unknown> | undefined> {
   const request = options.request ?? fetch;
   const pause = options.pause ?? setTimeout;
   const url = `https://registry.npmjs.org/${encodeURIComponent(name)}/${encodeURIComponent(selector)}`;
@@ -25,9 +25,33 @@ export async function registryVersion(name: string, selector: string, options: {
     const value: unknown = await response.json();
     const metadata = record(value);
     assert.equal(metadata.name, name, "release.registry-package");
-    return text(metadata.version);
+    text(metadata.version);
+    return metadata;
   }
   throw new Error("release.registry-read-unavailable");
+}
+
+export async function registryVersion(name: string, selector: string, options: {
+  request?: RegistryRequest;
+  pause?: (milliseconds: number) => Promise<void>;
+} = {}): Promise<string | undefined> {
+  const metadata = await registryMetadata(name, selector, options);
+  return metadata === undefined ? undefined : text(metadata.version);
+}
+
+/** Bind an existing immutable version to the canonical npm tarball and SRI. */
+export function registryIdentity(name: string, version: string, metadata: Record<string, unknown>): { url: string; integrity: string } {
+  const id = name.slice("@get-modular/".length);
+  assert(packageIds.some(value => value === id) && name === `@get-modular/${id}`, "release.registry-package");
+  assert.match(version, /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u, "release.registry-version");
+  assert.equal(metadata.name, name, "release.registry-package");
+  assert.equal(metadata.version, version, "release.registry-version-mismatch");
+  const dist = record(metadata.dist);
+  const url = `https://registry.npmjs.org/@get-modular/${id}/-/${id}-${version}.tgz`;
+  assert.equal(dist.tarball, url, "release.registry-archive-url");
+  const integrity = text(dist.integrity);
+  assert.match(integrity, /^sha512-[A-Za-z0-9+/]{86}==$/u, "release.registry-integrity");
+  return { url, integrity };
 }
 
 /** Read-only public archive retrieval with the metadata reader's bounded retries. */
@@ -37,8 +61,8 @@ export async function registryArchive(url: string, options: {
 } = {}): Promise<Buffer> {
   const request = options.request ?? fetch; const pause = options.pause ?? setTimeout;
   const maximum = 16 * 1024 * 1024;
-  assert.match(url, /^https:\/\/registry\.npmjs\.org\/@get-modular\/(?:resources|observation)\/-\/(?:resources-0\.2\.1|observation-0\.2\.0)\.tgz$/u,
-    "release.registry-archive-url");
+  const match = /^https:\/\/registry\.npmjs\.org\/@get-modular\/([a-z]+)\/-\/([a-z]+)-((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\.tgz$/u.exec(url);
+  assert(match && match[1] === match[2] && packageIds.some(id => id === match[1]), "release.registry-archive-url");
   for (let attempt = 0; attempt < 3; attempt += 1) {
     let response: Response;
     try { response = await request(url, { signal: AbortSignal.timeout(20000), redirect: "error" }); }

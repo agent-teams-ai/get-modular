@@ -65,9 +65,15 @@ const ASSEMBLY_COMPILER_FLOOR_REGISTRY_ENTRY = Object.freeze({
   path: ASSEMBLY_COMPILER_FLOOR_DECISION_PATH,
   immutableDigest: "sha256:f2eab8aea2b07c8b6d2b3207314da91531689fa2bb6039e9e963aee315f7fd52",
 });
-// Each public pair after 0.1.0 is authenticated by its own accepted decision;
-// the manifest shape alone is not authority.
+// Historical pairs retain their accepted decisions. ADR-0044 also owns the
+// checked stable release policy used by the version route.
+export const RELEASE_POLICY_DECISION = Object.freeze({
+  path: "docs/decisions/0044-admit-checked-public-release-automation-and-effect.md",
+  bytesDigest: "sha256:ea16902f8a6ce449e50d50fc4a5d8eef11c4aff2f729ee84f21d613b7f85d543",
+  entry: Object.freeze({ id: "ADR-0044", path: "docs/decisions/0044-admit-checked-public-release-automation-and-effect.md", immutableDigest: "sha256:b20b22948285a90f914cd0e20d3ccda30e9bafa00db13787767726fd37e9e565" }),
+});
 export const ASSEMBLY_PAIR_DECISIONS = Object.freeze({
+  "0.8.0": RELEASE_POLICY_DECISION,
   "0.7.1": Object.freeze({
     path: "docs/decisions/0042-admit-the-coordinated-0-7-1-metadata-release.md",
     bytesDigest: "sha256:8f36ca78ed28153b0a7774bce2a8d5fb85d1fb51dd699e943886773ab804014f",

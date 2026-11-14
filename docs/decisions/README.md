@@ -17,6 +17,8 @@ summary: Index of Get Modular architecture decisions.
 
 ## Accepted decisions
 
+- [ADR-0044: Admit checked public release automation and Effect](0044-admit-checked-public-release-automation-and-effect.md)
+
 - [ADR-0043: Admit optional native Effect composition](0043-plan-optional-native-effect-composition.md)
 
 - [ADR-0042: Admit the coordinated 0.7.1 metadata release](0042-admit-the-coordinated-0-7-1-metadata-release.md)

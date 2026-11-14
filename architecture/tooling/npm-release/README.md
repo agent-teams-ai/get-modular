@@ -1,6 +1,6 @@
 # npm publication
 
-The owner authorized automatic publication and promotion of the five public
+The owner authorized automatic publication and promotion of the public
 packages on 2026-10-20. `latest` is the intended tag for each package. The
 private lifecycle kernel stays excluded. This workflow changes release delivery;
 it does not change package versions, APIs, accepted ADRs or conformance claims.
@@ -16,19 +16,11 @@ keeps the common npm invariant reusable while package qualification remains loca
 
 ## Source candidates
 
-[ADR-0043](../../../docs/decisions/0043-plan-optional-native-effect-composition.md)
-admits `@get-modular/effect` at `0.0.0` as a public source candidate. It does not
-add Effect to the five-package publication cohort. After exact-source CI,
-preparation validates the complete package inventory and reports
-`pending-admission` when this exact candidate is present. Both automatic runs
-and manual dispatch leave `ready=false` and stop before registry reads, builds,
-archives or publication. Unknown public packages and a changed candidate name,
-version or publication shape still fail closed.
-
-This matches the [checked version route](../release-candidate/README.md), which
-reports the coordinated Effect release intent as pending until its new cohort
-is admitted. Source admission does not authorize publishing the candidate beside
-the released Assembly version or changing historical archive and baseline policy.
+[ADR-0044](../../../docs/decisions/0044-admit-checked-public-release-automation-and-effect.md)
+admits Effect and its coordinated release. The source-only `0.0.0` candidate
+still stops preparation before publication. Unknown public packages fail closed.
+The checked version route selects the matching versions before release; the
+candidate cannot be published beside Assembly 0.7.1.
 
 ## Normal release
 
@@ -55,7 +47,7 @@ the released Assembly version or changing historical archive and baseline policy
    source version fails closed to prevent accidental regression. An explicit
    main-branch workflow dispatch can reconcile the same versions without a bump,
    still requiring exact-source CI and no version regression. CI has no retained
-   all-five package artifact, so new candidates use the existing build commands
+   full package artifact, so new candidates use the existing build commands
    and are packed once.
 4. Preparation uploads `npm-release-<run_id>-<run_attempt>`. The shared `publish`
    phase publishes or reconciles candidate versions, verifies downloaded bytes
@@ -64,8 +56,8 @@ the released Assembly version or changing historical archive and baseline policy
 5. The credential-free `verify` job validates both manifests, hashes and the
    receipt's source and run ID, then installs the registry archives outside the
    source workspace. It runs the existing installed public-root consumer and a
-   strict TypeScript 7 consumer using Core, Assembly, resources, conformance and
-   observation. The latter also executes typed Assembly wiring, observation,
+   strict TypeScript 7 consumer using the six packages and Effect 4.1.4.
+   The latter also executes native Effect acquisition and finalization, typed Assembly wiring, observation,
    module scope closure and a Conformance-isolated module. No consumer repacks.
 6. Only successful consumer verification allows the shared `promote` phase to
    set every intended `latest` tag. A failed upload/read-back, hash mismatch or
@@ -80,6 +72,15 @@ The protected `npm` environment and each package's npm Trusted Publisher must
 admit this caller and the reviewed reusable workflow. No npm write token belongs
 in repository secrets. npm interactive authentication is only needed for initial
 publisher configuration or a provider-required bootstrap.
+
+For a new npm name, the provider requires package registration before a Trusted
+Publisher can be configured. Bootstrap only from the exact archive prepared by
+the qualified release run, retain its hashes and publish it under a non-default
+candidate tag. Configure `npm-release.yml` in the `npm` environment with both
+publish and dist-tag permissions. Then run the normal reconciliation path; it
+must verify the registry bytes and installed consumer before promoting `latest`.
+Do not repack or replay an uncertain upload. The initial interactive upload is
+distinct from the subsequently verified OIDC route and its provenance.
 
 ## Existing qualified bytes
 
@@ -110,7 +111,9 @@ require exact current-source CI. Same-version package source drift fails with
 `release.retained-source-drift`; changing a tree never silently repacks an
 already published version. New versions build from the qualified current source.
 
-Future release archives without this explicit retained binding are packed once.
+Other releases are packed once. When npm already has the same coordinate, the
+current route checks registry SRI and compares the complete fresh and registry
+payloads and modes before selecting the original registry bytes. A mismatch fails.
 If the registry already has different bytes for that version, reconciliation
 fails. Preserve the original artifact and registry observation, inspect the
 mismatch and repair the version/release evidence. Never normalize, replace or
@@ -241,7 +244,7 @@ historical retained-input guards to hide one.
 
 ## Artifact protocol and recovery
 
-The original artifact contains only `release.json` and the five package archives.
+The original artifact contains only `release.json` and the public package archives.
 The manifest has `schemaVersion: 1`, `repository`, `source` equal to the caller's
 `github.sha`, and `packages`. Each entry has `name`, `version`, `file` (a safe
 `.tgz` basename), `sha256` and `integrity` (`sha512-...`). It contains no token,

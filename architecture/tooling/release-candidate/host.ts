@@ -25,8 +25,9 @@ const policyPaths = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", "b
   "architecture/tooling/runtime/command.ts", "architecture/tooling/runtime/policy.ts",
   "architecture/tooling/release-candidate/host.ts", "architecture/tooling/release-candidate/io.ts",
   "architecture/tooling/release-candidate/run.ts", "architecture/tooling/release-candidate/baselines.ts", "architecture/tooling/release-candidate/metadata-authority.ts",
-  // Match the authenticated build inputs of the ADR-0042 metadata cohort.
-  "architecture/foundation/public-api-compatibility.yaml", "architecture/tooling/build-core.mjs", "architecture/tooling/build-assembly.mjs"] as const;
+  // Retain the historical builder pins and bind the current builders as well.
+  "architecture/foundation/public-api-compatibility.yaml", "architecture/tooling/build-core.mjs", "architecture/tooling/build-assembly.mjs",
+  "architecture/tooling/build-core.ts", "architecture/tooling/build-assembly.ts", "architecture/tooling/typescript-build.ts"] as const;
 export interface PreparedRelease {
   readonly execution: ExecutionCustody;
   readonly before: SourceTree;
@@ -242,7 +243,7 @@ export function checkGeneratedCandidate(prepared: PreparedRelease): CheckedCandi
   const actual = custody(prepared.execution.root);
   assertCustody(prepared.execution, actual);
   const after = snapshot(actual.root);
-  for (const path of plannedBaselines(prepared.before, prepared.expected.plan)) {assertMetadataBaseline(path, prepared.before, after);}
+  for (const path of plannedBaselines(prepared.before, prepared.expected.plan)) {assertMetadataBaseline(path, prepared.before, after, prepared.expected.plan);}
   return check(prepared, after, actual, `worktree:${treeDigest(after)}`);
 }
 export function versionPreparedRelease(prepared: PreparedRelease): CheckedCandidate {
@@ -259,6 +260,11 @@ export function versionPreparedRelease(prepared: PreparedRelease): CheckedCandid
   return checkGeneratedCandidate(prepared);
 }
 export function generateRelease(root: string): CheckedCandidate { return versionPreparedRelease(prepareRelease(root)); }
+
+/** Compare the whole observed candidate with the independently produced replay. */
+export function assertReplayDiff(actual: readonly FileChange[], replay: readonly FileChange[]): void {
+  assert.deepEqual(actual, replay, "candidate.generated-output-drift");
+}
 
 /** Independent current-base replay; candidate versions never provide expected versions or release membership. */
 export function verifyRelease(root: string, base: string, head: string): CheckedCandidate {
@@ -291,7 +297,7 @@ export function verifyRelease(root: string, base: string, head: string): Checked
     assert.equal(candidateExecution.engine.digest, expected.execution.engine.digest, "candidate.substituted-engine");
     assert.deepEqual(candidateExecution.producer, expected.execution.producer, "candidate.substituted-producer");
     const result = check(expected, actual, { ...candidateExecution, source: base }, `commit:${head}:${treeDigest(actual)}`);
-    assert.deepEqual(result.observed.diff, generated.observed.diff, "candidate.generated-output-drift");
+    assertReplayDiff(result.observed.diff, generated.observed.diff);
     return result;
   } finally {
     for (const path of owned.toReversed()) {git(replayRepository, "worktree", "remove", "--force", path);}
