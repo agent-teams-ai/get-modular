@@ -32,7 +32,7 @@ test("matched public archives preserve native execution, portable types and neut
     const versions: Record<string, string> = {};
     const digests: Record<string, string> = {};
     let readmeExample = "";
-    for (const name of ["core", "assembly", "effect"]) {
+    for (const name of ["core", "assembly", "resources", "observation", "effect"]) {
       const root = join(workspace, "packages", name);
       const filename = run(process.execPath, [pnpm, "--pm-on-fail=ignore", "pack", "--pack-destination", temporary], root).split(/\r?\n/u).at(-1);
       assert.ok(filename && /\.tgz$/u.test(filename));
@@ -43,7 +43,7 @@ test("matched public archives preserve native execution, portable types and neut
       run("tar", ["-xzf", archive, "--strip-components=1", "-C", installed], temporary);
       const manifest = JSON.parse(await readFile(join(installed, "package.json"), "utf8"));
       versions[name] = manifest.version;
-      assert.deepEqual(Object.keys(manifest.exports), ["."]);
+      assert.deepEqual(Object.keys(manifest.exports), name === "observation" ? [".", "./testing"] : ["."]);
       assert.equal(manifest.type, "module");
       if (name !== "effect") {
         for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) {
@@ -68,6 +68,7 @@ test("matched public archives preserve native execution, portable types and neut
       }
     }
     await writeFile(join(consumer, "package.json"), '{"type":"module"}\n');
+    await cp(join(workspace, "tests/qualification/effect-communication"), join(consumer, "communication"), { recursive: true });
     // No Effect installation yet: ordinary public imports and construction work independently.
     await writeFile(join(consumer, "neutral.ts"), `
       import assert from "node:assert/strict";
@@ -85,6 +86,7 @@ test("matched public archives preserve native execution, portable types and neut
       assert.equal(run.roots.app, 42);
     `);
     run(process.execPath, ["neutral.ts"], consumer);
+    run(process.execPath, ["communication/neutral.ts"], consumer);
 
     // Copy the exact frozen-install peer closure; this Effect release has no runtime dependencies.
     const effectRoot = dirname(require.resolve("effect/package.json"));
@@ -93,14 +95,18 @@ test("matched public archives preserve native execution, portable types and neut
     for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) assert.deepEqual(effect[field] ?? {}, {});
     await cp(effectRoot, join(consumer, "node_modules/effect"), { recursive: true });
     await writeFile(join(consumer, "readme.ts"), readmeExample);
-    for (const name of ["support.ts", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "portable.ts"]) {
+    for (const name of ["support.ts", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "portable.ts"]) {
       const source = await readFile(join(packageRoot, "tests", name), "utf8");
       const publicCarrier = 'from "../dist/index.js"';
       assert.equal(source.split(publicCarrier).length, 2, `${name} must import exactly one public carrier`);
-      await writeFile(join(consumer, name), source.replace(publicCarrier, 'from "@get-modular/effect"'));
+      await writeFile(join(consumer, name), source.replace(publicCarrier, 'from "@get-modular/effect"')
+        .replaceAll('"../../../tests/qualification/effect-communication/', '"./communication/'));
     }
-    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts"], consumer);
-    for (const summary of ["# tests 23", "# pass 23", "# fail 0", "# cancelled 0", "# skipped 0"]) {
+    const communication = await readFile(join(workspace, "tests/effect-communication.test.ts"), "utf8");
+    await writeFile(join(consumer, "consumer-communication.test.ts"),
+      communication.replaceAll('"./qualification/effect-communication/', '"./communication/'));
+    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "consumer-communication.test.ts"], consumer);
+    for (const summary of ["# tests 35", "# pass 35", "# fail 0", "# cancelled 0", "# skipped 0"]) {
       assert.ok(output.split(/\r?\n/u).includes(summary), `packed suite lacks ${summary}\n${output}`);
     }
     await writeFile(join(consumer, "public.ts"), `
@@ -111,7 +117,7 @@ test("matched public archives preserve native execution, portable types and neut
       assert.deepEqual(Object.keys(adapter).sort(), ["InvalidInputs", "effectFor", "entriesOf", "group", "implement", "input"]);
       assert.equal(await runPortable(), "packed/value");
       await assert.rejects(import("@get-modular/effect/dist/index.js"), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
-      for (const name of ["core", "assembly", "effect"]) {
+      for (const name of ["core", "assembly", "resources", "observation", "effect"]) {
         assert.ok(import.meta.resolve("@get-modular/" + name).includes("/consumer/node_modules/@get-modular/" + name + "/"));
       }
     `);
@@ -119,14 +125,14 @@ test("matched public archives preserve native execution, portable types and neut
     for (const { path: compiler } of supportedCompilers()) {
       for (const resolution of ["NodeNext", "Bundler"]) {
         await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({ compilerOptions: {
-          strict: true, noEmit: true, skipLibCheck: false, target: "ES2024", types: [],
+          strict: true, noEmit: true, skipLibCheck: false, target: "ES2024", types: [], allowImportingTsExtensions: true,
           lib: ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
           module: resolution === "NodeNext" ? "NodeNext" : "ESNext", moduleResolution: resolution,
-        }, files: ["portable.ts", "readme.ts"] }));
+        }, files: ["portable.ts", "readme.ts", "communication/native.ts", "communication/callback.ts", "communication/state.ts"] }));
         run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
       }
     }
-    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 23,
+    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 35,
       publicTypeResolutions: ["NodeNext", "Bundler"], neutralEffectDependency: false }));
   } finally { await rm(temporary, { recursive: true, force: true }); }
 });

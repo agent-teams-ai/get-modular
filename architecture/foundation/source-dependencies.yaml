@@ -1097,6 +1097,8 @@ boundaries:
       - tests/quality-activation.test.mjs
       - tests/source-dependencies.test.mjs
       - tests/effect-carrier.types.ts
+      - tests/qualification/effect-communication/native.ts
+      - tests/qualification/effect-communication/progress.ts
       - tests/qualification/metadata-patch-pack.ts
       - tests/qualification/lifecycle-tool-prepare.mts
       - tests/qualification/lifecycle-qualification-contracts.mts
@@ -1120,6 +1122,7 @@ boundaries:
         - "@get-modular/resources"
         - ajv
         - canonicalize
+        - effect
         - json-canonicalize
         - jsonc-parser
         - tar
