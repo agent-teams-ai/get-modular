@@ -394,19 +394,22 @@ concurrently processed results globally ordered. A readonly type is not a sandbo
 
 The complete maintained recipes below are consumer examples, not new exports from
 `@get-modular/effect`. Their source is strictly checked with the selected peer and
-the same cases execute from matched installed public archives. See the
-[recipe tests](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication.test.ts).
-The [plain progress contract and test source](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication/progress.ts)
+the same cases execute from matched installed public archives. These shared
+consumer fixtures belong to the repository qualification owner, not to the
+Effect package's runtime dependency set. See the
+[recipe tests](https://github.com/agent-teams-ai/get-modular/blob/main/tests/effect-communication.test.ts).
+The [plain progress contract and test source](https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/progress.ts)
 have no Effect imports. The test source illustrates the stated contract; do not
 copy it as a new product-wide event bus.
 
 ### Native notifications: explicit readiness, separate reader and publisher
 
-Use the [complete native recipe](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication/native.ts)
+Use the [complete native recipe](https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/native.ts)
 inside an Effect-native provider. The provider owns one bounded PubSub and gives
 consumers only its `ProgressEvents` facet. Publication stays with its owning
 module or authorized Host; subscribers cannot publish or shut down the source.
-The GM test wires that reader through an ordinary required slot into two modules.
+The [native composition test](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication.test.ts)
+wires that reader through an ordinary required slot into two modules.
 
 ```ts
 // Inside the operation retained by the graph's owning Effect Scope:
@@ -434,7 +437,7 @@ a sibling remains active, and verify that the source stops with its graph.
 
 ### Neutral callback source: one owned adapter, explicit overflow
 
-Use the [complete callback adapter](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication/callback.ts)
+Use the [complete callback adapter](https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/callback.ts)
 when the source's complete public contract must remain independent of Effect.
 Keep the plain `ProgressSource` at that replaceable boundary; the selected adapter
 returns a native Stream for native consumers. No mandatory Effect peer is added
@@ -477,7 +480,7 @@ acquisition rollback, overflow, handler/teardown failures and interruption.
 
 ### Existing Observation: one-way latest-state projection
 
-Use the [complete state bridge](https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication/state.ts)
+Use the [complete state bridge](https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/state.ts)
 only when an existing module already owns the required Observation contract.
 For a new entirely native subsystem, choose its native state mechanism directly
 when that meets its contract; adding Observation is not a requirement of GM.

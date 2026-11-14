@@ -110,3 +110,28 @@ preserve a guarantee, state the limit rather than silently adding it to the port
 The package README and frozen lock remain the exact peer authority. Live upstream
 API pages inform the review; only compilation and execution against the repository
 peer qualify the delivered recipes.
+
+## Complete-gate review: shared qualification owner
+
+The first complete local gate rejected the Observation/Resources imports placed
+inside the Effect package's development boundary. They are cross-package
+consumer qualification, not dependencies of the native Effect leaf. Move the
+recipes to `tests/qualification/effect-communication` and their scenario suite to
+`tests/effect-communication.test.ts`. Native mapper tests stay with the Effect
+package and consume the two explicitly exposed qualification helpers. The root
+consumer scenarios import Effect itself, not the native GM mapper, so the
+existing package-to-root archive harness cannot form a runtime package cycle.
+The root already declares all selected
+packages as development dependencies; record its exact Effect import edges in
+the existing source-dependency policy. Keep the Effect package's peer set and
+production boundary unchanged. Extend its existing test-tooling project to
+check these root-owned fixtures, and keep execution/archive checks mandatory.
+Do not solve this rejection by adding Observation as an Effect peer, excluding
+the examples from checking, or weakening the dependency rule.
+
+Execution also rejected two incorrect test expectations: a shut-down native
+PubSub returns `false` on publication; combined processing and finalizer errors
+retain their identities as native defects in the qualified peer. The recipes
+now document and test those outcomes, including the typed processing failure
+when cleanup succeeds. These are corrections to the new qualification, not
+changes to Effect or to a Get Modular public API.

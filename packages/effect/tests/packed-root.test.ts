@@ -68,7 +68,7 @@ test("matched public archives preserve native execution, portable types and neut
       }
     }
     await writeFile(join(consumer, "package.json"), '{"type":"module"}\n');
-    await cp(join(packageRoot, "tests/communication"), join(consumer, "communication"), { recursive: true });
+    await cp(join(workspace, "tests/qualification/effect-communication"), join(consumer, "communication"), { recursive: true });
     // No Effect installation yet: ordinary public imports and construction work independently.
     await writeFile(join(consumer, "neutral.ts"), `
       import assert from "node:assert/strict";
@@ -99,9 +99,13 @@ test("matched public archives preserve native execution, portable types and neut
       const source = await readFile(join(packageRoot, "tests", name), "utf8");
       const publicCarrier = 'from "../dist/index.js"';
       assert.equal(source.split(publicCarrier).length, 2, `${name} must import exactly one public carrier`);
-      await writeFile(join(consumer, name), source.replace(publicCarrier, 'from "@get-modular/effect"'));
+      await writeFile(join(consumer, name), source.replace(publicCarrier, 'from "@get-modular/effect"')
+        .replaceAll('"../../../tests/qualification/effect-communication/', '"./communication/'));
     }
-    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts"], consumer);
+    const communication = await readFile(join(workspace, "tests/effect-communication.test.ts"), "utf8");
+    await writeFile(join(consumer, "consumer-communication.test.ts"),
+      communication.replaceAll('"./qualification/effect-communication/', '"./communication/'));
+    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "consumer-communication.test.ts"], consumer);
     for (const summary of ["# tests 35", "# pass 35", "# fail 0", "# cancelled 0", "# skipped 0"]) {
       assert.ok(output.split(/\r?\n/u).includes(summary), `packed suite lacks ${summary}\n${output}`);
     }
