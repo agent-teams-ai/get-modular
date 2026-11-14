@@ -9,24 +9,19 @@ jobs:
     if: github.repository == 'agent-teams-ai/get-modular' && github.actor == '777genius' && github.ref == 'refs/heads/work/effect-recipes-stage-20261114'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    permissions:
-      contents: write
-    env:
-      SOURCE_SHA: 7b7187c6dbf096f645d26ae9bbdf4fe49ea0ca2c
-      BASE_SHA: ea5c3ade592ce5367dcae11694a20471464e4ab6
-      COMMON_SHA: 6c91ff1c3c8ce7088db215af9705f7ee3a9db103
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: 57ee9ddfaf2948b0133f6902a6e30139c73c7865
           fetch-depth: 0
           persist-credentials: false
-      - name: Preserve reviewed edit and select exact source
+      - name: Bind the exact reviewed source and base
         run: |
           set -euo pipefail
-          cp .recipe-ops/ownership.ts "$RUNNER_TEMP/ownership.ts"
-          printf '{"type":"module"}\n' > "$RUNNER_TEMP/package.json"
-          test "$(git merge-base "$SOURCE_SHA" "$BASE_SHA")" = "$COMMON_SHA"
-          git checkout --detach "$SOURCE_SHA"
+          test "$(git rev-parse HEAD)" = 57ee9ddfaf2948b0133f6902a6e30139c73c7865
+          test "$(git rev-parse HEAD^{tree})" = cd01f750cd0d398139926754bd400807e7a6e0c2
+          git branch --force main ea5c3ade592ce5367dcae11694a20471464e4ab6
+          git merge-base --is-ancestor main HEAD
           test ! -e .recipe-ops
           test ! -e .github/workflows/one-shot-effect-recipes.yml
       - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
@@ -44,91 +39,39 @@ jobs:
           node architecture/tooling/runtime/retained-history.ts
           node architecture/tooling/runtime/dev.ts install
           node architecture/tooling/runtime/dev.ts peers
-          node node_modules/typescript/bin/tsc --strict --noEmit --target ES2024 --module NodeNext --moduleResolution NodeNext --types node --typeRoots "$PWD/node_modules/@types" "$RUNNER_TEMP/ownership.ts"
-      - name: Apply verified owner correction and reconcile released main
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Reject the contaminated auxiliary environment and prove the clean control
         run: |
           set -euo pipefail
-          node "$RUNNER_TEMP/ownership.ts" "$PWD"
-          git config --local user.name iliya
-          git config --local user.email iliyazelenkog@gmail.com
-          git commit -m 'test(effect): assign mixed communication qualification to its consumer owner'
-          if ! git merge --no-commit --no-ff "$BASE_SHA"; then
-            test "$(git diff --name-only --diff-filter=U)" = packages/effect/docs/practices.md
-            node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          import { execFileSync } from 'node:child_process';
-          import { writeFileSync } from 'node:fs';
-          const path = 'packages/effect/docs/practices.md';
-          const read = ref => execFileSync('git', ['show', `${ref}:${path}`], {encoding:'utf8'});
-          const previous = read(process.env.COMMON_SHA), current = read(process.env.BASE_SHA), own = read('HEAD');
-          const marker = 'The current [Consumer Module Standard]';
-          const tail = text => { const i=text.indexOf(marker); assert.ok(i>0); return text.slice(i); };
-          assert.equal(tail(previous),tail(current),'main changed more than its reviewed release header');
-          writeFileSync(path,current.slice(0,current.indexOf(marker))+tail(own));
-          JS
-            git add packages/effect/docs/practices.md
-          fi
-          test -z "$(git diff --name-only --diff-filter=U)"
-          git diff --cached --check
-          git commit -m 'chore: reconcile communication recipes with the independently merged release authority'
-          git merge-base --is-ancestor "$BASE_SHA" HEAD
-          test "$(git show -s --format='%an|%ae|%cn|%ce' HEAD)" = 'iliya|iliyazelenkog@gmail.com|iliya|iliyazelenkog@gmail.com'
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict';
-          import { execFileSync } from 'node:child_process';
-          const path='architecture/foundation/source-dependencies.yaml';
-          const read=ref=>execFileSync('git',['show',`${ref}:${path}`],{encoding:'utf8'});
-          const base=read(process.env.BASE_SHA),at=base.indexOf('  - id: repository.development\n');
-          assert.ok(at>0);
-          let tail=base.slice(at);
-          const oldEntry='      - tests/effect-carrier.types.ts\n',oldPackage='        - canonicalize\n';
-          assert.equal(tail.split(oldEntry).length,2); assert.equal(tail.split(oldPackage).length,2);
-          tail=tail.replace(oldEntry,oldEntry+'      - tests/qualification/effect-communication/native.ts\n      - tests/qualification/effect-communication/progress.ts\n').replace(oldPackage,oldPackage+'        - effect\n');
-          assert.equal(read('HEAD'),base.slice(0,at)+tail,'only reviewed development edges may differ');
-          JS
-          # Every unrelated release file remains byte-identical to accepted main.
-          while IFS= read -r path; do
-            case "$path" in packages/effect/docs/practices.md|architecture/foundation/source-dependencies.yaml) continue;; esac
-            git diff --exit-code "$BASE_SHA" HEAD -- "$path"
-          done < <(git diff --name-only "$COMMON_SHA" "$BASE_SHA")
-          cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
-          #!/bin/sh
-          case "$1" in
-            *Username*) printf '%s\n' x-access-token;;
-            *Password*) printf '%s\n' "$GH_TOKEN";;
-            *) exit 1;;
-          esac
-          SH
-          chmod 700 "$RUNNER_TEMP/recipe-askpass"
-          ref="work/effect-recipes-source-$GITHUB_RUN_ID"
-          GIT_ASKPASS="$RUNNER_TEMP/recipe-askpass" git -c credential.helper= push https://github.com/agent-teams-ai/get-modular.git "HEAD:refs/heads/$ref"
-          printf 'Source commit: %s\nSource ref: %s\n' "$(git rev-parse HEAD)" "$ref" | tee "$RUNNER_TEMP/recipe-source.txt" >> "$GITHUB_STEP_SUMMARY"
-          echo "EXPECTED_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/recipe-source.tar.gz"
-          git bundle create "$RUNNER_TEMP/recipe-history.bundle" --all HEAD
-      - name: Qualify recipes, policy and documentation with the normal gates
+          file=tests/repository-runtime.test.ts
+          pattern='^Node rollback derives only manager metadata in an external checkout and rejects drift$'
+          set +e
+          EXPECTED_HEAD_SHA=57ee9ddfaf2948b0133f6902a6e30139c73c7865 node --test --test-name-pattern="$pattern" "$file" > "$RUNNER_TEMP/recipe-environment-negative.log" 2>&1
+          negative=$?
+          set -e
+          test "$negative" -eq 1
+          grep -q 'TRACKED_FILE_CUSTODY_FAILED' "$RUNNER_TEMP/recipe-environment-negative.log"
+          grep -q 'does not match expected commit' "$RUNNER_TEMP/recipe-environment-negative.log"
+          env -u EXPECTED_HEAD_SHA node --test --test-name-pattern="$pattern" "$file" | tee "$RUNNER_TEMP/recipe-environment-positive.log"
+      - name: Run the complete changed-source qualification
         run: |
-          bun run assembly:build
-          bun run resources:build
-          bun run conformance:build
-          bun run observation:build
-          bun run effect:check
-          bun run foundation:check
-          bun run docs:protocol:check
-          bun run check:changed
+          set -euo pipefail
+          # EXPECTED_HEAD_SHA belongs only to the final integrity step. Child
+          # fixture repositories have their own independently checked HEADs.
+          test -z "${EXPECTED_HEAD_SHA:-}"
+          bun run check:changed 2>&1 | tee "$RUNNER_TEMP/recipe-check-changed.log"
       - name: Verify tracked source integrity
         if: always()
+        env:
+          EXPECTED_HEAD_SHA: 57ee9ddfaf2948b0133f6902a6e30139c73c7865
         run: node architecture/tooling/runtime/dev.ts verify
-      - name: Retain exact qualification source without credentials
+      - name: Retain exact-source gate receipts without credentials
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: recipe-qualification-${{ github.run_id }}
+          name: recipe-final-gates-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/recipe-source.txt
-            ${{ runner.temp }}/recipe-source.tar.gz
-            ${{ runner.temp }}/recipe-history.bundle
+            ${{ runner.temp }}/recipe-environment-negative.log
+            ${{ runner.temp }}/recipe-environment-positive.log
+            ${{ runner.temp }}/recipe-check-changed.log
           if-no-files-found: error
           retention-days: 7
