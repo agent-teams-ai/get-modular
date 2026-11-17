@@ -12,8 +12,8 @@ jobs:
     permissions:
       contents: write
     env:
-      SOURCE_SHA: 57ee9ddfaf2948b0133f6902a6e30139c73c7865
-      REVIEWED_TREE: 8d8e6ed38faed677e85fbbe73676bcf8f30b5062
+      SOURCE_SHA: fc0c0db982051a82b7a362992bab21c6fda45f4d
+      REVIEWED_TREE: 5a7727891a5eb3ef5c5c5fed286d9f85a2466627
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           cp .recipe-ops/deep-review.patch "$RUNNER_TEMP/deep-review.patch"
           git checkout --detach "$SOURCE_SHA"
-          test "$(git rev-parse HEAD^{tree})" = cd01f750cd0d398139926754bd400807e7a6e0c2
+          test "$(git rev-parse HEAD^{tree})" = c99fa4a47b5213dabefedca68c5c987d14906715
           test ! -e .recipe-ops
           test ! -e .github/workflows/one-shot-effect-recipes.yml
           git apply --check "$RUNNER_TEMP/deep-review.patch"
@@ -38,7 +38,7 @@ jobs:
           test "$(git diff --cached --name-only | wc -l | tr -d ' ')" = 8
           git config --local user.name iliya
           git config --local user.email iliyazelenkog@gmail.com
-          git commit -m 'fix(effect): stop post-overflow delivery and qualify scoped communication sessions'
+          git commit -m 'fix(effect): isolate fixture subscriptions and clarify communication review contracts'
           test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
           cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
           #!/bin/sh
