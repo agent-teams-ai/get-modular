@@ -56,14 +56,21 @@ test("communication: an unpausable callback burst fails explicitly on overflow a
   assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
 });
 
-test("communication: a failed foreign subscribe retains its error and the source rolls back partial acquisition", async () => {
-  const failure = new Error("foreign subscribe failed");
-  const fixture = progressFixture({ initial: [event(1)], acquireFailure: failure });
-  const result = await Effect.runPromiseExit(Stream.runDrain(callbackProgress(fixture.source)));
-  assert.ok(Exit.isFailure(result));
-  assert.deepEqual(result.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error),
-    [{ _tag: "SubscribeFailed", cause: failure }]);
-  assert.deepEqual(fixture.inspect(), { live: 0, acquired: 0, released: 0 });
+test("communication: failed subscribe exposes no prefix and retains its error even after overflow", { timeout: 10000 }, async () => {
+  for (const failure of [new Error("foreign subscribe failed"), undefined]) {
+    for (const initial of [[], [event(1)], [event(1), event(2)]]) {
+      const fixture = progressFixture({ initial, acquireFailure: failure });
+      const seen: ProgressEvent[] = [];
+      const result = await Effect.runPromiseExit(Stream.runDrain(Stream.take(Stream.tap(
+        callbackProgress(fixture.source, 1), value => Effect.sync(() => { seen.push(value); }),
+      ), 1)));
+      assert.ok(Exit.isFailure(result), "take(1) must not hide a later synchronous subscribe failure");
+      assert.deepEqual(result.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error),
+        [{ _tag: "SubscribeFailed", cause: failure }]);
+      assert.deepEqual(seen, [], "no occurrence escapes an unsuccessful subscription acquisition");
+      assert.deepEqual(fixture.inspect(), { live: 0, acquired: 0, released: 0 });
+    }
+  }
 });
 
 test("communication: processing failure and foreign teardown defect are not converted into success", async () => {
@@ -266,7 +273,7 @@ test("communication: real EventTarget flows through the callback and state bridg
       target.addEventListener("progress", forward);
       acquired += 1;
       subscriptionReady.resolve();
-      return () => { target.removeEventListener("progress", forward); released += 1; };
+      return () => { target.removeEventListener("progress", forward); released += 1; return undefined; };
     },
   };
   const sourceOwner = createScope({ name: "event-target-state" });

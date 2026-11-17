@@ -31,3 +31,40 @@ try {
   assert.deepEqual(seen, [duplicate, duplicate]);
 } finally { unsubscribe(); }
 assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
+
+// Reusing a callback must still create independent subscriptions.
+const independent = progressFixture();
+const independentSeen: ProgressEvent[] = [];
+const sharedListener = (value: ProgressEvent): undefined => { independentSeen.push(value); return undefined; };
+const first = independent.source.subscribe(sharedListener);
+const second = independent.source.subscribe(sharedListener);
+assert.deepEqual(independent.inspect(), { live: 2, acquired: 2, released: 0 });
+independent.emit({ jobId: "independent", completed: 1 });
+assert.deepEqual(independentSeen.map(value => value.completed), [1, 1]);
+first();
+try {
+  independent.emit({ jobId: "independent", completed: 2 });
+  assert.deepEqual(independentSeen.map(value => value.completed), [1, 1, 2]);
+  assert.deepEqual(independent.inspect(), { live: 1, acquired: 2, released: 1 });
+} finally { second(); }
+assert.deepEqual(independent.inspect(), { live: 0, acquired: 2, released: 2 });
+
+// Rolling back a failed acquisition must not remove an existing registration.
+const rollback = progressFixture({ initial: [{ jobId: "rollback", completed: 0 }] });
+const rollbackSeen: ProgressEvent[] = [];
+const acquisitionFailure = new Error("second subscription rejected");
+let deliveries = 0;
+const repeatedListener = (value: ProgressEvent): undefined => {
+  deliveries += 1;
+  if (deliveries === 2) throw acquisitionFailure;
+  rollbackSeen.push(value);
+  return undefined;
+};
+const survivor = rollback.source.subscribe(repeatedListener);
+try {
+  assert.throws(() => rollback.source.subscribe(repeatedListener), error => error === acquisitionFailure);
+  assert.deepEqual(rollback.inspect(), { live: 1, acquired: 1, released: 0 });
+  rollback.emit({ jobId: "rollback", completed: 1 });
+  assert.deepEqual(rollbackSeen.map(value => value.completed), [0, 1]);
+} finally { survivor(); }
+assert.deepEqual(rollback.inspect(), { live: 0, acquired: 1, released: 1 });

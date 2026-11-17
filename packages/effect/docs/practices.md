@@ -468,9 +468,16 @@ Every consumption acquires its own foreign subscription through
 `Effect.acquireRelease`. Synchronous emissions during `subscribe` enter an already
 created queue. If subscribe throws before returning a disposer, the source must
 roll back its own partial acquisition; no adapter can recover an undisclosed
-handle. A returned disposer remains owned through early completion, processing
-failure and interruption. A throwing disposer remains a native defect. In the
-qualified peer, a simultaneous processing failure and disposer failure preserve
+handle. Acquisition must finish before consumption starts: emitted values cannot
+hide a subsequent registration failure through early consumer completion. A
+failed registration reports `SubscribeFailed`, even if its emissions already
+overflowed the queue; that subscription never became usable.
+A returned disposer remains owned through early completion, processing failure
+and interruption. This recipe requires synchronous detachment before the
+disposer returns. Its `() => undefined` return type rejects an asynchronous
+disposer whose Promise this adapter would not await. Asynchronous detachment needs
+an explicit asynchronous cleanup contract and adapter. A throwing disposer remains
+a native defect. In the qualified peer, a simultaneous processing failure and disposer failure preserve
 both original error objects as defects; without failed cleanup, the processing
 error retains its typed failure channel. Inspect the complete Cause rather than
 assuming every original error remains a `Fail` after finalization fails. The
@@ -480,10 +487,11 @@ No second GM Resources disposer is installed for that same subscription.
 This source cannot wait for backpressure. The recipe uses a bounded queue and
 turns a refused offer into `ProgressOverflow`, closes admission, and discards its
 queued prefix rather than continuing after a known gap. It uses native
-`Channel.callback`, mapped to one-element Stream chunks, instead of
-`Stream.callback`'s batch pulls: otherwise a batch already outside the queue can
-still invoke more handlers after overflow. The held-handler regression rejects
-that exact failure. For direct sequential consumption, only the already-running
+`Stream.unwrap` to acquire the queue and subscription before exposing a
+`Stream.fromEffectRepeat(Queue.take(queue))` consumer. Single-item pulls avoid
+`Stream.callback`'s batch tail, which can still invoke more handlers after
+overflow once it is outside the queue. The held-handler regression rejects that
+exact failure. For direct sequential consumption, only the already-running
 handler may finish; failure is observed on the next pull, not by forcibly
 interrupting that handler. Work already processed is not rolled back.
 
@@ -554,6 +562,12 @@ independent watch closure, latest-only buffering for a held consumer, source
 lifetime, unexpected source close and failed bridge cleanup. These are Node
 qualification cases, not browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
 replacements: choose intentionally rather than renaming methods during migration.
+
+### Capacity and payload ownership
+
+Bound live subscriptions as well: each callback consumer owns a separate queue,
+and native subscribers retain subscription state. The Host owns admission of those
+consumers; queue capacity does not limit their count.
 
 Keep the number of concurrent publishers bounded as well. Forking publication
 for every incoming event merely moves the waiting work outside the bounded hub.

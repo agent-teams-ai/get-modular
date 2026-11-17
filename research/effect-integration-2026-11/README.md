@@ -17,11 +17,12 @@ Read [spike evidence](spikes.md) and [review findings](reviews.md) with this pla
 ## Communication recipes, 2026-11-14
 
 The [boundary review and delivery plan](communication-recipes-plan-2026-11-14.md)
-qualifies native notifications, a neutral callback adapter and one-way Observation
-projection. The existing packaged practices guide owns usage rules; the recipes
-and their rejecting tests do not add a public event API, a runtime dependency or
+defines the scope and validation obligations for native notifications, a neutral
+callback adapter and one-way Observation projection. The existing packaged
+practices guide owns usage rules; the recipes and their rejecting tests do not
+add a public event API, a runtime dependency or
 a product adoption claim. [PR #242](https://github.com/agent-teams-ai/get-modular/pull/242)
-records exact-source execution and review evidence.
+owns exact-source execution and review evidence; its current status is recorded there.
 
 ## Architecture follow-up, 2026-11-12
 
@@ -77,7 +78,7 @@ The selected OpenCode ideas are delivered at explicit boundaries:
 | Respect dependency directions | Existing GM slots, ownership policy and source boundaries; no new lifetime DSL |
 | Setup before starting workers | Explicit Host setup before eager native acquisition; failure prevents startup |
 
-Maintained qualification is in `packages/effect/tests`: native exact bindings,
+Native package qualification is in `packages/effect/tests`: exact bindings,
 diamond sharing, parallel provider acquisition, typed failure, interruption,
 safe metadata/input capture, memoization isolation, typed variants, real file
 resources, stream completion and async finalizer ordering. The archive test
@@ -85,6 +86,11 @@ extracts matched packages into an external consumer, first executes ordinary
 Assembly without Effect installed, then repeats native scenarios and public
 NodeNext/Bundler declaration checks with no Node ambient types in the portable
 fixture. This is the library's test Host, not an invented product adoption.
+
+Cross-package communication scenarios belong to `tests/effect-communication.test.ts`
+and `tests/qualification/effect-communication`; native GM composition checks stay
+in `packages/effect/tests/communication.test.ts`. These are maintained test inputs;
+PR #242 records their exact-source execution results, not this plan.
 
 Review found and corrected a public typing hole: Effect's covariant Context key
 could describe more required root fields than the graph actually produces. The

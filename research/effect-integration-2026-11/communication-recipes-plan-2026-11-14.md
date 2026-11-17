@@ -66,9 +66,10 @@ Keep one state authority; no automatic two-way synchronization or global bus.
 
 ## Bounded implementation
 
-- Add complete TypeScript recipes under the existing Effect test/qualification
-  owner, linked from the packaged guide: scoped native multicast, a borrowed
-  callback source with explicit overflow, and one-way Observation projection.
+- Add complete TypeScript recipes under the repository qualification owner at
+  `tests/qualification/effect-communication`, linked from the packaged guide:
+  scoped native multicast, a borrowed callback source with explicit overflow,
+  and one-way Observation projection.
 - Exercise the same recipes through public GM composition and installed archives.
   Reuse existing build, strict TypeScript and packed-consumer gates; do not add a
   second runner, dependency pin, runtime export or package.
@@ -122,8 +123,11 @@ package and consume the two explicitly exposed qualification helpers. The root
 consumer scenarios import Effect itself, not the native GM mapper, so the
 existing package-to-root archive harness cannot form a runtime package cycle.
 The root already declares all selected
-packages as development dependencies; record its exact Effect import edges in
-the existing source-dependency policy. Keep the Effect package's peer set and
+packages as development dependencies; allow Effect in the existing
+`repository.development` source boundary. That grant applies to the whole
+development owner, not only these recipes; production boundaries remain separate.
+A narrower boundary would require partitioning its non-overlapping roots, which
+is outside this recipe correction. Keep the Effect package's peer set and
 production boundary unchanged. Extend its existing test-tooling project to
 check these root-owned fixtures, and keep execution/archive checks mandatory.
 Do not solve this rejection by adding Observation as an Effect peer, excluding
@@ -177,3 +181,43 @@ Incremental estimate: no package runtime lines, 10-25 recipe lines, 130-220 test
 lines and 40-80 guidance/review lines. Complexity 5/10, expected reliability in
 this scope 8/10, confidence 8/10; these are engineering judgments. Exact execution
 and final-head review evidence belong to PR #242, not an invented approval here.
+
+## Independent follow-up from `fc0c0db`, 2026-11-17
+
+This follow-up uses three independently executed reviewers: architecture and
+documentation; callback/native lifecycle and concurrency; E2E coverage and source
+fixtures. Their first round identifies concrete contract failures and bounded
+corrections. A second round reviews the corrected diff and its rejecting evidence;
+completion of that round and executed checks must be recorded in PR #242. These
+are agent reviews, not GitHub approvals. The earlier analytical passes above
+retain their original evidence classification.
+
+The first-round correction scope is:
+
+1. Acquire the synchronous callback subscription before exposing its stream.
+   `Channel.callback` forks registration and can deliver an emitted prefix before
+   reporting a thrown subscribe error, or hide that error behind overflow.
+   Use scoped native acquisition and single-item queue pulls; preserve
+   `SubscribeFailed` for a failed registration, including a thrown `undefined`.
+2. Require a synchronous disposer in the neutral recipe type. `() => void`
+   admits async functions whose cleanup Promise the adapter would ignore;
+   `() => undefined` and a rejecting type fixture express the actual contract.
+   Keep separate registrations independent even when they use the same listener.
+3. Align guidance with the actual contract: distinguish durable facts from live
+   occurrences, document publication backpressure and bound subscriber count
+   separately from per-consumer queue capacity. Keep execution evidence in the
+   PR and cross-package fixtures under their repository qualification owner.
+
+Reuse the existing acquisition-failure scenario for empty, buffered and
+overflowing synchronous registration, including early `take(1)` consumption.
+Extend the neutral installed-consumer fixture for repeated registrations with
+one listener; do not create a new test framework or broad workload benchmark.
+Run strict types, focused and installed-archive checks, then required source,
+documentation and CI gates on the corrected source. A pending or unavailable
+check is not a pass.
+
+Estimated incremental work: no package runtime lines, 20-45 recipe lines,
+50-100 test lines and 35-70 guidance/review lines. Complexity 5/10, expected
+reliability in this bounded scope 8/10, confidence 8/10; these are planning
+judgments. No new public API, dependency pin, accepted authority, runtime owner,
+publication or merge is part of this follow-up.

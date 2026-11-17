@@ -1,4 +1,4 @@
-import { Cause, Channel, Effect, Queue, Stream } from "effect";
+import { Cause, Effect, Queue, Stream } from "effect";
 import type { ProgressEvent, ProgressSource } from "./progress.ts";
 
 export type ProgressFailure =
@@ -12,11 +12,15 @@ export type ProgressFailure =
  */
 export function callbackProgress(source: ProgressSource, capacity = 16): Stream.Stream<ProgressEvent, ProgressFailure> {
   if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError("positive capacity required");
-  // Stream.callback pulls whole batches: an already-pulled tail survives queue
-  // shutdown. Pull one occurrence at a time so fail-on-gap also stops that tail.
-  return Stream.fromChannel(Channel.map(Channel.callback<ProgressEvent, ProgressFailure>(queue => {
+  return Stream.unwrap(Effect.gen(function* () {
+    const queue = yield* Effect.acquireRelease(
+      Queue.make<ProgressEvent, ProgressFailure>({ capacity, strategy: "dropping" }),
+      Queue.shutdown,
+    );
     let accepting = true;
-    return Effect.acquireRelease(
+    // Finish acquisition before exposing any occurrence. Relaying its error into
+    // the queue could hide it behind take(1) or an earlier overflow failure.
+    yield* Effect.acquireRelease(
       Effect.try({
         try: () => source.subscribe(event => {
           if (accepting && !Queue.offerUnsafe(queue, event)) {
@@ -35,5 +39,7 @@ export function callbackProgress(source: ProgressSource, capacity = 16): Stream.
         unsubscribe(); // A failed disposer remains a native defect, not success.
       }),
     );
-  }, { bufferSize: capacity, strategy: "dropping" }), event => [event] as const));
+    // Single-item pulls leave no unprocessed batch outside the bounded queue.
+    return Stream.fromEffectRepeat(Queue.take(queue));
+  }));
 }

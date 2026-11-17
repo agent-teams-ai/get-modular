@@ -2,6 +2,7 @@ import { declareModule, defineContract, type CapabilitiesOf } from "@get-modular
 import { required } from "@get-modular/core";
 import { Context, Effect, Layer } from "effect";
 import { effectFor, implement, InvalidInputs } from "../dist/index.js";
+import type { ProgressSource } from "../../../tests/qualification/effect-communication/progress.ts";
 
 interface Store { readonly get: Effect.Effect<string> }
 const StorePort = defineContract<Store>()({ id: "portable/store", revision: 1 });
@@ -23,6 +24,9 @@ const app = implement<Ports>()(declareModule({ moduleId: "portable/app", impleme
 
 /** A browser-shaped public consumer: no Node declarations or private package paths. */
 export async function runPortable(): Promise<string> {
+  // @ts-expect-error the synchronous callback contract must reject asynchronous disposal
+  const asynchronousDispose: ReturnType<ProgressSource["subscribe"]> = () => Promise.resolve(undefined);
+  void asynchronousDispose;
   const result = await effectFor<Ports>().prepare({ profileId: "portable/default", modules: [store, app], roots: { app } });
   if (result.status !== "prepared") throw new Error("invalid portable composition");
   const layer: Layer.Layer<Roots, BootFailure | InvalidInputs, Config> = result.prepared.layer(Roots);

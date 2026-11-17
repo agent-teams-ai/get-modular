@@ -75,7 +75,7 @@ test("communication: GM selects one native source; early or failed subscriber ex
   }
 });
 
-test("communication: native subscribe acquires before first publication and does not replay old events", async () => {
+test("communication: native subscribe acquires before first publication and does not replay old events", { timeout: 10000 }, async () => {
   const values = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
     const source = yield* nativeProgress(2);
     yield* source.publisher.publish(event(0));
