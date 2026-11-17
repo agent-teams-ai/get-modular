@@ -10,7 +10,10 @@ export interface ProgressEvents {
   readonly subscribe: Effect.Effect<Stream.Stream<ProgressEvent>, never, Scope.Scope>;
 }
 export interface ProgressPublisher {
-  /** Admission to live subscribers, NOT acknowledgement of business processing. */
+  /**
+   * Waits while the bounded hub is full; returns false after source shutdown.
+   * Admission to live subscribers is NOT acknowledgement of business processing.
+   */
   readonly publish: (event: ProgressEvent) => Effect.Effect<boolean>;
 }
 export interface NativeProgressOwner {

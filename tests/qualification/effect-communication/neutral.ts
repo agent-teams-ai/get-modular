@@ -31,3 +31,34 @@ try {
   assert.deepEqual(seen, [duplicate, duplicate]);
 } finally { unsubscribe(); }
 assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
+
+// Same callback identity must not collapse separately owned subscriptions.
+const seeded = progressFixture({ initial: [{ jobId: "shared", completed: 0 }] });
+const sharedOutcome = await preparation.prepared.run({ inputs: { source: { [Progress.id]: seeded.source } } });
+assert.equal(sharedOutcome.status, "succeeded");
+if (sharedOutcome.status !== "succeeded") throw new Error("shared callback composition failed");
+const peer = sharedOutcome.roots.receiver;
+const values: number[] = [];
+const failure = new Error("synchronous registration failed");
+let rejectSeed = false;
+const shared = (value: ProgressEvent): undefined => {
+  if (rejectSeed) throw failure;
+  values.push(value.completed);
+  return undefined;
+};
+const releaseFirst = peer.subscribe(shared);
+try {
+  const releaseSecond = peer.subscribe(shared);
+  try {
+    assert.equal(seeded.inspect().live, 2);
+    seeded.emit({ jobId: "shared", completed: 1 });
+    assert.deepEqual(values, [0, 0, 1, 1]);
+  } finally { releaseSecond(); }
+  rejectSeed = true;
+  try { assert.throws(() => peer.subscribe(shared), error => error === failure); }
+  finally { rejectSeed = false; }
+  assert.deepEqual(seeded.inspect(), { live: 1, acquired: 2, released: 1 });
+  seeded.emit({ jobId: "shared", completed: 2 });
+  assert.deepEqual(values, [0, 0, 1, 1, 2], "failed registration leaves its active sibling intact");
+} finally { releaseFirst(); }
+assert.deepEqual(seeded.inspect(), { live: 0, acquired: 2, released: 2 });

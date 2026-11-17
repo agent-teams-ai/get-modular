@@ -25,6 +25,7 @@ test("communication: callback consumers unsubscribe independently without closin
     fixture.emit(event(1));
     assert.deepEqual(yield* Fiber.join(left), [event(0), event(1)]);
     assert.deepEqual(fixture.inspect(), { live: 1, acquired: 2, released: 1 });
+    fixture.late(event(99)); // The released left callback, not the newer live right one.
     fixture.emit(event(2));
     assert.deepEqual(yield* Fiber.join(right), [event(0), event(1), event(2)]);
   })));

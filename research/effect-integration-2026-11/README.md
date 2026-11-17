@@ -21,7 +21,8 @@ qualifies native notifications, a neutral callback adapter and one-way Observati
 projection. The existing packaged practices guide owns usage rules; the recipes
 and their rejecting tests do not add a public event API, a runtime dependency or
 a product adoption claim. [PR #242](https://github.com/agent-teams-ai/get-modular/pull/242)
-records exact-source execution and review evidence.
+owns exact-source execution and review evidence for this change; its final-head
+status is recorded there, not asserted here.
 
 ## Architecture follow-up, 2026-11-12
 

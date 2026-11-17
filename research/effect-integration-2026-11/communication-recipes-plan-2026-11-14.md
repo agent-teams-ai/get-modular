@@ -66,8 +66,9 @@ Keep one state authority; no automatic two-way synchronization or global bus.
 
 ## Bounded implementation
 
-- Add complete TypeScript recipes under the existing Effect test/qualification
-  owner, linked from the packaged guide: scoped native multicast, a borrowed
+- Keep complete TypeScript recipes with the repository consumer qualification
+  owner in `tests/qualification/effect-communication`, linked from the packaged
+  guide: scoped native multicast, a borrowed
   callback source with explicit overflow, and one-way Observation projection.
 - Exercise the same recipes through public GM composition and installed archives.
   Reuse existing build, strict TypeScript and packed-consumer gates; do not add a
@@ -177,3 +178,32 @@ Incremental estimate: no package runtime lines, 10-25 recipe lines, 130-220 test
 lines and 40-80 guidance/review lines. Complexity 5/10, expected reliability in
 this scope 8/10, confidence 8/10; these are engineering judgments. Exact execution
 and final-head review evidence belong to PR #242, not an invented approval here.
+
+### External review follow-up
+
+Cubic subsequently supplied two correctness/contract findings and several
+clarifications. Reproduce the fixture defects before correcting them: the same
+callback registered twice was deduplicated by a Set, and the late-callback probe
+could select a newer still-live subscription. Give each registration its own
+entry, roll back only that entry, and retain the last released callback for the
+late probe. Extend the existing Effect-absent installed consumer to cover shared
+callback identity and failed registration without detaching its sibling. Extend
+the existing two-consumer test instead of creating another test framework.
+
+Clarify seeded synchronous fixture emissions versus retained replay history,
+blocking publication at the port itself, the native readiness test deadline,
+the current root qualification location and the evidence record's ownership.
+Observation's README now separates live notification from a durable obligation;
+an occurrence notification alone cannot retain a fact across missed
+subscriptions or restart.
+
+A suggested per-recipe dependency boundary was considered but is not adopted in
+this change. The existing root development owner intentionally owns cross-package
+qualification and already declares Effect as a development dependency. Source
+schema v3 rejects overlapping boundary roots; splitting its broad test/tooling
+owner would be a separate root-partition refactor, not a new runtime protection
+for these recipes. Keep the current development-only grant explicit, rather than
+claiming it is a per-file restriction. Core, Assembly and other package runtime
+boundaries retain their independent rules, and the installed neutral consumer
+still runs with Effect physically absent. No production dependency grant or
+source-coverage exclusion is introduced to resolve the review.
