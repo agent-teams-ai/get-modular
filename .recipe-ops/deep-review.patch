@@ -1,0 +1,402 @@
+diff --git a/packages/effect/docs/practices.md b/packages/effect/docs/practices.md
+index 7500d68..b0cfd1f 100644
+--- a/packages/effect/docs/practices.md
++++ b/packages/effect/docs/practices.md
+@@ -413,10 +413,17 @@ wires that reader through an ordinary required slot into two modules.
+ 
+ ```ts
+ // Inside the operation retained by the graph's owning Effect Scope:
+-const events = yield* roots.left.subscribe;
+-// The subscription is registered now, before the first publication.
++const ready = yield* Deferred.make<void>();
++const reader = yield* Effect.forkScoped(Effect.scoped(Effect.gen(function* () {
++  // Acquisition and consumption share this consumer's own Scope.
++  const events = yield* roots.left.subscribe;
++  yield* Deferred.succeed(ready, undefined);
++  return yield* Stream.runCollect(Stream.take(events, 1));
++})));
++// A failed/interrupted reader must not leave startup waiting only for readiness.
++yield* Effect.raceFirst(Deferred.await(ready), Fiber.join(reader));
+ yield* roots.source.publisher.publish({ jobId: "example", completed: 1 });
+-const first = yield* Stream.runCollect(Stream.take(events, 1));
++const first = yield* Fiber.join(reader);
+ ```
+ 
+ The sketch uses names from its Host; the linked fixture supplies full declarations,
+@@ -425,10 +432,18 @@ Each consumer acquires its own subscription and consumes the returned stream
+ inside that same lifetime. Do not cache that acquired stream and run it from
+ multiple consumers: that would share one subscription rather than create a new
+ multicast subscriber. Merely obtaining a lazy Stream does not prove readiness.
++Acquiring in an application Scope and only forking the reader does not transfer
++subscription ownership to that fiber. Use the inner consumer Scope shown above:
++its normal exit, failure or cancellation retires the subscription while the
++application and other subscribers remain alive. Start consumption before a
++publication loop; filling a bounded source before starting its readers can stall
++that same loop. The composition test exercises 32 ordered occurrences with
++capacity two, a genuinely blocked publisher, cancellation and two fresh graph
++runs. This is a lifecycle regression, not a throughput benchmark.
+ 
+ There is no replay in this recipe. Two identical payloads are two occurrences.
+ A bounded source can wait for a slow subscriber; publication confirms admission,
+-not that every handler finished. Subscriber cancellation releases only its own
++not that every handler finished. Closing the consumer Scope releases only its
+ subscription. Source shutdown interrupts this recipe's pending reads and subsequent publication
+ returns `false`; neither is a graceful business-completion event. The Host separately
+ chooses whether one consumer failure ends the application or is handled locally.
+@@ -464,9 +479,19 @@ No second GM Resources disposer is installed for that same subscription.
+ 
+ This source cannot wait for backpressure. The recipe uses a bounded queue and
+ turns a refused offer into `ProgressOverflow`, closes admission, and discards its
+-queued prefix rather than continuing after a known gap. Work already processed
+-is not rolled back. It neither silently drops occurrences nor starts a detached
+-fiber for each callback. A consumer needing recovery must query/reconcile through
++queued prefix rather than continuing after a known gap. It uses native
++`Channel.callback`, mapped to one-element Stream chunks, instead of
++`Stream.callback`'s batch pulls: otherwise a batch already outside the queue can
++still invoke more handlers after overflow. The held-handler regression rejects
++that exact failure. For direct sequential consumption, only the already-running
++handler may finish; failure is observed on the next pull, not by forcibly
++interrupting that handler. Work already processed is not rolled back.
++
++One-element pulls trade batching throughput for this precise failure boundary.
++Additional downstream buffers or concurrent handlers create their own retained
++work and can weaken the handler-start guarantee; their owner must bound and
++qualify them separately. The adapter neither silently drops occurrences nor
++starts a detached fiber for each callback. A consumer needing recovery must query/reconcile through
+ its actual owner; retrying the subscription does not replay lost facts. For a
+ pausable source use its real pause/resume contract instead. For replaceable state,
+ a deliberately latest-only projection is a different valid contract.
+@@ -477,6 +502,11 @@ must outlive consumption. This callback contract has no terminal notification;
+ the adapter invents neither source completion nor a source-close authority.
+ Tests cover duplicate synchronous emissions, two subscribers, late callbacks,
+ acquisition rollback, overflow, handler/teardown failures and interruption.
++A further installed-consumer scenario drives a real Node `EventTarget` through
++this adapter into an Observation store and its state projection, then retires and
++restarts the consumers using the same lazy streams. It checks current snapshots,
++exact listener/watch cleanup and that the borrowed source still works afterward;
++it is not a browser or network transport qualification.
+ 
+ ### Existing Observation: one-way latest-state projection
+ 
+@@ -525,6 +555,13 @@ lifetime, unexpected source close and failed bridge cleanup. These are Node
+ qualification cases, not browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
+ replacements: choose intentionally rather than renaming methods during migration.
+ 
++Keep the number of concurrent publishers bounded as well. Forking publication
++for every incoming event merely moves the waiting work outside the bounded hub.
++One slow live subscriber intentionally delays the shared publisher in this
++recipe; independent workloads needing isolation should not share that source.
++Payload records must stay stable after admission: TypeScript `readonly` is not a
++runtime copy or freeze, and these adapters do not validate foreign wire data.
++
+ For a bounded delivery contract, count all retained stages, including data already
+ dequeued but awaiting acknowledgement. Bound item count and bytes where payload
+ size varies; a bounded queue alone is not an end-to-end memory proof. T3 Code's
+ diff --git a/packages/effect/tests/communication.test.ts b/packages/effect/tests/communication.test.ts
+index 0c25bef..4a2524d 100644
+--- a/packages/effect/tests/communication.test.ts
++++ b/packages/effect/tests/communication.test.ts
+@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
+ import test from "node:test";
+ import { declareModule, defineContract, type CapabilitiesOf } from "@get-modular/assembly";
+ import { required } from "@get-modular/core";
+-import { Cause, Context, Effect, Exit, Fiber, Stream } from "effect";
++import { Cause, Context, Deferred, Effect, Exit, Fiber, Stream } from "effect";
+ import { effectFor, implement } from "../dist/index.js";
+ import { nativeProgress, type NativeProgressOwner, type ProgressEvents, type ProgressPublisher } from "../../../tests/qualification/effect-communication/native.ts";
+ import type { ProgressEvent } from "../../../tests/qualification/effect-communication/progress.ts";
+@@ -17,9 +17,9 @@ class Roots extends Context.Service<Roots, {
+ }>()("recipes/Roots") {}
+ const owner = { authority: "recipes", path: ["progress"] };
+ 
+-async function nativeGraph() {
++async function nativeGraph(capacity = 4) {
+   const source = implement<Ports>()(declareModule({ moduleId: "recipes/source", implementationId: "recipes/source",
+-    owner, provides: [Events.provide()], slots: [] }), () => Effect.map(nativeProgress(4), value => ({
++    owner, provides: [Events.provide()], slots: [] }), () => Effect.map(nativeProgress(capacity), value => ({
+       instance: value, capabilities: { [Events.id]: value.events },
+     })));
+   const consumer = (name: string) => implement<Ports>()(declareModule({
+@@ -85,3 +85,46 @@ test("communication: native subscribe acquires before first publication and does
+   })));
+   assert.deepEqual(values, [event(1)]);
+ });
++
++
++test("communication: GM backpressure resumes after the slow consumer is cancelled, without losing sibling delivery", { timeout: 10000 }, async () => {
++  const graph = await nativeGraph(2);
++  // Reusing preparation must not retain a subscription or source from the prior graph run.
++  for (const round of [1, 2]) {
++    const retained: { publisher?: ProgressPublisher } = {};
++    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
++      const roots = yield* Roots;
++      retained.publisher = roots.source.publisher;
++      const fastReady = yield* Deferred.make<void>(), slowReady = yield* Deferred.make<void>();
++      const firstTwo = yield* Deferred.make<void>();
++      const fast = yield* Effect.forkScoped(Effect.scoped(Effect.gen(function* () {
++        const stream = yield* roots.right.subscribe;
++        yield* Deferred.succeed(fastReady, undefined);
++        return yield* Stream.runCollect(Stream.take(Stream.tap(stream, value =>
++          value.completed === 2 ? Deferred.succeed(firstTwo, undefined) : Effect.void), 32));
++      })));
++      const slow = yield* Effect.forkScoped(Effect.scoped(Effect.gen(function* () {
++        yield* roots.left.subscribe;
++        yield* Deferred.succeed(slowReady, undefined);
++        // A real, acquired subscriber deliberately does not consume its queue.
++        yield* Effect.never;
++      })));
++      yield* Effect.raceFirst(Deferred.await(fastReady), Fiber.join(fast));
++      yield* Effect.raceFirst(Deferred.await(slowReady), Fiber.join(slow));
++      assert.equal(yield* roots.source.publisher.publish(event(1)), true);
++      assert.equal(yield* roots.source.publisher.publish(event(2)), true);
++      const blocked = yield* Effect.forkScoped(roots.source.publisher.publish(event(3)), { startImmediately: true });
++      yield* Deferred.await(firstTwo);
++      assert.equal(blocked.pollUnsafe(), undefined, "publication really waits for the full slow subscription");
++      yield* Fiber.interrupt(slow);
++      assert.equal(yield* Fiber.join(blocked), true, "consumer-scope retirement releases backpressure");
++      for (let completed = 4; completed <= 32; completed += 1) {
++        assert.equal(yield* roots.source.publisher.publish(event(completed)), true);
++      }
++      assert.deepEqual((yield* Fiber.join(fast)).map(value => value.completed),
++        Array.from({ length: 32 }, (_, index) => index + 1));
++    })).pipe(Effect.provide(graph.layer(Roots))));
++    assert.ok(retained.publisher);
++    assert.equal(await Effect.runPromise(retained.publisher.publish(event(round))), false);
++  }
++});
+diff --git a/packages/effect/tests/packed-root.test.ts b/packages/effect/tests/packed-root.test.ts
+index c003081..6c9bb4f 100644
+--- a/packages/effect/tests/packed-root.test.ts
++++ b/packages/effect/tests/packed-root.test.ts
+@@ -106,7 +106,7 @@ test("matched public archives preserve native execution, portable types and neut
+     await writeFile(join(consumer, "consumer-communication.test.ts"),
+       communication.replaceAll('"./qualification/effect-communication/', '"./communication/'));
+     const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "consumer-communication.test.ts"], consumer);
+-    for (const summary of ["# tests 35", "# pass 35", "# fail 0", "# cancelled 0", "# skipped 0"]) {
++    for (const summary of ["# tests 38", "# pass 38", "# fail 0", "# cancelled 0", "# skipped 0"]) {
+       assert.ok(output.split(/\r?\n/u).includes(summary), `packed suite lacks ${summary}\n${output}`);
+     }
+     await writeFile(join(consumer, "public.ts"), `
+@@ -132,7 +132,7 @@ test("matched public archives preserve native execution, portable types and neut
+         run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
+       }
+     }
+-    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 35,
++    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 38,
+       publicTypeResolutions: ["NodeNext", "Bundler"], neutralEffectDependency: false }));
+   } finally { await rm(temporary, { recursive: true, force: true }); }
+ });
+diff --git a/research/effect-integration-2026-11/communication-recipes-plan-2026-11-14.md b/research/effect-integration-2026-11/communication-recipes-plan-2026-11-14.md
+index d643ac8..db56c8e 100644
+--- a/research/effect-integration-2026-11/communication-recipes-plan-2026-11-14.md
++++ b/research/effect-integration-2026-11/communication-recipes-plan-2026-11-14.md
+@@ -135,3 +135,45 @@ retain their identities as native defects in the qualified peer. The recipes
+ now document and test those outcomes, including the typed processing failure
+ when cleanup succeeds. These are corrections to the new qualification, not
+ changes to Effect or to a Get Modular public API.
++
++## Follow-up critical review, 2026-11-17
++
++The owner requested another review, bounded fixes, push and important E2E tests,
++not publication or merge. Review started from `57ee9ddf`; current main `33c032f8`
++adds release/admission maintenance without changing the Consumer Module Standard
++or these communication contracts. Preserve that independent work.
++
++Four perspectives were considered in this session, not four independent agents:
++
++1. Ownership remains valid: no mandatory Effect dependency, generic event runtime
++   or duplicate state authority. No production API change is needed.
++2. Correctness exposed a real recipe defect. The qualified peer's
++   `Stream.callback` pulls batches. With initial reports 1/2/3, hold handler 1,
++   overflow capacity three with 4/5/6/7, then resume: the old recipe still calls
++   handlers 2/3 before failing. Shutting down the queue cannot discard an already
++   pulled batch. The maintained regression fails with that exact observed tail.
++   Use native single-item `Channel.callback`, mapped to one-element Stream chunks;
++   do not add another runtime, subscription owner or suppression.
++3. Ergonomics exposed a misleading graph-scope sketch. Show acquisition and
++   consumption inside one consumer Scope, with readiness observed alongside the
++   reader's exit. Merely forking consumption does not transfer ownership of a
++   subscription acquired in the parent Scope.
++4. Scale requires bounds on producers and downstream work, not only queue items.
++   The guide records the single-item throughput tradeoff, stable payload
++   precondition and separate ownership of extra buffering/concurrency. Existing
++   source shutdown and one-way state semantics remain unchanged.
++
++Add three scenarios, using the existing strict test/installed-archive gates:
++held-handler overflow; selected GM providers with capacity two, blocked
++publication, slow-consumer cancellation and 32 ordered reports over two fresh
++graph runs; real Node EventTarget through callback ingestion and Observation
++projection over two sessions, proving exact cleanup and source survival.
++The latter reuses the same lazy streams to reject captured subscription/state
++ownership. These are end-to-end library consumers, not product adoption, browser
++parity or a thousand-agent workload measurement. Existing negative tests already
++cover acquisition rollback and failed finalization; do not duplicate them.
++
++Incremental estimate: no package runtime lines, 10-25 recipe lines, 130-220 test
++lines and 40-80 guidance/review lines. Complexity 5/10, expected reliability in
++this scope 8/10, confidence 8/10; these are engineering judgments. Exact execution
++and final-head review evidence belong to PR #242, not an invented approval here.
+diff --git a/tests/effect-communication.test.ts b/tests/effect-communication.test.ts
+index c4a91d4..f1e0e3b 100644
+--- a/tests/effect-communication.test.ts
++++ b/tests/effect-communication.test.ts
+@@ -5,7 +5,7 @@ import { delivered, liveSubscriptions } from "@get-modular/observation/testing";
+ import { createScope } from "@get-modular/resources";
+ import { Cause, Deferred, Effect, Exit, Fiber, Stream } from "effect";
+ import { callbackProgress } from "./qualification/effect-communication/callback.ts";
+-import { progressFixture, type ProgressEvent } from "./qualification/effect-communication/progress.ts";
++import { progressFixture, type ProgressEvent, type ProgressSource } from "./qualification/effect-communication/progress.ts";
+ import { closeWatchScope, observedProgress } from "./qualification/effect-communication/state.ts";
+ 
+ const event = (completed: number): ProgressEvent => ({ jobId: "example", completed });
+@@ -219,3 +219,94 @@ test("communication: incomplete bridge-owned Resources close remains visible and
+     assert.equal((await scope.control.close()).complete, true);
+   }
+ });
++
++
++test("communication: overflow behind a held handler discards all unprocessed occurrences", { timeout: 10000 }, async () => {
++  const fixture = progressFixture({ initial: [event(1), event(2), event(3)] });
++  const seen: number[] = [];
++  await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
++    const ready = yield* Deferred.make<void>();
++    const resume = yield* Deferred.make<void>();
++    const reader = yield* Effect.forkScoped(Stream.runForEach(callbackProgress(fixture.source, 3), value =>
++      Effect.gen(function* () {
++        seen.push(value.completed);
++        if (value.completed === 1) {
++          yield* Deferred.succeed(ready, undefined);
++          yield* Deferred.await(resume);
++        }
++      })));
++    yield* Deferred.await(ready);
++    // A batched pull would already retain 2 and 3 outside the bounded queue.
++    for (const completed of [4, 5, 6, 7]) fixture.emit(event(completed));
++    assert.deepEqual(seen, [1]);
++    yield* Deferred.succeed(resume, undefined);
++    const exit = yield* Fiber.await(reader);
++    assert.ok(Exit.isFailure(exit));
++    assert.deepEqual(exit.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error),
++      [{ _tag: "ProgressOverflow", capacity: 3 }]);
++    assert.deepEqual(seen, [1], "a direct sequential consumer starts no handler after the known gap");
++    assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
++  })));
++});
++
++test("communication: real EventTarget flows through the callback and state bridges across fresh sessions", { timeout: 10000 }, async () => {
++  class ProgressNotification extends Event {
++    readonly progress: ProgressEvent;
++    constructor(progress: ProgressEvent) { super("progress"); this.progress = progress; }
++  }
++  const target = new EventTarget();
++  let acquired = 0, released = 0;
++  let subscriptionReady = Promise.withResolvers<void>();
++  const source: ProgressSource = {
++    subscribe: listener => {
++      const forward = (notification: Event): void => {
++        if (notification instanceof ProgressNotification) listener(notification.progress);
++      };
++      target.addEventListener("progress", forward);
++      acquired += 1;
++      subscriptionReady.resolve();
++      return () => { target.removeEventListener("progress", forward); released += 1; };
++    },
++  };
++  const sourceOwner = createScope({ name: "event-target-state" });
++  const reports: ListenerError[] = [];
++  const store = createStore({ completed: 0 }, { name: "event-target-progress", resources: sourceOwner.resources,
++    reportError: report => { reports.push(report); return undefined; } });
++  const facet = store.readonly();
++  // Deliberately reuse the same lazy streams: each run must acquire fresh ownership.
++  const occurrences = callbackProgress(source, 2), snapshots = observedProgress(facet);
++  try {
++    for (const completed of [1, 2]) {
++      subscriptionReady = Promise.withResolvers<void>();
++      await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
++        const projectionReady = yield* Deferred.make<void>();
++        const projection = yield* Effect.forkScoped(Stream.runCollect(Stream.take(Stream.tap(
++          snapshots, () => Deferred.succeed(projectionReady, undefined)), 2)));
++        yield* Deferred.await(projectionReady);
++        const ingest = yield* Effect.forkScoped(Stream.runForEach(occurrences, value =>
++          Effect.sync(() => { store.set({ completed: value.completed }); })));
++        yield* Effect.promise(() => subscriptionReady.promise);
++        assert.equal(acquired - released, 1);
++        assert.equal(liveSubscriptions(facet), 1);
++        target.dispatchEvent(new ProgressNotification(event(completed)));
++        assert.deepEqual((yield* Fiber.join(projection)).map(value => value.values.completed), [completed - 1, completed]);
++        yield* Fiber.interrupt(ingest);
++        assert.equal(acquired, completed);
++        assert.equal(released, completed);
++        assert.equal(liveSubscriptions(facet), 0);
++      })));
++      target.dispatchEvent(new ProgressNotification(event(99)));
++      assert.equal(facet.read(["completed"]).values.completed, completed, "retired ingestion has no effects");
++    }
++    const direct: ProgressEvent[] = [];
++    const unsubscribe = source.subscribe(value => { direct.push(value); return undefined; });
++    try { target.dispatchEvent(new ProgressNotification(event(7))); }
++    finally { unsubscribe(); }
++    assert.deepEqual(direct, [event(7)], "the borrowed source still works without an Effect consumer");
++    assert.equal(acquired, released);
++    assert.deepEqual(reports, []);
++  } finally {
++    const report = await sourceOwner.control.close();
++    assert.equal(report.complete && report.settled, true);
++  }
++});
+diff --git a/tests/qualification/effect-communication/callback.ts b/tests/qualification/effect-communication/callback.ts
+index 20f42ba..544c9f8 100644
+--- a/tests/qualification/effect-communication/callback.ts
++++ b/tests/qualification/effect-communication/callback.ts
+@@ -1,4 +1,4 @@
+-import { Cause, Effect, Queue, Stream } from "effect";
++import { Cause, Channel, Effect, Queue, Stream } from "effect";
+ import type { ProgressEvent, ProgressSource } from "./progress.ts";
+ 
+ export type ProgressFailure =
+@@ -12,7 +12,9 @@ export type ProgressFailure =
+  */
+ export function callbackProgress(source: ProgressSource, capacity = 16): Stream.Stream<ProgressEvent, ProgressFailure> {
+   if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError("positive capacity required");
+-  return Stream.callback<ProgressEvent, ProgressFailure>(queue => {
++  // Stream.callback pulls whole batches: an already-pulled tail survives queue
++  // shutdown. Pull one occurrence at a time so fail-on-gap also stops that tail.
++  return Stream.fromChannel(Channel.map(Channel.callback<ProgressEvent, ProgressFailure>(queue => {
+     let accepting = true;
+     return Effect.acquireRelease(
+       Effect.try({
+@@ -33,5 +35,5 @@ export function callbackProgress(source: ProgressSource, capacity = 16): Stream.
+         unsubscribe(); // A failed disposer remains a native defect, not success.
+       }),
+     );
+-  }, { bufferSize: capacity, strategy: "dropping" });
++  }, { bufferSize: capacity, strategy: "dropping" }), event => [event] as const));
+ }
+diff --git a/tests/qualification/effect-communication/native.ts b/tests/qualification/effect-communication/native.ts
+index bec0c36..eb1be10 100644
+--- a/tests/qualification/effect-communication/native.ts
++++ b/tests/qualification/effect-communication/native.ts
+@@ -3,7 +3,10 @@ import type { ProgressEvent } from "./progress.ts";
+ 
+ /** Native technical facet: deliberately NOT an Effect-neutral interface. */
+ export interface ProgressEvents {
+-  /** Acquire before publishing. Use one acquired stream in one consumer scope. */
++  /**
++   * Acquire and consume inside one consumer-owned Effect.scoped operation.
++   * Completing only the Stream does not close a longer-lived acquisition Scope.
++   */
+   readonly subscribe: Effect.Effect<Stream.Stream<ProgressEvent>, never, Scope.Scope>;
+ }
+ export interface ProgressPublisher {
+diff --git a/tests/qualification/effect-communication/progress.ts b/tests/qualification/effect-communication/progress.ts
+index 3d3ac4a..ede002c 100644
+--- a/tests/qualification/effect-communication/progress.ts
++++ b/tests/qualification/effect-communication/progress.ts
+@@ -7,6 +7,7 @@ export type ProgressListener = (event: ProgressEvent) => undefined;
+  * subscribe may emit synchronously. On throw it rolls back its own partial work.
+  * The returned disposer detaches this listener only. No replay, completion,
+  * asynchronous processing acknowledgement, or durable-delivery promise.
++ * The producer keeps admitted records stable; readonly is not a runtime snapshot.
+  */
+ export interface ProgressSource {
+   readonly subscribe: (listener: ProgressListener) => () => void;

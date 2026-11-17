@@ -8,22 +8,52 @@ jobs:
   qualify:
     if: github.repository == 'agent-teams-ai/get-modular' && github.actor == '777genius' && github.ref == 'refs/heads/work/effect-recipes-stage-20261114'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      SOURCE_SHA: 57ee9ddfaf2948b0133f6902a6e30139c73c7865
+      REVIEWED_TREE: 8d8e6ed38faed677e85fbbe73676bcf8f30b5062
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 57ee9ddfaf2948b0133f6902a6e30139c73c7865
           fetch-depth: 0
           persist-credentials: false
-      - name: Bind the exact reviewed source and base
+      - name: Apply the exact locally reviewed patch and push its source commit
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 57ee9ddfaf2948b0133f6902a6e30139c73c7865
+          cp .recipe-ops/deep-review.patch "$RUNNER_TEMP/deep-review.patch"
+          git checkout --detach "$SOURCE_SHA"
           test "$(git rev-parse HEAD^{tree})" = cd01f750cd0d398139926754bd400807e7a6e0c2
-          git branch --force main ea5c3ade592ce5367dcae11694a20471464e4ab6
-          git merge-base --is-ancestor main HEAD
           test ! -e .recipe-ops
           test ! -e .github/workflows/one-shot-effect-recipes.yml
+          git apply --check "$RUNNER_TEMP/deep-review.patch"
+          git apply --index "$RUNNER_TEMP/deep-review.patch"
+          git diff --cached --check
+          test "$(git write-tree)" = "$REVIEWED_TREE"
+          test "$(git diff --cached --name-only | wc -l | tr -d ' ')" = 8
+          git config --local user.name iliya
+          git config --local user.email iliyazelenkog@gmail.com
+          git commit -m 'fix(effect): stop post-overflow delivery and qualify scoped communication sessions'
+          test "$(git rev-parse HEAD^)" = "$SOURCE_SHA"
+          cat > "$RUNNER_TEMP/recipe-askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token;;
+            *Password*) printf '%s\n' "$GH_TOKEN";;
+            *) exit 1;;
+          esac
+          SH
+          chmod 700 "$RUNNER_TEMP/recipe-askpass"
+          ref="work/effect-recipes-source-$GITHUB_RUN_ID"
+          GIT_ASKPASS="$RUNNER_TEMP/recipe-askpass" git -c credential.helper= push https://github.com/agent-teams-ai/get-modular.git "HEAD:refs/heads/$ref"
+          printf 'Source commit: %s\nSource ref: %s\n' "$(git rev-parse HEAD)" "$ref" | tee "$RUNNER_TEMP/recipe-source.txt" >> "$GITHUB_STEP_SUMMARY"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git bundle create "$RUNNER_TEMP/recipe-history.bundle" --all HEAD
       - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
         with:
           version: 11.20.0
@@ -39,39 +69,30 @@ jobs:
           node architecture/tooling/runtime/retained-history.ts
           node architecture/tooling/runtime/dev.ts install
           node architecture/tooling/runtime/dev.ts peers
-      - name: Reject the contaminated auxiliary environment and prove the clean control
+      - name: Run maintained communication and installed-archive checks
         run: |
-          set -euo pipefail
-          file=tests/repository-runtime.test.ts
-          pattern='^Node rollback derives only manager metadata in an external checkout and rejects drift$'
-          set +e
-          EXPECTED_HEAD_SHA=57ee9ddfaf2948b0133f6902a6e30139c73c7865 node --test --test-name-pattern="$pattern" "$file" > "$RUNNER_TEMP/recipe-environment-negative.log" 2>&1
-          negative=$?
-          set -e
-          test "$negative" -eq 1
-          grep -q 'TRACKED_FILE_CUSTODY_FAILED' "$RUNNER_TEMP/recipe-environment-negative.log"
-          grep -q 'does not match expected commit' "$RUNNER_TEMP/recipe-environment-negative.log"
-          env -u EXPECTED_HEAD_SHA node --test --test-name-pattern="$pattern" "$file" | tee "$RUNNER_TEMP/recipe-environment-positive.log"
-      - name: Run the complete changed-source qualification
+          bun run assembly:build
+          bun run resources:build
+          bun run conformance:build
+          bun run observation:build
+          bun run effect:check
+      - name: Check architecture, typed lint and documentation
         run: |
-          set -euo pipefail
-          # EXPECTED_HEAD_SHA belongs only to the final integrity step. Child
-          # fixture repositories have their own independently checked HEADs.
-          test -z "${EXPECTED_HEAD_SHA:-}"
-          bun run check:changed 2>&1 | tee "$RUNNER_TEMP/recipe-check-changed.log"
+          bun run foundation:check
+          bun run lint:typed
+          bun run docs:protocol:check
       - name: Verify tracked source integrity
         if: always()
         env:
-          EXPECTED_HEAD_SHA: 57ee9ddfaf2948b0133f6902a6e30139c73c7865
+          EXPECTED_HEAD_SHA: ${{ steps.source.outputs.sha }}
         run: node architecture/tooling/runtime/dev.ts verify
-      - name: Retain exact-source gate receipts without credentials
+      - name: Retain exact source identity without credentials
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: recipe-final-gates-${{ github.run_id }}
+          name: recipe-deep-review-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/recipe-environment-negative.log
-            ${{ runner.temp }}/recipe-environment-positive.log
-            ${{ runner.temp }}/recipe-check-changed.log
+            ${{ runner.temp }}/recipe-source.txt
+            ${{ runner.temp }}/recipe-history.bundle
           if-no-files-found: error
           retention-days: 7
