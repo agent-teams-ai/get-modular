@@ -3,7 +3,10 @@ import type { ProgressEvent } from "./progress.ts";
 
 /** Native technical facet: deliberately NOT an Effect-neutral interface. */
 export interface ProgressEvents {
-  /** Acquire before publishing. Use one acquired stream in one consumer scope. */
+  /**
+   * Acquire and consume inside one consumer-owned Effect.scoped operation.
+   * Completing only the Stream does not close a longer-lived acquisition Scope.
+   */
   readonly subscribe: Effect.Effect<Stream.Stream<ProgressEvent>, never, Scope.Scope>;
 }
 export interface ProgressPublisher {

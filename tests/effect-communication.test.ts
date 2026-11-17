@@ -5,7 +5,7 @@ import { delivered, liveSubscriptions } from "@get-modular/observation/testing";
 import { createScope } from "@get-modular/resources";
 import { Cause, Deferred, Effect, Exit, Fiber, Stream } from "effect";
 import { callbackProgress } from "./qualification/effect-communication/callback.ts";
-import { progressFixture, type ProgressEvent } from "./qualification/effect-communication/progress.ts";
+import { progressFixture, type ProgressEvent, type ProgressSource } from "./qualification/effect-communication/progress.ts";
 import { closeWatchScope, observedProgress } from "./qualification/effect-communication/state.ts";
 
 const event = (completed: number): ProgressEvent => ({ jobId: "example", completed });
@@ -217,5 +217,96 @@ test("communication: incomplete bridge-owned Resources close remains visible and
     // A separate owner decision in this fixture, not an automatic bridge retry.
     fail = false;
     assert.equal((await scope.control.close()).complete, true);
+  }
+});
+
+
+test("communication: overflow behind a held handler discards all unprocessed occurrences", { timeout: 10000 }, async () => {
+  const fixture = progressFixture({ initial: [event(1), event(2), event(3)] });
+  const seen: number[] = [];
+  await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
+    const ready = yield* Deferred.make<void>();
+    const resume = yield* Deferred.make<void>();
+    const reader = yield* Effect.forkScoped(Stream.runForEach(callbackProgress(fixture.source, 3), value =>
+      Effect.gen(function* () {
+        seen.push(value.completed);
+        if (value.completed === 1) {
+          yield* Deferred.succeed(ready, undefined);
+          yield* Deferred.await(resume);
+        }
+      })));
+    yield* Deferred.await(ready);
+    // A batched pull would already retain 2 and 3 outside the bounded queue.
+    for (const completed of [4, 5, 6, 7]) fixture.emit(event(completed));
+    assert.deepEqual(seen, [1]);
+    yield* Deferred.succeed(resume, undefined);
+    const exit = yield* Fiber.await(reader);
+    assert.ok(Exit.isFailure(exit));
+    assert.deepEqual(exit.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error),
+      [{ _tag: "ProgressOverflow", capacity: 3 }]);
+    assert.deepEqual(seen, [1], "a direct sequential consumer starts no handler after the known gap");
+    assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
+  })));
+});
+
+test("communication: real EventTarget flows through the callback and state bridges across fresh sessions", { timeout: 10000 }, async () => {
+  class ProgressNotification extends Event {
+    readonly progress: ProgressEvent;
+    constructor(progress: ProgressEvent) { super("progress"); this.progress = progress; }
+  }
+  const target = new EventTarget();
+  let acquired = 0, released = 0;
+  let subscriptionReady = Promise.withResolvers<void>();
+  const source: ProgressSource = {
+    subscribe: listener => {
+      const forward = (notification: Event): void => {
+        if (notification instanceof ProgressNotification) listener(notification.progress);
+      };
+      target.addEventListener("progress", forward);
+      acquired += 1;
+      subscriptionReady.resolve();
+      return () => { target.removeEventListener("progress", forward); released += 1; };
+    },
+  };
+  const sourceOwner = createScope({ name: "event-target-state" });
+  const reports: ListenerError[] = [];
+  const store = createStore({ completed: 0 }, { name: "event-target-progress", resources: sourceOwner.resources,
+    reportError: report => { reports.push(report); return undefined; } });
+  const facet = store.readonly();
+  // Deliberately reuse the same lazy streams: each run must acquire fresh ownership.
+  const occurrences = callbackProgress(source, 2), snapshots = observedProgress(facet);
+  try {
+    for (const completed of [1, 2]) {
+      subscriptionReady = Promise.withResolvers<void>();
+      await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
+        const projectionReady = yield* Deferred.make<void>();
+        const projection = yield* Effect.forkScoped(Stream.runCollect(Stream.take(Stream.tap(
+          snapshots, () => Deferred.succeed(projectionReady, undefined)), 2)));
+        yield* Deferred.await(projectionReady);
+        const ingest = yield* Effect.forkScoped(Stream.runForEach(occurrences, value =>
+          Effect.sync(() => { store.set({ completed: value.completed }); })));
+        yield* Effect.promise(() => subscriptionReady.promise);
+        assert.equal(acquired - released, 1);
+        assert.equal(liveSubscriptions(facet), 1);
+        target.dispatchEvent(new ProgressNotification(event(completed)));
+        assert.deepEqual((yield* Fiber.join(projection)).map(value => value.values.completed), [completed - 1, completed]);
+        yield* Fiber.interrupt(ingest);
+        assert.equal(acquired, completed);
+        assert.equal(released, completed);
+        assert.equal(liveSubscriptions(facet), 0);
+      })));
+      target.dispatchEvent(new ProgressNotification(event(99)));
+      assert.equal(facet.read(["completed"]).values.completed, completed, "retired ingestion has no effects");
+    }
+    const direct: ProgressEvent[] = [];
+    const unsubscribe = source.subscribe(value => { direct.push(value); return undefined; });
+    try { target.dispatchEvent(new ProgressNotification(event(7))); }
+    finally { unsubscribe(); }
+    assert.deepEqual(direct, [event(7)], "the borrowed source still works without an Effect consumer");
+    assert.equal(acquired, released);
+    assert.deepEqual(reports, []);
+  } finally {
+    const report = await sourceOwner.control.close();
+    assert.equal(report.complete && report.settled, true);
   }
 });

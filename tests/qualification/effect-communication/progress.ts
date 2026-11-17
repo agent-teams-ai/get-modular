@@ -7,6 +7,7 @@ export type ProgressListener = (event: ProgressEvent) => undefined;
  * subscribe may emit synchronously. On throw it rolls back its own partial work.
  * The returned disposer detaches this listener only. No replay, completion,
  * asynchronous processing acknowledgement, or durable-delivery promise.
+ * The producer keeps admitted records stable; readonly is not a runtime snapshot.
  */
 export interface ProgressSource {
   readonly subscribe: (listener: ProgressListener) => () => void;

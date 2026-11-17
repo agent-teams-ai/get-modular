@@ -135,3 +135,45 @@ retain their identities as native defects in the qualified peer. The recipes
 now document and test those outcomes, including the typed processing failure
 when cleanup succeeds. These are corrections to the new qualification, not
 changes to Effect or to a Get Modular public API.
+
+## Follow-up critical review, 2026-11-17
+
+The owner requested another review, bounded fixes, push and important E2E tests,
+not publication or merge. Review started from `57ee9ddf`; current main `33c032f8`
+adds release/admission maintenance without changing the Consumer Module Standard
+or these communication contracts. Preserve that independent work.
+
+Four perspectives were considered in this session, not four independent agents:
+
+1. Ownership remains valid: no mandatory Effect dependency, generic event runtime
+   or duplicate state authority. No production API change is needed.
+2. Correctness exposed a real recipe defect. The qualified peer's
+   `Stream.callback` pulls batches. With initial reports 1/2/3, hold handler 1,
+   overflow capacity three with 4/5/6/7, then resume: the old recipe still calls
+   handlers 2/3 before failing. Shutting down the queue cannot discard an already
+   pulled batch. The maintained regression fails with that exact observed tail.
+   Use native single-item `Channel.callback`, mapped to one-element Stream chunks;
+   do not add another runtime, subscription owner or suppression.
+3. Ergonomics exposed a misleading graph-scope sketch. Show acquisition and
+   consumption inside one consumer Scope, with readiness observed alongside the
+   reader's exit. Merely forking consumption does not transfer ownership of a
+   subscription acquired in the parent Scope.
+4. Scale requires bounds on producers and downstream work, not only queue items.
+   The guide records the single-item throughput tradeoff, stable payload
+   precondition and separate ownership of extra buffering/concurrency. Existing
+   source shutdown and one-way state semantics remain unchanged.
+
+Add three scenarios, using the existing strict test/installed-archive gates:
+held-handler overflow; selected GM providers with capacity two, blocked
+publication, slow-consumer cancellation and 32 ordered reports over two fresh
+graph runs; real Node EventTarget through callback ingestion and Observation
+projection over two sessions, proving exact cleanup and source survival.
+The latter reuses the same lazy streams to reject captured subscription/state
+ownership. These are end-to-end library consumers, not product adoption, browser
+parity or a thousand-agent workload measurement. Existing negative tests already
+cover acquisition rollback and failed finalization; do not duplicate them.
+
+Incremental estimate: no package runtime lines, 10-25 recipe lines, 130-220 test
+lines and 40-80 guidance/review lines. Complexity 5/10, expected reliability in
+this scope 8/10, confidence 8/10; these are engineering judgments. Exact execution
+and final-head review evidence belong to PR #242, not an invented approval here.

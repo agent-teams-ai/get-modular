@@ -1,4 +1,4 @@
-import { Cause, Effect, Queue, Stream } from "effect";
+import { Cause, Channel, Effect, Queue, Stream } from "effect";
 import type { ProgressEvent, ProgressSource } from "./progress.ts";
 
 export type ProgressFailure =
@@ -12,7 +12,9 @@ export type ProgressFailure =
  */
 export function callbackProgress(source: ProgressSource, capacity = 16): Stream.Stream<ProgressEvent, ProgressFailure> {
   if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError("positive capacity required");
-  return Stream.callback<ProgressEvent, ProgressFailure>(queue => {
+  // Stream.callback pulls whole batches: an already-pulled tail survives queue
+  // shutdown. Pull one occurrence at a time so fail-on-gap also stops that tail.
+  return Stream.fromChannel(Channel.map(Channel.callback<ProgressEvent, ProgressFailure>(queue => {
     let accepting = true;
     return Effect.acquireRelease(
       Effect.try({
@@ -33,5 +35,5 @@ export function callbackProgress(source: ProgressSource, capacity = 16): Stream.
         unsubscribe(); // A failed disposer remains a native defect, not success.
       }),
     );
-  }, { bufferSize: capacity, strategy: "dropping" });
+  }, { bufferSize: capacity, strategy: "dropping" }), event => [event] as const));
 }

@@ -413,10 +413,17 @@ wires that reader through an ordinary required slot into two modules.
 
 ```ts
 // Inside the operation retained by the graph's owning Effect Scope:
-const events = yield* roots.left.subscribe;
-// The subscription is registered now, before the first publication.
+const ready = yield* Deferred.make<void>();
+const reader = yield* Effect.forkScoped(Effect.scoped(Effect.gen(function* () {
+  // Acquisition and consumption share this consumer's own Scope.
+  const events = yield* roots.left.subscribe;
+  yield* Deferred.succeed(ready, undefined);
+  return yield* Stream.runCollect(Stream.take(events, 1));
+})));
+// A failed/interrupted reader must not leave startup waiting only for readiness.
+yield* Effect.raceFirst(Deferred.await(ready), Fiber.join(reader));
 yield* roots.source.publisher.publish({ jobId: "example", completed: 1 });
-const first = yield* Stream.runCollect(Stream.take(events, 1));
+const first = yield* Fiber.join(reader);
 ```
 
 The sketch uses names from its Host; the linked fixture supplies full declarations,
@@ -425,10 +432,18 @@ Each consumer acquires its own subscription and consumes the returned stream
 inside that same lifetime. Do not cache that acquired stream and run it from
 multiple consumers: that would share one subscription rather than create a new
 multicast subscriber. Merely obtaining a lazy Stream does not prove readiness.
+Acquiring in an application Scope and only forking the reader does not transfer
+subscription ownership to that fiber. Use the inner consumer Scope shown above:
+its normal exit, failure or cancellation retires the subscription while the
+application and other subscribers remain alive. Start consumption before a
+publication loop; filling a bounded source before starting its readers can stall
+that same loop. The composition test exercises 32 ordered occurrences with
+capacity two, a genuinely blocked publisher, cancellation and two fresh graph
+runs. This is a lifecycle regression, not a throughput benchmark.
 
 There is no replay in this recipe. Two identical payloads are two occurrences.
 A bounded source can wait for a slow subscriber; publication confirms admission,
-not that every handler finished. Subscriber cancellation releases only its own
+not that every handler finished. Closing the consumer Scope releases only its
 subscription. Source shutdown interrupts this recipe's pending reads and subsequent publication
 returns `false`; neither is a graceful business-completion event. The Host separately
 chooses whether one consumer failure ends the application or is handled locally.
@@ -464,9 +479,19 @@ No second GM Resources disposer is installed for that same subscription.
 
 This source cannot wait for backpressure. The recipe uses a bounded queue and
 turns a refused offer into `ProgressOverflow`, closes admission, and discards its
-queued prefix rather than continuing after a known gap. Work already processed
-is not rolled back. It neither silently drops occurrences nor starts a detached
-fiber for each callback. A consumer needing recovery must query/reconcile through
+queued prefix rather than continuing after a known gap. It uses native
+`Channel.callback`, mapped to one-element Stream chunks, instead of
+`Stream.callback`'s batch pulls: otherwise a batch already outside the queue can
+still invoke more handlers after overflow. The held-handler regression rejects
+that exact failure. For direct sequential consumption, only the already-running
+handler may finish; failure is observed on the next pull, not by forcibly
+interrupting that handler. Work already processed is not rolled back.
+
+One-element pulls trade batching throughput for this precise failure boundary.
+Additional downstream buffers or concurrent handlers create their own retained
+work and can weaken the handler-start guarantee; their owner must bound and
+qualify them separately. The adapter neither silently drops occurrences nor
+starts a detached fiber for each callback. A consumer needing recovery must query/reconcile through
 its actual owner; retrying the subscription does not replay lost facts. For a
 pausable source use its real pause/resume contract instead. For replaceable state,
 a deliberately latest-only projection is a different valid contract.
@@ -477,6 +502,11 @@ must outlive consumption. This callback contract has no terminal notification;
 the adapter invents neither source completion nor a source-close authority.
 Tests cover duplicate synchronous emissions, two subscribers, late callbacks,
 acquisition rollback, overflow, handler/teardown failures and interruption.
+A further installed-consumer scenario drives a real Node `EventTarget` through
+this adapter into an Observation store and its state projection, then retires and
+restarts the consumers using the same lazy streams. It checks current snapshots,
+exact listener/watch cleanup and that the borrowed source still works afterward;
+it is not a browser or network transport qualification.
 
 ### Existing Observation: one-way latest-state projection
 
@@ -524,6 +554,13 @@ independent watch closure, latest-only buffering for a held consumer, source
 lifetime, unexpected source close and failed bridge cleanup. These are Node
 qualification cases, not browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
 replacements: choose intentionally rather than renaming methods during migration.
+
+Keep the number of concurrent publishers bounded as well. Forking publication
+for every incoming event merely moves the waiting work outside the bounded hub.
+One slow live subscriber intentionally delays the shared publisher in this
+recipe; independent workloads needing isolation should not share that source.
+Payload records must stay stable after admission: TypeScript `readonly` is not a
+runtime copy or freeze, and these adapters do not validate foreign wire data.
 
 For a bounded delivery contract, count all retained stages, including data already
 dequeued but awaiting acknowledgement. Bound item count and bytes where payload
