@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { getEventListeners } from "node:events";
 import { createStore, type ListenerError } from "@get-modular/observation";
 import { delivered, liveSubscriptions } from "@get-modular/observation/testing";
 import { createScope } from "@get-modular/resources";
@@ -287,12 +288,14 @@ test("communication: real EventTarget flows through the callback and state bridg
           Effect.sync(() => { store.set({ completed: value.completed }); })));
         yield* Effect.promise(() => subscriptionReady.promise);
         assert.equal(acquired - released, 1);
+        assert.equal(getEventListeners(target, "progress").length, 1);
         assert.equal(liveSubscriptions(facet), 1);
         target.dispatchEvent(new ProgressNotification(event(completed)));
         assert.deepEqual((yield* Fiber.join(projection)).map(value => value.values.completed), [completed - 1, completed]);
         yield* Fiber.interrupt(ingest);
         assert.equal(acquired, completed);
         assert.equal(released, completed);
+        assert.equal(getEventListeners(target, "progress").length, 0, "the actual listener is removed, not just muted");
         assert.equal(liveSubscriptions(facet), 0);
       })));
       target.dispatchEvent(new ProgressNotification(event(99)));
@@ -304,6 +307,7 @@ test("communication: real EventTarget flows through the callback and state bridg
     finally { unsubscribe(); }
     assert.deepEqual(direct, [event(7)], "the borrowed source still works without an Effect consumer");
     assert.equal(acquired, released);
+    assert.equal(getEventListeners(target, "progress").length, 0);
     assert.deepEqual(reports, []);
   } finally {
     const report = await sourceOwner.control.close();
