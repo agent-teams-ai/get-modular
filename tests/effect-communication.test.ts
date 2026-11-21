@@ -65,8 +65,10 @@ test("communication: failed subscribe exposes no prefix and retains its error ev
         callbackProgress(fixture.source, 1), value => Effect.sync(() => { seen.push(value); }),
       ), 1)));
       assert.ok(Exit.isFailure(result), "take(1) must not hide a later synchronous subscribe failure");
-      assert.deepEqual(result.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error),
-        [{ _tag: "SubscribeFailed", cause: failure }]);
+      assert.equal(result.cause.reasons.length, 1);
+      const [reason] = result.cause.reasons;
+      assert.ok(reason !== undefined && Cause.isFailReason(reason) && reason.error._tag === "SubscribeFailed");
+      assert.equal(reason.error.cause, failure, "the original subscription failure is retained by identity");
       assert.deepEqual(seen, [], "no occurrence escapes an unsuccessful subscription acquisition");
       assert.deepEqual(fixture.inspect(), { live: 0, acquired: 0, released: 0 });
     }
@@ -81,6 +83,7 @@ test("communication: processing failure and foreign teardown defect are not conv
       Stream.mapEffect(callbackProgress(fixture.source), () => Effect.fail(processing)),
     ));
     assert.ok(Exit.isFailure(result));
+    assert.equal(result.cause.reasons.length, brokenCleanup ? 2 : 1);
     if (brokenCleanup) {
       // Native finalization retains both original error objects as defects here.
       // Do not fabricate the original typed Fail classification after failed cleanup.
@@ -89,8 +92,9 @@ test("communication: processing failure and foreign teardown defect are not conv
       assert.ok(defects.includes(processing));
       assert.ok(defects.includes(cleanup));
     } else {
-      assert.deepEqual(result.cause.reasons.filter(Cause.isFailReason).map(reason => reason.error), [processing]);
-      assert.equal(result.cause.reasons.some(Cause.isDieReason), false);
+      const [reason] = result.cause.reasons;
+      assert.ok(reason !== undefined && Cause.isFailReason(reason));
+      assert.equal(reason.error, processing, "the original processing failure is retained by identity");
     }
     assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
   }
@@ -215,11 +219,22 @@ test("communication: incomplete bridge-owned Resources close remains visible and
   try {
     const result = await Effect.runPromiseExit(closeWatchScope(scope));
     assert.ok(Exit.isFailure(result));
+    assert.equal(result.cause.reasons.length, 1);
     const defects = result.cause.reasons.filter(Cause.isDieReason).map(reason => reason.defect);
     assert.equal(defects.length, 1);
     assert.ok(defects[0] instanceof Error);
     assert.equal(defects[0].message, "Observation bridge cleanup incomplete");
-    assert.ok(defects[0].cause, "retain the actual Resources close report");
+    const report = defects[0].cause;
+    assert.ok(report !== null && typeof report === "object"
+      && "complete" in report && "settled" in report && "debts" in report);
+    assert.equal(report.complete, false);
+    assert.equal(report.settled, true);
+    assert.ok(Array.isArray(report.debts));
+    assert.equal(report.debts.length, 1);
+    const debt: unknown = report.debts[0];
+    assert.ok(debt !== null && typeof debt === "object" && "state" in debt && "cause" in debt);
+    assert.equal(debt.state, "failed");
+    assert.equal(debt.cause, failure, "the cleanup report retains the original release failure");
     assert.equal(attempts, 1);
   } finally {
     // A separate owner decision in this fixture, not an automatic bridge retry.

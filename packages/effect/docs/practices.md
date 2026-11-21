@@ -444,9 +444,14 @@ runs. This is a lifecycle regression, not a throughput benchmark.
 There is no replay in this recipe. Two identical payloads are two occurrences.
 A bounded source can wait for a slow subscriber; publication confirms admission,
 not that every handler finished. Closing the consumer Scope releases only its
-subscription. Source shutdown interrupts this recipe's pending reads and subsequent publication
-returns `false`; neither is a graceful business-completion event. The Host separately
-chooses whether one consumer failure ends the application or is handled locally.
+subscription. Source shutdown interrupts this recipe's pending reads; publication
+started after shutdown completes returns `false`. An already waiting publisher
+may still be admitted while shutdown removes subscriptions and return `true`
+without a reader processing that item. To prevent publication across retirement,
+the Host stops ingress and cancels/joins publisher fibers before closing consumer
+and source scopes. Source shutdown itself is not graceful business completion.
+The Host separately chooses whether one consumer failure ends the application or
+is handled locally.
 The tests exercise both early successful exit and locally handled failure while
 a sibling remains active, and verify that the source stops with its graph.
 
@@ -493,7 +498,10 @@ queued prefix rather than continuing after a known gap. It uses native
 overflow once it is outside the queue. The held-handler regression rejects that
 exact failure. For direct sequential consumption, only the already-running
 handler may finish; failure is observed on the next pull, not by forcibly
-interrupting that handler. Work already processed is not rolled back.
+interrupting that handler. An early-stopping consumer such as `take(1)` can finish
+without observing an overflow that occurs during its last handler, because it
+does not pull again. This is not acknowledgement of subsequent occurrences.
+Work already processed is not rolled back.
 
 One-element pulls trade batching throughput for this precise failure boundary.
 Additional downstream buffers or concurrent handlers create their own retained

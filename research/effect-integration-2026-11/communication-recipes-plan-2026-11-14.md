@@ -221,3 +221,45 @@ Estimated incremental work: no package runtime lines, 20-45 recipe lines,
 reliability in this bounded scope 8/10, confidence 8/10; these are planning
 judgments. No new public API, dependency pin, accepted authority, runtime owner,
 publication or merge is part of this follow-up.
+
+## Deeper verification from `0e980947`, 2026-11-21
+
+The owner requested a further critical review. Three independent agent reviews
+cover callback acquisition/finalization, native and Observation ownership, and
+test-oracle/installed-consumer fidelity. Current main remains `33c032f8`; its
+Consumer Module Standard matches this branch. No production runtime defect or
+changed public contract has been established by this round.
+
+The bounded correction strengthens evidence and makes two native limits explicit:
+
+1. Structural equality of `Error` objects does not prove that an adapter retains
+   the original error. A mutation that replaces the subscription error with a
+   new Error carrying the same message passed the existing acquisition test.
+   Assert original object identity and complete Cause cardinality in the
+   existing acquisition/processing cases. Validate the retained incomplete
+   Resources close report and release error instead of accepting any truthy cause.
+2. Extend the actual GM graph backpressure case with cancellation of a blocked
+   publisher and exact sibling delivery, rejecting a later ghost occurrence.
+   Add one compact forced-source-retirement case: a pending reader is
+   interrupted and publication after completed source shutdown is refused.
+   Keep these cases in the existing installed-archive runner and update its
+   explicit expected inventory, retaining zero failures/cancellations/skips.
+3. Document that publication already waiting for capacity can be admitted while
+   source shutdown removes subscriptions. The Host stops ingress and cancels or
+   joins publishers before retiring their resources. Likewise, callback overflow
+   is observed on the next pull; an early consumer can finish without that pull.
+   Do not replace these native semantics with a new shutdown or error runtime.
+
+Counter-review must check deterministic readiness, cleanup after failed
+assertions, rejecting mutations and the complete current diff. Source diagnostics
+against the exact Effect 4.1.4 upstream are useful reproductions, not installed
+package qualification. The normal hosted strict type, package and complete gates
+own final verification; current execution results belong in PR #242. The local
+selected installation still stops at missing Bun 1.4.3; do not bypass that guard
+or count the attempted gate as passed.
+
+Estimated incremental work: no production runtime lines, 1-3 recipe comment
+lines, 30-60 test lines and 40-60 guidance/review lines. Complexity 3/10, expected
+reliability within this scope 8/10, confidence 9/10; these are engineering
+judgments. No new dependency, public API, accepted authority, merge, publication,
+product adoption or measured workload claim is introduced.

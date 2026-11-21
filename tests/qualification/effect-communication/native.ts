@@ -13,7 +13,8 @@ export interface ProgressPublisher {
   /**
    * Waits for bounded capacity when a live subscriber is slow.
    * True confirms admission, not acknowledgement of business processing;
-   * false means the source has shut down.
+   * false means the source has shut down. An already waiting publisher may
+   * still be admitted during shutdown; the Host stops publishing work first.
    */
   readonly publish: (event: ProgressEvent) => Effect.Effect<boolean>;
 }

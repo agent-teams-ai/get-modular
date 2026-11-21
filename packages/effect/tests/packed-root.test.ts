@@ -106,7 +106,7 @@ test("matched public archives preserve native execution, portable types and neut
     await writeFile(join(consumer, "consumer-communication.test.ts"),
       communication.replaceAll('"./qualification/effect-communication/', '"./communication/'));
     const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "consumer-communication.test.ts"], consumer);
-    for (const summary of ["# tests 38", "# pass 38", "# fail 0", "# cancelled 0", "# skipped 0"]) {
+    for (const summary of ["# tests 39", "# pass 39", "# fail 0", "# cancelled 0", "# skipped 0"]) {
       assert.ok(output.split(/\r?\n/u).includes(summary), `packed suite lacks ${summary}\n${output}`);
     }
     await writeFile(join(consumer, "public.ts"), `
@@ -132,7 +132,7 @@ test("matched public archives preserve native execution, portable types and neut
         run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
       }
     }
-    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 38,
+    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 39,
       publicTypeResolutions: ["NodeNext", "Bundler"], neutralEffectDependency: false }));
   } finally { await rm(temporary, { recursive: true, force: true }); }
 });
