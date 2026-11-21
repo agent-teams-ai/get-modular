@@ -27,7 +27,7 @@ export function callbackProgress(source: ProgressSource, capacity = 16): Stream.
             accepting = false;
             const failure: ProgressFailure = { _tag: "ProgressOverflow", capacity };
             Queue.failCauseUnsafe(queue, Cause.fail(failure));
-            // Discard the prefix too: do not keep processing after a known gap.
+            // Discard queued occurrences; an already-pulled occurrence remains in flight.
             Queue.shutdownUnsafe(queue);
           }
           return undefined;

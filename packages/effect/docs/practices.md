@@ -491,22 +491,23 @@ No second GM Resources disposer is installed for that same subscription.
 
 This source cannot wait for backpressure. The recipe uses a bounded queue and
 turns a refused offer into `ProgressOverflow`, closes admission, and discards its
-queued prefix rather than continuing after a known gap. It uses native
+remaining queued occurrences. It uses native
 `Stream.unwrap` to acquire the queue and subscription before exposing a
 `Stream.fromEffectRepeat(Queue.take(queue))` consumer. Single-item pulls avoid
 `Stream.callback`'s batch tail, which can still invoke more handlers after
 overflow once it is outside the queue. The held-handler regression rejects that
-exact failure. For direct sequential consumption, only the already-running
-handler may finish; failure is observed on the next pull, not by forcibly
-interrupting that handler. An early-stopping consumer such as `take(1)` can finish
-without observing an overflow that occurs during its last handler, because it
+exact failure. For direct sequential consumption, at most one already-dequeued
+occurrence remains outside the queue. A scheduler yield can let overflow occur
+before that occurrence reaches its handler. That handler may still run or finish;
+the next pull observes failure. An early-stopping consumer such as `take(1)` can
+finish without observing an overflow after its last successful pull, because it
 does not pull again. This is not acknowledgement of subsequent occurrences.
 Work already processed is not rolled back.
 
-One-element pulls trade batching throughput for this precise failure boundary.
+One-element pulls trade batching throughput for this per-pull failure boundary.
 Additional downstream buffers or concurrent handlers create their own retained
-work and can weaken the handler-start guarantee; their owner must bound and
-qualify them separately. The adapter neither silently drops occurrences nor
+work that can still reach handlers after overflow; their owner must bound and
+qualify it separately. The adapter neither silently drops occurrences nor
 starts a detached fiber for each callback. A consumer needing recovery must query/reconcile through
 its actual owner; retrying the subscription does not replay lost facts. For a
 pausable source use its real pause/resume contract instead. For replaceable state,
