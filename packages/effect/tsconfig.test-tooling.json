@@ -10,6 +10,6 @@
     "skipLibCheck": false,
     "noEmit": true
   },
-  "include": ["tests/**/*.ts"],
+  "include": ["tests/**/*.ts", "../../tests/effect-communication.test.ts", "../../tests/qualification/effect-communication/**/*.ts"],
   "exclude": ["tests/types.ts"]
 }
