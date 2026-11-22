@@ -18,13 +18,13 @@ Assembly when the Host also needs to construct already selected and authorized
 factories.
 
 ```sh
-npm install @get-modular/core@0.5.0 @get-modular/assembly@0.5.0
+npm install @get-modular/core@0.8.0 @get-modular/assembly@0.8.0
 ```
 
-These versions are published with 0.5.0.
+These versions are published on npm.
 
-Add `@get-modular/resources@0.1.0` when modules own resources that need cleanup,
-and `@get-modular/conformance@0.3.0` as a development dependency for module and
+Add `@get-modular/resources@0.2.2` when modules own resources that need cleanup,
+and `@get-modular/conformance@0.5.2` as a development dependency for module and
 composition tests. To add a feature or a module to a consumer, read the
 [module authoring guide](module-authoring.md).
 

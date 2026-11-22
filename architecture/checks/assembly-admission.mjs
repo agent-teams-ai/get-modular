@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { parse } from "yaml";
 import { expectedLeafImporter, LEAF_PACKAGES, leafExternalPeers, leafManifestPath } from "./leaf-packages.ts";
 import {
+  isStableAssemblyReleaseVersion,
   manifestCarrierViolations,
   packageManifestInventory,
 } from "./production-artifacts.mjs";
@@ -170,7 +171,8 @@ async function validateAssemblyPackage({ readBytes, readPackageManifest, current
     const core = await readPackageManifest("packages/core/package.json");
     assert.equal(core?.version, manifest.version, "Assembly admission requires an exact Core/Assembly pair");
     const pair = Object.hasOwn(ASSEMBLY_PAIR_DECISIONS, manifest.version)
-      ? ASSEMBLY_PAIR_DECISIONS[manifest.version] : undefined;
+      ? ASSEMBLY_PAIR_DECISIONS[manifest.version]
+      : isStableAssemblyReleaseVersion(manifest.version) ? RELEASE_POLICY_DECISION : undefined;
     if (manifest.version === "0.7.1") {
       for (const [name, version] of [["conformance", "0.5.1"], ["resources", "0.2.1"], ["observation", "0.2.0"]]) {
         assert.equal((await readPackageManifest(`packages/${name}/package.json`))?.version, version,

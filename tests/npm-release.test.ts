@@ -328,9 +328,9 @@ test("source inventory defers the Effect candidate and admits only a coordinated
     const path = join(subject.root, "packages", id, "package.json");
     mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, JSON.stringify(value));
   };
-  const candidate = record(json(await readFile("packages/effect/package.json", "utf8")));
+  const candidate = { name: "@get-modular/effect", version: "0.0.0" };
   try {
-    writeManifest("lifecycle-kernel", json(await readFile("packages/lifecycle-kernel/package.json", "utf8")));
+    writeManifest("lifecycle-kernel", { name: "@get-modular/lifecycle-kernel", version: "0.0.0", private: true });
     writeManifest("effect", candidate);
     git(subject.root, "add", "--force", "packages/effect/package.json");
     const settings = ["-c", "user.name=iliya", "-c", "user.email=iliyazelenkog@gmail.com"];

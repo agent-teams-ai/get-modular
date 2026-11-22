@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.8.0
+
+### Minor Changes
+
+- f311b13: Add optional native Effect construction over Get Modular's verified compositions.
+  Assembly exposes a neutral preparation boundary shared by its existing Promise
+  executor and the new Effect package. Ordinary Promise authoring, inference and
+  execution keep their existing contracts and do not acquire an Effect dependency.
+  Core receives the coordinated minor version required by the existing exact
+  Core/Assembly release pair; this is a release metadata change, with no Core API
+  or runtime change.
+  
+  The initial Effect package provides native factories, precise local bindings,
+  typed construction errors and requirements, declared borrowed inputs and native
+  Layer ownership. Its usage guide ships in the package. Effect owns native resource
+  execution; the application continues to own admission and the lifetime of work.
+  
+  Effect is initially qualified against the exact catalog version 4.1.4. Consumers
+  adopting native construction must install the matching newly released Core,
+  Assembly and Effect packages together; published Assembly 0.7.1 has no neutral bridge.
+  Existing Promise consumers require no source migration. Resource ownership changes
+  for intentional native adoption follow the package's integration guide.
+
+### Patch Changes
+
+- e6e9746: Capture preparation root aliases before awaiting Core so changes to the caller's
+  root map cannot replace, swap or remove roots in an existing preparation.
+  Preserve entry identities, both preparation modes and existing validation order.
+  
+  Advance Core with Assembly to preserve their exact version pair. Core's runtime
+  semantics are unchanged; release admission and publication remain separate.
+- 28500bb: Apply Assembly's existing selected-entry ceiling to ordinary modules and borrowed
+  inputs together before profile completion or Core invocation. Oversized mixed
+  inventories now return `assembly.prepare.limit` instead of reaching Core or
+  producing an oversized unresolved-binding diagnostic. Preserve the separate
+  module-tree budget and valid inventories at the exact selected-entry limit.
+  
+  Advance Core with Assembly to preserve their exact release pair; Core behavior
+  and valid-input APIs are unchanged. The pending coordinated release retains its
+  existing admission and publication gates.
+- 558d3fc: Keep Assembly's returned composition consistent with the immutable instructions
+  it executes, include inferred bindings in the existing preparation limits, and
+  reuse frozen provider candidates across repeated unresolved slots.
+  
+  Close deep resource trees without call-stack overflow while preserving cleanup
+  order, reentrant abort notification, debt, escalation and retry. Successfully
+  detached children stop retaining their parent resource graph.
+  
+  Validate deep Observation data iteratively while preserving graph identity,
+  cycles, descriptor checks and validation before freezing. Public APIs and
+  dependency boundaries remain unchanged.
+  
+  Advance Core with Assembly to preserve their exact version pair. Core's runtime
+  semantics are unchanged; release admission and publication remain separate.
+
 ## 0.7.1
 
 ### Patch Changes

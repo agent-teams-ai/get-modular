@@ -82,6 +82,14 @@ must verify the registry bytes and installed consumer before promoting `latest`.
 Do not repack or replay an uncertain upload. The initial interactive upload is
 distinct from the subsequently verified OIDC route and its provenance.
 
+The first Effect release, `@get-modular/effect@0.1.0`, completed this route on
+2026-11-14 together with Core/Assembly 0.8.0, Resources 0.2.2, Conformance 0.5.2
+and Observation 0.2.1. The [release run](https://github.com/agent-teams-ai/get-modular/actions/runs/43594353505)
+passed publication, installed-consumer verification and promotion. Effect's
+initial archive was registered interactively from the qualified release artifact
+and therefore has no npm provenance attestation; its Trusted Publisher was then
+validated for future automated releases.
+
 ## Existing qualified bytes
 
 [The retained Observation release](../../../research/releases/observation-0.1.0/release-intent.md)
