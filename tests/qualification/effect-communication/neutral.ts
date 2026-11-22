@@ -1,36 +1,86 @@
 // Executed by packed-root.test.ts before Effect exists in the consumer installation.
 import assert from "node:assert/strict";
-import { assemblyFor, declareModule, defineContract, implement, input, type CapabilitiesOf } from "@get-modular/assembly";
-import { required } from "@get-modular/core";
-import { progressFixture, type ProgressEvent, type ProgressSource } from "./progress.ts";
+import { getEventListeners } from "node:events";
+import { createScope } from "@get-modular/resources";
+import { eventTargetProgress } from "./event-target.ts";
+import { Progress as SessionProgress, prepareProgressSession, runNeutralProgressExample } from "./neutral-session.ts";
+import { progressFixture, type ProgressEvent } from "./progress.ts";
 
 assert.throws(() => import.meta.resolve("effect"), { code: "ERR_MODULE_NOT_FOUND" });
-const Progress = defineContract<ProgressSource>()({ id: "neutral/progress", revision: 1 });
-interface Ports extends CapabilitiesOf<typeof Progress> {}
-const owner = { authority: "neutral", path: ["progress"] };
-const source = input<Ports>()(declareModule({ moduleId: "neutral/source", implementationId: "neutral/source",
-  owner, provides: [Progress.provide()], slots: [] }));
-const receiver = implement<Ports>()(declareModule({ moduleId: "neutral/receiver", implementationId: "neutral/receiver",
-  owner, provides: [], slots: [Progress.slot("progress", required())] }),
-async deps => ({ instance: deps.progress, capabilities: {} }));
-const preparation = await assemblyFor<Ports>().prepare({ profileId: "neutral/progress",
-  modules: [receiver], roots: { receiver }, inputs: { source } });
-assert.equal(preparation.status, "prepared");
-if (preparation.status !== "prepared") throw new Error("neutral recipe preparation failed");
-const fixture = progressFixture();
-const outcome = await preparation.prepared.run({ inputs: { source: { [Progress.id]: fixture.source } } });
-assert.equal(outcome.status, "succeeded");
-if (outcome.status !== "succeeded") throw new Error("neutral recipe construction failed");
-assert.equal(outcome.roots.receiver, fixture.source);
-const seen: ProgressEvent[] = [];
-const unsubscribe = outcome.roots.receiver.subscribe(value => { seen.push(value); return undefined; });
+
+// The complete ordinary example uses real listeners, while an external sibling
+// demonstrates that session cleanup cannot retire the borrowed source.
+const target = new EventTarget();
+const ordinary = eventTargetProgress(target);
+const externalSeen: ProgressEvent[] = [];
+const external = ordinary.source.subscribe(value => { externalSeen.push(value); return undefined; });
 try {
-  const duplicate = { jobId: "ordinary", completed: 1 };
-  fixture.emit(duplicate);
-  fixture.emit(duplicate);
-  assert.deepEqual(seen, [duplicate, duplicate]);
-} finally { unsubscribe(); }
-assert.deepEqual(fixture.inspect(), { live: 0, acquired: 1, released: 1 });
+  for (let session = 0; session < 2; session += 1) {
+    const summary = await runNeutralProgressExample(target);
+    assert.deepEqual(summary.first, { count: 2, completed: 1 });
+    assert.deepEqual(summary.sibling, { count: 4, completed: 3 });
+    assert.deepEqual(summary.fresh, { count: 1, completed: 3 });
+    assert.equal(summary.reports.length, 2);
+    assert.ok(summary.reports.every(report => report.complete && report.settled && report.debts.length === 0));
+    assert.equal(getEventListeners(target, "progress").length, 1, "only the external listener remains");
+  }
+  const mutable = { jobId: "still-alive", completed: 4 };
+  ordinary.publish(mutable);
+  mutable.completed = 99;
+  assert.equal(externalSeen.length, 9);
+  assert.deepEqual(externalSeen.at(-1), { jobId: "still-alive", completed: 4 });
+  assert.ok(Object.isFrozen(externalSeen.at(-1)), "published records stay stable");
+} finally { external(); }
+assert.equal(getEventListeners(target, "progress").length, 0);
+
+// The same module handles synchronous registration emissions and an owned
+// construction failure. Each attempt closes only its own acquired resources.
+const sessionGraph = await prepareProgressSession();
+const failedBody = createScope({ name: "failed-body" });
+const bodyFailure = new Error("session work failed");
+let readRetired = () => ({ count: 0, completed: 0 });
+await assert.rejects(async () => {
+  try {
+    const outcome = await sessionGraph.run({ scope: failedBody.resources,
+      inputs: { source: { [SessionProgress.id]: ordinary.source } } });
+    assert.equal(outcome.status, "succeeded");
+    if (outcome.status !== "succeeded") throw new Error("progress construction failed");
+    readRetired = outcome.roots.receiver.read;
+    assert.equal(getEventListeners(target, "progress").length, 1);
+    ordinary.publish({ jobId: "failed-body", completed: 1 });
+    throw bodyFailure;
+  } finally {
+    const report = await failedBody.control.close();
+    assert.ok(report.complete && report.settled);
+  }
+}, error => error === bodyFailure);
+assert.equal(getEventListeners(target, "progress").length, 0);
+ordinary.publish({ jobId: "late", completed: 99 });
+assert.deepEqual(readRetired(), { count: 1, completed: 1 }, "retired consumer sees no later work");
+
+for (const failure of [undefined, new Error("registration refused")]) {
+  const synchronous = progressFixture({ initial: [{ jobId: "registration", completed: 7 }],
+    ...(failure === undefined ? {} : { acquireFailure: failure }) });
+  const attempt = createScope({ name: "registration" });
+  try {
+    const outcome = await sessionGraph.run({ scope: attempt.resources,
+      inputs: { source: { [SessionProgress.id]: synchronous.source } } });
+    if (failure === undefined) {
+      assert.equal(outcome.status, "succeeded");
+      if (outcome.status !== "succeeded") throw new Error("progress construction failed");
+      assert.deepEqual(outcome.roots.receiver.read(), { count: 1, completed: 7 });
+    } else {
+      assert.equal(outcome.status, "failed");
+      if (outcome.status !== "failed") throw new Error("progress construction must fail");
+      assert.equal(outcome.cause, failure);
+    }
+  } finally {
+    const report = await attempt.control.close();
+    assert.ok(report.complete && report.settled);
+  }
+  assert.equal(synchronous.inspect().live, 0);
+  assert.equal(synchronous.inspect().acquired, synchronous.inspect().released);
+}
 
 // Reusing a callback must still create independent subscriptions.
 const independent = progressFixture();

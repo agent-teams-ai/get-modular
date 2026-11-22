@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getEventListeners } from "node:events";
-import { createStore, type ListenerError } from "@get-modular/observation";
+import { createStore, type ListenerError, type ReadonlyStore } from "@get-modular/observation";
 import { delivered, liveSubscriptions } from "@get-modular/observation/testing";
 import { createScope } from "@get-modular/resources";
 import { Cause, Deferred, Effect, Exit, Fiber, Stream } from "effect";
 import { callbackProgress } from "./qualification/effect-communication/callback.ts";
+import { eventTargetProgress } from "./qualification/effect-communication/event-target.ts";
 import { progressFixture, type ProgressEvent, type ProgressSource } from "./qualification/effect-communication/progress.ts";
 import { closeWatchScope, observedProgress } from "./qualification/effect-communication/state.ts";
+import type { ProgressState } from "./qualification/effect-communication/watch-progress.ts";
 
 const event = (completed: number): ProgressEvent => ({ jobId: "example", completed });
 test("communication: callback consumers unsubscribe independently without closing their borrowed source", { timeout: 10000 }, async () => {
@@ -273,22 +275,16 @@ test("communication: overflow behind a held handler discards all unprocessed occ
 });
 
 test("communication: real EventTarget flows through the callback and state bridges across fresh sessions", { timeout: 10000 }, async () => {
-  class ProgressNotification extends Event {
-    readonly progress: ProgressEvent;
-    constructor(progress: ProgressEvent) { super("progress"); this.progress = progress; }
-  }
   const target = new EventTarget();
+  const notifications = eventTargetProgress(target);
   let acquired = 0, released = 0;
   let subscriptionReady = Promise.withResolvers<void>();
   const source: ProgressSource = {
     subscribe: listener => {
-      const forward = (notification: Event): void => {
-        if (notification instanceof ProgressNotification) listener(notification.progress);
-      };
-      target.addEventListener("progress", forward);
+      const unsubscribe = notifications.source.subscribe(listener);
       acquired += 1;
       subscriptionReady.resolve();
-      return () => { target.removeEventListener("progress", forward); released += 1; return undefined; };
+      return () => { unsubscribe(); released += 1; return undefined; };
     },
   };
   const sourceOwner = createScope({ name: "event-target-state" });
@@ -312,7 +308,7 @@ test("communication: real EventTarget flows through the callback and state bridg
         assert.equal(acquired - released, 1);
         assert.equal(getEventListeners(target, "progress").length, 1);
         assert.equal(liveSubscriptions(facet), 1);
-        target.dispatchEvent(new ProgressNotification(event(completed)));
+        notifications.publish(event(completed));
         assert.deepEqual((yield* Fiber.join(projection)).map(value => value.values.completed), [completed - 1, completed]);
         yield* Fiber.interrupt(ingest);
         assert.equal(acquired, completed);
@@ -320,12 +316,12 @@ test("communication: real EventTarget flows through the callback and state bridg
         assert.equal(getEventListeners(target, "progress").length, 0, "the actual listener is removed, not just muted");
         assert.equal(liveSubscriptions(facet), 0);
       })));
-      target.dispatchEvent(new ProgressNotification(event(99)));
+      notifications.publish(event(99));
       assert.equal(facet.read(["completed"]).values.completed, completed, "retired ingestion has no effects");
     }
     const direct: ProgressEvent[] = [];
     const unsubscribe = source.subscribe(value => { direct.push(value); return undefined; });
-    try { target.dispatchEvent(new ProgressNotification(event(7))); }
+    try { notifications.publish(event(7)); }
     finally { unsubscribe(); }
     assert.deepEqual(direct, [event(7)], "the borrowed source still works without an Effect consumer");
     assert.equal(acquired, released);
@@ -333,6 +329,81 @@ test("communication: real EventTarget flows through the callback and state bridg
     assert.deepEqual(reports, []);
   } finally {
     const report = await sourceOwner.control.close();
+    assert.equal(report.complete && report.settled, true);
+  }
+});
+
+test("communication: Observation capacity refusal is recoverable without hiding other acquisition failures", { timeout: 10000 }, async () => {
+  const ownerScope = createScope({ name: "admission-state-owner" });
+  const reports: ListenerError[] = [];
+  const store = createStore({ completed: 0 }, { name: "admission-progress", resources: ownerScope.resources,
+    maxSubscriptions: 1, reportError: report => { reports.push(report); return undefined; } });
+  const facet = store.readonly();
+  let refusedCause: unknown;
+  const traced: ReadonlyStore<ProgressState> = {
+    ...facet,
+    watch: (snapshot, spec) => {
+      try { return facet.watch(snapshot, spec); }
+      catch (cause) { refusedCause = cause; throw cause; }
+    },
+  };
+  try {
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
+      const ready = yield* Deferred.make<void>(), updated = yield* Deferred.make<void>();
+      const seen: number[] = [];
+      const first = yield* Effect.forkScoped(Stream.runForEach(observedProgress(facet), snapshot => Effect.gen(function* () {
+        seen.push(snapshot.values.completed);
+        yield* Deferred.succeed(snapshot.values.completed === 0 ? ready : updated, undefined);
+      })));
+      yield* Effect.raceFirst(Deferred.await(ready), Fiber.join(first));
+      assert.equal(liveSubscriptions(facet), 1);
+
+      const refusedValues: number[] = [];
+      const refused = yield* Effect.exit(Stream.runDrain(Stream.take(Stream.tap(
+        observedProgress(traced), snapshot => Effect.sync(() => { refusedValues.push(snapshot.values.completed); }),
+      ), 1)));
+      assert.ok(Exit.isFailure(refused));
+      assert.equal(refused.cause.reasons.length, 1);
+      const [reason] = refused.cause.reasons;
+      assert.ok(reason !== undefined && Cause.isFailReason(reason));
+      assert.equal(reason.error._tag, "ProgressSubscriptionLimit");
+      assert.equal(reason.error.cause, refusedCause, "the real admission error is retained by identity");
+      assert.ok(refusedCause instanceof Error && "code" in refusedCause
+        && refusedCause.code === "observation.subscriptions.limit");
+      assert.deepEqual(refusedValues, [], "take(1) cannot conceal refused admission behind initial state");
+      assert.equal(liveSubscriptions(facet), 1, "refusal preserves the first subscription");
+
+      store.set({ completed: 1 });
+      yield* Effect.raceFirst(Deferred.await(updated), Fiber.join(first));
+      assert.deepEqual(seen, [0, 1]);
+      yield* Fiber.interrupt(first);
+      assert.equal(liveSubscriptions(facet), 0);
+
+      const recovered = yield* Stream.runCollect(Stream.take(observedProgress(facet), 1));
+      assert.deepEqual(recovered.map(snapshot => snapshot.values.completed), [1]);
+      assert.equal(liveSubscriptions(facet), 0, "explicit reacquisition also releases on early completion");
+
+      const readFailure = { code: "observation.subscriptions.limit" };
+      const watchFailure = new Error("non-limit watch failure");
+      const unreadableFailure = { get code() { throw new Error("error discrimination failed"); } };
+      const faults: readonly { readonly source: ReadonlyStore<ProgressState>; readonly cause: unknown }[] = [
+        { source: { ...facet, read: () => { throw readFailure; } }, cause: readFailure },
+        { source: { ...facet, watch: () => { throw watchFailure; } }, cause: watchFailure },
+        { source: { ...facet, watch: () => { throw unreadableFailure; } }, cause: unreadableFailure },
+      ];
+      for (const fault of faults) {
+        const result = yield* Effect.exit(Stream.runDrain(observedProgress(fault.source)));
+        assert.ok(Exit.isFailure(result));
+        assert.equal(result.cause.reasons.length, 1);
+        const [defect] = result.cause.reasons;
+        assert.ok(defect !== undefined && Cause.isDieReason(defect));
+        assert.equal(defect.defect, fault.cause, "only the watch call's budget refusal enters the expected error channel");
+      }
+      assert.equal(liveSubscriptions(facet), 0);
+      assert.deepEqual(reports, []);
+    })));
+  } finally {
+    const report = await ownerScope.control.close();
     assert.equal(report.complete && report.settled, true);
   }
 });

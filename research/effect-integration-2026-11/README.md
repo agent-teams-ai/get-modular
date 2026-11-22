@@ -14,6 +14,15 @@ package archive. Historical designs/spikes below retain their original context;
 the current implementation status is recorded next.
 Read [spike evidence](spikes.md) and [review findings](reviews.md) with this plan.
 
+## Communication DX and bounded workload, 2026-11-22
+
+The [reviewed delivery plan](communication-dx-plan-2026-11-22.md) follows PR #242
+with complete ordinary/native session examples, one finite concurrent workload
+and recoverable Observation subscription-budget refusal at the consumer adapter.
+It retains the existing package and lifecycle boundaries. Execution, external
+review and merge evidence belong to the delivery PR; a plan is not production
+adoption or a measured capacity guarantee.
+
 ## Communication recipes, 2026-11-14
 
 The [boundary review and delivery plan](communication-recipes-plan-2026-11-14.md)

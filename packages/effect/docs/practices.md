@@ -21,6 +21,32 @@ The [subsequent production review][gm-production-review] adds mixed-inventory
 bounds, ownership in graphs with repeated diamonds, factory-product rejection and further
 upstream lessons about identity, cache isolation and installed dependencies.
 
+## Start with a complete session
+
+Choose the example matching the source you actually own:
+
+| Starting point | Complete maintained example | Lifetime and overload |
+| --- | --- | --- |
+| Ordinary modules, no Effect | [Assembly/Resources session][gm-neutral-session] with a real EventTarget producer | Finish registration before publication; each session closes its own listener and checks the close report |
+| An entirely native subsystem | [Native GM session][gm-native-session] | Acquire `subscribe` before publishing; consume inside that same Scope; bounded publication waits for slow subscribers |
+| An existing neutral callback source | [Callback adapter][gm-callback-recipe] and [real bridge E2E][gm-communication-tests] | Consumption acquires the subscription; a source that cannot pause fails explicitly on queue overflow |
+| Existing latest-state Observation | [Progress watch admission][gm-watch-admission] and [state projection][gm-state-recipe] | One watch per consumer; latest-only buffering; subscription-budget refusal is a checked failure |
+
+These are concrete consumer examples, not new exports from `@get-modular/effect`.
+The ordinary and native session files include preparation, publication, consumption
+and close. Their tests execute the same source through installed public packages.
+The native fixture's repository-relative mapper import becomes
+`@get-modular/effect` in that consumer; application code uses the public package
+root. Plain records can be shared without pretending the two executors have one
+resource or error contract.
+
+Follow the session order: acquire the source owner, acquire each consumer, publish
+only after readiness, finish or interrupt and join owned work, then close its
+consumer and source lifetimes. With a cold callback Stream, creating the value is
+not readiness. The source owner must outlive every consumer, and publication
+admission does not acknowledge handler completion. The rules below explain
+failure, cancellation and ownership details when adapting the examples.
+
 ## Mistakes to catch first
 
 | Mistake | Correct approach |
@@ -552,6 +578,17 @@ stream consumers receive distinct watch scopes, and stopping one leaves the othe
 and the source alive. This is one explicit ownership bridge, not two independent
 owners of the same resource or an interchangeable Scope abstraction.
 
+The concrete [watch admission helper][gm-watch-admission] is Effect-free and
+classifies only the watch call's `observation.subscriptions.limit` refusal. The
+native projection exposes it as `ProgressSubscriptionLimit` in its error channel,
+retaining the original cause. It registers successfully before offering the
+initial snapshot, so `take(1)` cannot disguise a refused subscription as success.
+The [ordinary recovery example][gm-neutral-admission] uses the same result without
+Effect. A consumer may report the refusal and explicitly request a new subscription
+after another consumer releases capacity; the adapter does not retry or change
+the budget. Read failures, closed sources/scopes, invalid input and cleanup
+failures retain their existing defect/rethrow behavior.
+
 **Precondition:** the source owner outlives the stream consumers.
 `ReadonlyStore.watch` has no terminal callback. Unexpected source closure detaches
 the watch and reports to the source owner's error port; it does not complete this
@@ -568,8 +605,9 @@ command/reconciliation feedback in the product that owns it.
 
 The maintained tests check initial/latest values, irrelevant-key updates,
 independent watch closure, latest-only buffering for a held consumer, source
-lifetime, unexpected source close and failed bridge cleanup. These are Node
-qualification cases, not browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
+lifetime, unexpected source close, failed bridge cleanup and refusal/recovery
+with a real one-subscription budget. These are Node qualification cases, not
+browser parity or a thousand-agent workload claim. SubscriptionRef and Observation are not drop-in
 replacements: choose intentionally rather than renaming methods during migration.
 
 ### Capacity and payload ownership
@@ -592,6 +630,31 @@ examined stream path retains its item/byte charge through RPC acknowledgement.
 Conversely, an internal unbounded queue can have a real enclosing budget; inspect
 its admission and release path before calling it unbounded. See the
 [project study][gm-project-audit] for the source and limits.
+
+### One bounded workload, with measured observations
+
+The maintained [communication workload][gm-communication-load] exercises one
+GM-selected native source with capacity 32, four publishing workers, eight steady
+consumers, one held slow consumer and at most one transient consumer. Normal
+traffic is 4,096 small stable records across 32 subscription-churn epochs. A
+separate 36-record control phase establishes actual blocked publication and
+resumption after the slow consumer is retired. Each publisher awaits admission
+before publishing again; a bounded source alone would not bound detached callers.
+
+Steady readers check exact sequence and count per publisher without assuming an
+interleaving between publishers. After each transient consumer closes, more than
+one queue capacity of further traffic must succeed. The test joins its work and
+checks that the closed source refuses later publication. The same scenario runs
+from installed public archives; it adds no production debug API.
+
+The run reports its profile, elapsed time, bounded latency samples and memory
+snapshots. Deliberately held control traffic is separate from normal latency.
+Sampled heap/RSS includes the runtime and measurement buffers; it is not queue
+memory alone or a proof that memory must return to its starting value without GC.
+These measurements describe the recorded run, with no hardware-dependent CI SLA.
+A product still selects its own subscriber/publisher budgets, payload bounds,
+failure policy and ingress/shutdown contract. This workload does not qualify an
+arbitrary number of agents, browser transport or durable delivery.
 
 ## 8. Forward cancellation to foreign I/O and document its actual guarantee
 
@@ -888,6 +951,14 @@ second migration checklist in consumer instructions.
 [gm-construction-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/construction.test.ts
 [gm-consumer-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/consumer.test.ts
 [gm-archive-test]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/packed-root.test.ts
+[gm-neutral-session]: https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/neutral-session.ts
+[gm-native-session]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/native-session.ts
+[gm-callback-recipe]: https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/callback.ts
+[gm-communication-tests]: https://github.com/agent-teams-ai/get-modular/blob/main/tests/effect-communication.test.ts
+[gm-watch-admission]: https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/watch-progress.ts
+[gm-state-recipe]: https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/state.ts
+[gm-neutral-admission]: https://github.com/agent-teams-ai/get-modular/blob/main/tests/qualification/effect-communication/neutral-admission.ts
+[gm-communication-load]: https://github.com/agent-teams-ai/get-modular/blob/main/packages/effect/tests/communication-load.test.ts
 [effect-acquire-release]: https://github.com/Effect-TS/effect/blob/289a53f7b1fc40049219c6e69022db2fb859c356/packages/effect/src/internal/effect.ts#L4240-L4256
 [effect-composed-memo]: https://github.com/Effect-TS/effect/commit/c7072e46356a19615625ae0fa569b1c3a79d50be
 [effect-registry-memo]: https://github.com/Effect-TS/effect/commit/9591f00993f882de494033ddc4a1324f054f075a

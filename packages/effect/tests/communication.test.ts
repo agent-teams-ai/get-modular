@@ -1,42 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { declareModule, defineContract, type CapabilitiesOf } from "@get-modular/assembly";
-import { required } from "@get-modular/core";
 import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Scope, Stream } from "effect";
-import { effectFor, implement } from "../dist/index.js";
-import { nativeProgress, type NativeProgressOwner, type ProgressEvents, type ProgressPublisher } from "../../../tests/qualification/effect-communication/native.ts";
+import { nativeProgress, type ProgressPublisher } from "../../../tests/qualification/effect-communication/native.ts";
 import type { ProgressEvent } from "../../../tests/qualification/effect-communication/progress.ts";
+import { prepareProgressGraph, ProgressRoots as Roots, runNativeProgressExample } from "./native-session.ts";
 
 const event = (completed: number): ProgressEvent => ({ jobId: "example", completed });
-const Events = defineContract<ProgressEvents>()({ id: "recipes/progress", revision: 1 });
-interface Ports extends CapabilitiesOf<typeof Events> {}
-class Roots extends Context.Service<Roots, {
-  readonly source: NativeProgressOwner;
-  readonly left: ProgressEvents;
-  readonly right: ProgressEvents;
-}>()("recipes/Roots") {}
-const owner = { authority: "recipes", path: ["progress"] };
-
-async function nativeGraph(capacity = 4) {
-  const source = implement<Ports>()(declareModule({ moduleId: "recipes/source", implementationId: "recipes/source",
-    owner, provides: [Events.provide()], slots: [] }), () => Effect.map(nativeProgress(capacity), value => ({
-      instance: value, capabilities: { [Events.id]: value.events },
-    })));
-  const consumer = (name: string) => implement<Ports>()(declareModule({
-    moduleId: `recipes/${name}`, implementationId: `recipes/${name}`, owner,
-    provides: [], slots: [Events.slot("events", required())],
-  }), deps => Effect.succeed({ instance: deps.events, capabilities: {} }));
-  const left = consumer("left"), right = consumer("right");
-  const result = await effectFor<Ports>().prepare({
-    profileId: "recipes/native", modules: [source, left, right], roots: { source, left, right },
-  });
-  assert.equal(result.status, "prepared");
-  if (result.status !== "prepared") throw new Error("recipe preparation failed");
-  return result.prepared;
-}
 
 test("communication: GM selects one native source; early or failed subscriber exit leaves its sibling alive", { timeout: 10000 }, async () => {
-  const graph = await nativeGraph();
+  const graph = await prepareProgressGraph();
   for (const failLeft of [false, true]) {
     const retained: { publisher?: ProgressPublisher; left?: Stream.Stream<ProgressEvent> } = {};
     const result = await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
@@ -88,7 +60,7 @@ test("communication: native subscribe acquires before first publication and does
 
 
 test("communication: GM backpressure resumes after the slow consumer is cancelled, without losing sibling delivery", { timeout: 10000 }, async () => {
-  const graph = await nativeGraph(2);
+  const graph = await prepareProgressGraph(2);
   // Reusing preparation must not retain a subscription or source from the prior graph run.
   for (const round of [1, 2]) {
     const retained: { publisher?: ProgressPublisher } = {};
@@ -134,7 +106,7 @@ test("communication: GM backpressure resumes after the slow consumer is cancelle
 });
 
 test("communication: forced source retirement interrupts its pending reader and rejects later publication", { timeout: 10000 }, async () => {
-  const graph = await nativeGraph(1);
+  const graph = await prepareProgressGraph(1);
   await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
     // Deliberately retire the source while a separately owned consumer is live.
     // Both scopes still have finalizers if an assertion fails.
@@ -147,4 +119,12 @@ test("communication: forced source retirement interrupts its pending reader and 
     assert.ok(Exit.hasInterrupts(yield* Fiber.await(reader)), "source shutdown interrupts pending reads");
     assert.equal(yield* roots.source.publisher.publish(event(1)), false);
   })));
+});
+
+test("communication: complete native session example joins readers before source retirement", { timeout: 10000 }, async () => {
+  const result = await runNativeProgressExample();
+  assert.deepEqual(result.first, [{ jobId: "native", completed: 1 }, { jobId: "native", completed: 1 }]);
+  assert.deepEqual(result.fresh, [{ jobId: "native", completed: 2 }]);
+  assert.deepEqual(result.sibling, [...result.first, ...result.fresh]);
+  assert.equal(result.afterClose, false);
 });
