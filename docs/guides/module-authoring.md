@@ -1787,7 +1787,7 @@ reports such an error to its Host, outside ordinary session error handling.
 
 An Effect-native subsystem can instead use the
 [complete native session](../../packages/effect/tests/native-session.ts), with
-native subscription readiness and PubSub backpressure. The
+native subscription readiness and bounded PubSub publication. The
 [single Effect guide](../../packages/effect/docs/practices.md#start-with-a-complete-session)
 also explains adapting an existing neutral callback source. Pure event records
 can be shared; native and neutral execution contracts remain distinct.

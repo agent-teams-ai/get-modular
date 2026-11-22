@@ -29,7 +29,7 @@ Choose the example matching the source you actually own:
 | --- | --- | --- |
 | Ordinary modules, no Effect | [Assembly/Resources session][gm-neutral-session] with a real EventTarget producer | Finish registration before publication; each session closes its own listener and checks the close report |
 | An entirely native subsystem | [Native GM session][gm-native-session] | Acquire `subscribe` before publishing; consume inside that same Scope; bounded publication waits for slow subscribers |
-| An existing neutral callback source | [Callback adapter][gm-callback-recipe] and [real bridge E2E][gm-communication-tests] | Consumption acquires the subscription; an unpausable source fails explicitly on queue overflow |
+| An existing neutral callback source | [Callback adapter][gm-callback-recipe] and [real bridge E2E][gm-communication-tests] | Consumption acquires the subscription; a source that cannot pause fails explicitly on queue overflow |
 | Existing latest-state Observation | [Progress watch admission][gm-watch-admission] and [state projection][gm-state-recipe] | One watch per consumer; latest-only buffering; subscription-budget refusal is a checked failure |
 
 These are concrete consumer examples, not new exports from `@get-modular/effect`.
