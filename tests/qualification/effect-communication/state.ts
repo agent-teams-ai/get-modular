@@ -1,9 +1,7 @@
-import type { ReadonlyStore, Snapshot } from "@get-modular/observation";
+import type { ReadonlyStore } from "@get-modular/observation";
 import { createScope } from "@get-modular/resources";
 import { Effect, Queue, Stream } from "effect";
-
-export type ProgressState = { readonly completed: number };
-export type ProgressSnapshot = Snapshot<ProgressState>;
+import { watchProgress, type ProgressSnapshot, type ProgressState, type ProgressSubscriptionLimit } from "./watch-progress.ts";
 
 /** Only the bridge-owned watch scope is closed. No timeout or automatic retry. */
 export function closeWatchScope(scope: ReturnType<typeof createScope>): Effect.Effect<void> {
@@ -17,13 +15,13 @@ export function closeWatchScope(scope: ReturnType<typeof createScope>): Effect.E
  * One-way latest-state projection, not occurrence delivery or an adaptation of load.
  * The source owner MUST outlive consumption. Unexpected source close is reported
  * by Observation to its owner, not as completion of this Stream.
+ * Watch capacity refusal is expected; other acquisition/cleanup errors are defects.
  */
-export function observedProgress(source: ReadonlyStore<ProgressState>): Stream.Stream<ProgressSnapshot> {
-  return Stream.callback<ProgressSnapshot>(queue => Effect.flatMap(
+export function observedProgress(source: ReadonlyStore<ProgressState>): Stream.Stream<ProgressSnapshot, ProgressSubscriptionLimit> {
+  return Stream.callback<ProgressSnapshot, ProgressSubscriptionLimit>(queue => Effect.flatMap(
     Effect.acquireRelease(Effect.sync(() => createScope({ name: "effect/progress-watch" })), closeWatchScope),
-    scope => Effect.sync(() => {
-      const initial = source.read(["completed"]);
-      source.watch(initial, {
+    scope => Effect.flatMap(Effect.sync(() => {
+      const admission = watchProgress(source, {
         name: "progress/latest",
         resources: scope.resources,
         onChange: snapshot => {
@@ -31,8 +29,10 @@ export function observedProgress(source: ReadonlyStore<ProgressState>): Stream.S
           return undefined;
         },
       });
-      // watch never calls back synchronously and follows changes since this read.
-      Queue.offerUnsafe(queue, initial);
-    }),
+      // Keep read, registration and initial delivery in one synchronous section.
+      // A refused watch must not let take(1) hide failed admission.
+      if (admission.status === "subscribed") Queue.offerUnsafe(queue, admission.initial);
+      return admission;
+    }), admission => admission.status === "refused" ? Effect.fail(admission.failure) : Effect.void),
   ), { bufferSize: 1, strategy: "sliding" });
 }

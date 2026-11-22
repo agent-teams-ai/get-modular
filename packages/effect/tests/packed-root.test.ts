@@ -24,6 +24,19 @@ function run(command: string, args: readonly string[], cwd: string): string {
   return result.stdout.trim();
 }
 
+async function checkPortableTypes(consumer: string, files: readonly string[]): Promise<void> {
+  for (const { path: compiler } of supportedCompilers()) {
+    for (const resolution of ["NodeNext", "Bundler"]) {
+      await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({ compilerOptions: {
+        strict: true, noEmit: true, skipLibCheck: false, target: "ES2024", types: [], allowImportingTsExtensions: true,
+        lib: ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
+        module: resolution === "NodeNext" ? "NodeNext" : "ESNext", moduleResolution: resolution,
+      }, files }));
+      run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
+    }
+  }
+}
+
 test("matched public archives preserve native execution, portable types and neutral optionality", async context => {
   const temporary = await mkdtemp(join(tmpdir(), "effect-pack-"));
   try {
@@ -87,6 +100,10 @@ test("matched public archives preserve native execution, portable types and neut
     `);
     run(process.execPath, ["neutral.ts"], consumer);
     run(process.execPath, ["communication/neutral.ts"], consumer);
+    run(process.execPath, ["communication/neutral-admission.ts"], consumer);
+    // A type-only Effect dependency must fail here too, not hide behind later installation.
+    await checkPortableTypes(consumer, ["communication/neutral-session.ts", "communication/event-target.ts",
+      "communication/watch-progress.ts"]);
 
     // Copy the exact frozen-install peer closure; this Effect release has no runtime dependencies.
     const effectRoot = dirname(require.resolve("effect/package.json"));
@@ -95,20 +112,34 @@ test("matched public archives preserve native execution, portable types and neut
     for (const field of ["dependencies", "optionalDependencies", "peerDependencies"]) assert.deepEqual(effect[field] ?? {}, {});
     await cp(effectRoot, join(consumer, "node_modules/effect"), { recursive: true });
     await writeFile(join(consumer, "readme.ts"), readmeExample);
-    for (const name of ["support.ts", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "portable.ts"]) {
+    const publicCarriers: Readonly<Record<string, number>> = {
+      "support.ts": 1,
+      "construction.test.ts": 1,
+      "consumer.test.ts": 1,
+      "lifecycle.test.ts": 1,
+      "communication.test.ts": 0,
+      "communication-load.test.ts": 0,
+      "native-session.ts": 1,
+      "portable.ts": 1,
+    };
+    for (const [name, expectedCarriers] of Object.entries(publicCarriers)) {
       const source = await readFile(join(packageRoot, "tests", name), "utf8");
       const publicCarrier = 'from "../dist/index.js"';
-      assert.equal(source.split(publicCarrier).length, 2, `${name} must import exactly one public carrier`);
+      assert.equal(source.split(publicCarrier).length - 1, expectedCarriers,
+        `${name} must retain its exact public carrier inventory`);
       await writeFile(join(consumer, name), source.replace(publicCarrier, 'from "@get-modular/effect"')
         .replaceAll('"../../../tests/qualification/effect-communication/', '"./communication/'));
     }
     const communication = await readFile(join(workspace, "tests/effect-communication.test.ts"), "utf8");
     await writeFile(join(consumer, "consumer-communication.test.ts"),
       communication.replaceAll('"./qualification/effect-communication/', '"./communication/'));
-    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "consumer-communication.test.ts"], consumer);
-    for (const summary of ["# tests 39", "# pass 39", "# fail 0", "# cancelled 0", "# skipped 0"]) {
+    const output = run(process.execPath, ["--test", "--test-reporter=tap", "construction.test.ts", "consumer.test.ts", "lifecycle.test.ts", "communication.test.ts", "communication-load.test.ts", "consumer-communication.test.ts"], consumer);
+    for (const summary of ["# tests 42", "# pass 42", "# fail 0", "# cancelled 0", "# skipped 0"]) {
       assert.ok(output.split(/\r?\n/u).includes(summary), `packed suite lacks ${summary}\n${output}`);
     }
+    const workload = output.split(/\r?\n/u).filter(line => line.startsWith("# communication-workload "));
+    assert.equal(workload.length, 1, "installed workload must produce exactly one measurement record");
+    context.diagnostic(`installed ${workload[0]?.slice(2)}`);
     await writeFile(join(consumer, "public.ts"), `
       import assert from "node:assert/strict";
       import * as adapter from "@get-modular/effect";
@@ -122,17 +153,10 @@ test("matched public archives preserve native execution, portable types and neut
       }
     `);
     run(process.execPath, ["public.ts"], consumer);
-    for (const { path: compiler } of supportedCompilers()) {
-      for (const resolution of ["NodeNext", "Bundler"]) {
-        await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({ compilerOptions: {
-          strict: true, noEmit: true, skipLibCheck: false, target: "ES2024", types: [], allowImportingTsExtensions: true,
-          lib: ["ES2024", "ESNext.Disposable", "ESNext.Promise", "DOM"],
-          module: resolution === "NodeNext" ? "NodeNext" : "ESNext", moduleResolution: resolution,
-        }, files: ["portable.ts", "readme.ts", "communication/native.ts", "communication/callback.ts", "communication/state.ts"] }));
-        run(process.execPath, [compiler, "-p", "tsconfig.json"], consumer);
-      }
-    }
-    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 39,
-      publicTypeResolutions: ["NodeNext", "Bundler"], neutralEffectDependency: false }));
+    await checkPortableTypes(consumer, ["portable.ts", "readme.ts", "native-session.ts", "communication/native.ts",
+      "communication/callback.ts", "communication/state.ts"]);
+    context.diagnostic(JSON.stringify({ versions, effect: effect.version, archiveDigests: digests, runtimeTests: 42,
+      publicTypeResolutions: ["NodeNext", "Bundler"], neutralEffectDependency: false,
+      neutralTypesBeforeEffect: true }));
   } finally { await rm(temporary, { recursive: true, force: true }); }
 });

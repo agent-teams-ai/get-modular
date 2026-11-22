@@ -1767,6 +1767,42 @@ Observation 0.1.0 adds no `emit`, event bus, durable log, replay or retry protoc
 A payment's latest status can still be observed through a store. Its command
 result and its status projection have different jobs.
 
+#### Start with a complete session
+
+For live in-process notifications, start from the
+[complete ordinary session](../../tests/qualification/effect-communication/neutral-session.ts).
+It includes a declared `ProgressSource` dependency, ordinary Assembly construction,
+an actual EventTarget producer and subscriber-owned Resources cleanup. It runs
+through matched installed packages with Effect physically absent. The
+[plain contract](../../tests/qualification/effect-communication/progress.ts) states
+what subscription, duplicates and synchronous disposal mean; these are consumer
+examples, not additional package exports.
+
+The order is explicit: construct and finish subscribing, publish while the
+session is alive, finish its work, close its scope and inspect the close report.
+`Resources.setup` owns registration even when a source calls back synchronously.
+A consumer releases only its own listener; a sibling and a new session can keep
+using the borrowed source. An EventTarget listener must not throw: the platform
+reports such an error to its Host, outside ordinary session error handling.
+
+An Effect-native subsystem can instead use the
+[complete native session](../../packages/effect/tests/native-session.ts), with
+native subscription readiness and PubSub backpressure. The
+[single Effect guide](../../packages/effect/docs/practices.md#start-with-a-complete-session)
+also explains adapting an existing neutral callback source. Pure event records
+can be shared; native and neutral execution contracts remain distinct.
+
+When following latest state, a subscription limit can be a normal admission
+outcome for the consumer. The concrete
+[progress watch adapter](../../tests/qualification/effect-communication/watch-progress.ts)
+classifies only `observation.subscriptions.limit`, retains its cause and offers
+the initial snapshot only after successful admission. The
+[ordinary recovery example](../../tests/qualification/effect-communication/neutral-admission.ts)
+shows refusal without disturbing an existing watcher, followed by an explicitly
+requested subscription after capacity is released. Other errors still propagate;
+the helper adds no automatic retry or second limiter. Keep this adapter in the
+consumer's composition boundary, where its Resources scope is already owned.
+
 ### 21.2 Own the store and publish area contracts
 
 The settings owner below gives two area contracts the same read-only facet.

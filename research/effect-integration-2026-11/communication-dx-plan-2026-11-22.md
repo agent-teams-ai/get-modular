@@ -235,3 +235,12 @@ restores the previous consumer bridge; no persisted data or public API migrates.
   capacity of traffic after each transient consumer closes. Preserve explicit
   per-file archive carrier assertions after graph extraction. Both independent
   reviews found no additional required subsystem or public API break.
+- Integration refinement: run the neutral portable type checks before installing
+  Effect as well as executing that consumer, so a type-only dependency cannot
+  hide behind native qualification. Forward the installed workload's one bounded
+  diagnostic record rather than discarding its measurements in the archive Host.
+- Code review corrections: preserve arbitrary cancellation reasons before reading
+  their discriminator, and preserve the original watch failure if classification
+  itself encounters an invalid spec or throwing getter. Regressions exercise the
+  real cancelled/invalid-spec path and an unknown throwing cause. These are local
+  adapter corrections, not new Observation semantics or an error framework.
