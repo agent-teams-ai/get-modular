@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -87,4 +87,15 @@ test("symlinked and executable maintained guides require full CI", (t) => {
   } finally {
     rmSync(cwd, {recursive:true,force:true});
   }
+});
+
+
+test("CI supersedes PRs only; preserves each protected main merge run", () => {
+  const yaml = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  assert.match(yaml, /  pull_request:\n  push:\n    branches: \[main\]/);
+  const group = "group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}";
+  assert.ok(yaml.includes(group), "main must group runs by unique run_id");
+  assert.ok(yaml.includes("cancel-in-progress: ${{ github.event_name == 'pull_request' }}"),
+    "only superseded PR CI can be cancelled");
+  assert.doesNotMatch(yaml, /cancel-in-progress:\s*true/);
 });
