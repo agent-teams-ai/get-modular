@@ -260,6 +260,20 @@ qualification route, separate from the projected rollback profile.
 CI must prove all routes on the candidate
 head; configuration alone records no successful run.
 
+Dependency security maintenance uses the same owner PR route. As of 2026-11-23,
+[GitHub supports Bun version updates but not Bun security updates](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories).
+The retained pnpm lockfile does not make automatic security updates work for
+the Bun-managed root. For an alert or reported advisory, select a supported
+upstream fix, update the YAML catalog and its root projection together, and
+regenerate both locks with their pinned managers in separate manager roots.
+Validate actual frozen Bun and projected Node/pnpm installations, the affected
+consumer command and the unchanged required checks before the owner merge.
+Keep the organization security settings and update owner unchanged. This manual
+route does not certify automatic security PR generation or remote alert closure;
+those require their own observed outcome. The
+[bounded documentation-parser update](../qualification/dependency-security-2026-11.md)
+records the support limit and the independent installation checks.
+
 This is a fixed development-tooling relationship inside `repository.development`,
 not an independently assembled capability. It creates no Core/Assembly graph
 node and has no generation/resource lifetime needing the lifecycle kernel.
