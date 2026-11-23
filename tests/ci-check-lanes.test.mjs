@@ -203,7 +203,9 @@ function validateLanes(value, manifest = packageJson) {
     const gate = aggregate(value, host);
     assert(gate, `${host}: missing aggregate`);
     assert.equal(gate.name, node24 ? `check (${os}, Node 24)` : rollback ? `check (${os}, Node 26 rollback)` : `check (${os})`, "required context");
-    assert.equal(gate["runs-on"], os === "macos-15" ? "ubuntu-24.04" : os, "aggregate runner");
+    // Only the lanes themselves require the qualified OS. Every result
+    // gate uses the exact same jq/bash completeness proof on Linux.
+    assert.equal(gate["runs-on"], "ubuntu-24.04", "aggregate runner");
     assert.deepEqual(gate.needs, ["impact", "ci-impact-tests", "docs-protocol", `lanes-${host}`, ...(host === "node24-ubuntu" ? ["node-24-compatibility"] : [])], "aggregate dependency omission");
     assert.equal(gate.if, "always()", "aggregate must run after failures/skips");
     assert.equal(gate["continue-on-error"], undefined);
@@ -640,4 +642,17 @@ test("M3 setup preserves the Node 24 proof cells separately from the default con
   assert.equal(setup.with["node-version-file"], ".node-compat-version");
   assert.equal(await read(".node-compat-version"), "24.21.0\n");
   assert.deepEqual(node.strategy.matrix.include.map(row => row.row), ["node-24-linux", "node-24-macos", "node-24-windows"]);
+});
+
+// Windows lanes still run natively; these gates only verify their receipts.
+test("Windows result-only gates are Linux-hosted without changing native matrices", () => {
+  for (const host of ["windows", "node24-windows", "node26-windows"]) {
+    const native = laneJob(workflow, host);
+    const gate = aggregate(workflow, host);
+    assert.equal(native["runs-on"], "windows-2025");
+    assert.equal(gate["runs-on"], "ubuntu-24.04");
+    assert.equal(gate.needs.includes("lanes-" + host), true);
+    assert.equal(gate.if, "always()");
+    assert.equal(gate.steps[0].run, canonicalAggregateBody);
+  }
 });
