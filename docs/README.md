@@ -49,6 +49,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Documentation dependency security](qualification/dependency-security-2026-11.md) - bounded parser update plan, dual-manager checks and the Bun security-update support limit.
 - [Typed build custody and construction verification](qualification/typed-build-custody-2026-11.md) - bounded E2E refactor plan, independent review and verification record.
 - [Foundational runtime refactor](qualification/foundational-runtime-refactor-2026-11.md) - audit findings, bounded preparation and ownership fixes, verification plan and review record.
 - [Current TypeScript tooling qualification](qualification/native-typescript-tooling.md) - current native compiler scope, historical input custody and the separate release handoff.
