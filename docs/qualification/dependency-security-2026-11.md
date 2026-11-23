@@ -13,8 +13,10 @@ related:
 ## Goal, authority and completion boundary
 
 Starting main: `42e4731351b360fdeb0fac2c6df5648593c02392`, observed on
-2026-11-23. This is a working plan and verification record. The `reviewed`
-document status does not certify implementation, deployment or automation.
+2026-11-23. This is the reviewed implementation plan. The `reviewed` document
+status records the plan review only; it does not certify implementation,
+deployment or automation. Current implementation, validation and merge outcomes
+are recorded separately in [PR #249](https://github.com/agent-teams-ai/get-modular/pull/249).
 
 Remove the affected documentation development dependency from both current
 manager graphs, preserve the supported runtime profiles, and document the real
