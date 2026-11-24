@@ -3,13 +3,16 @@ import { compileCompositionJson } from "@get-modular/core";
 export type ProbeCase = {
   readonly name: string;
   readonly declarations: readonly string[];
-  readonly profile: string | readonly number[] | { readonly zeroBytes: number };
+  readonly profile:
+    | { readonly kind: "text"; readonly text: string }
+    | { readonly kind: "bytes"; readonly bytes: readonly number[] }
+    | { readonly kind: "zeroes"; readonly size: number };
 };
 
 function profileBytes(value: ProbeCase["profile"], encoder: TextEncoder): Uint8Array {
-  if (typeof value === "string") return encoder.encode(value);
-  if ("zeroBytes" in value) return new Uint8Array(value.zeroBytes);
-  return new Uint8Array(value);
+  if (value.kind === "text") return encoder.encode(value.text);
+  if (value.kind === "zeroes") return new Uint8Array(value.size);
+  return new Uint8Array(value.bytes);
 }
 
 /** The same packed public API and raw inputs execute on both targets. */

@@ -35,5 +35,8 @@ def hexbytes:
        profile: {zeroBytes: .over}, expectedCode: .overOutcome,
        expectedLimit: .limitName, expectedMaximum: .at, expectedActual: .over})
   ]
+| map(.profile |= (if type == "string" then {kind: "text", text: .}
+    elif type == "array" then {kind: "bytes", bytes: .}
+    else {kind: "zeroes", size: .zeroBytes} end))
 | if length >= 12 and (map(.name) | unique | length) == length
   then . else error("Missing or duplicate experiment inputs") end
