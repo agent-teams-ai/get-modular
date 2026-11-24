@@ -8,6 +8,7 @@
     "qualification/consumer-fixtures/growth/measure-source.ts",
     "qualification/consumer-fixtures/source/installed.ts",
     "qualification/consumer-fixtures/source/policy.ts",
+    "qualification/consumer-fixtures/native-readiness/probe.ts",
     "npm-release-consumer.ts"
   ],
   "include": []

@@ -1,0 +1,149 @@
+name: Experimental Core AOT probe
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/core-aot-probe.yml'
+      - 'tests/qualification/consumer-fixtures/native-readiness/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Core packed parity (experimental, Linux x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SCRIPTC_CHECKER: tsgo
+      SCRIPTC_CHECKER_SERVER: '0'
+      SCRIPTC_NO_CACHE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Initialize evidence
+        run: |
+          mkdir -p "$RUNNER_TEMP/gm-native/evidence"
+          git rev-parse HEAD > "$RUNNER_TEMP/gm-native/evidence/source-revision.txt"
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
+        with:
+          version: 11.20.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .node-version
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version-file: .bun-version
+      - name: Build the actual Core with the existing toolchain
+        run: |
+          node architecture/tooling/runtime/retained-history.ts
+          node architecture/tooling/runtime/dev.ts install
+          node architecture/tooling/runtime/dev.ts peers
+          node architecture/checks/compiler-floor.ts
+          bun run core:build
+      - name: Pack and verify independent Node consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/gm-native"
+          evidence="$root/evidence"
+          consumer="$root/consumer"
+          fixture="$GITHUB_WORKSPACE/tests/qualification/consumer-fixtures/native-readiness"
+          mkdir -p "$consumer"
+          npm pack --ignore-scripts --pack-destination "$consumer" ./packages/core
+          cd "$consumer"
+          shopt -s nullglob
+          archives=(*.tgz)
+          test "${#archives[@]}" -eq 1
+          sha256sum "${archives[0]}" > "$evidence/core-archive.sha256"
+          printf '{"type":"module","private":true}\n' > package.json
+          npm install --offline --ignore-scripts --no-audit --no-fund "./${archives[0]}"
+          cp "$fixture/probe.ts" .
+          jq -n \
+            --slurpfile norm "$GITHUB_WORKSPACE/architecture/qualification/v1/normalization-vectors.json" \
+            --slurpfile canon "$GITHUB_WORKSPACE/architecture/contracts/v1/canonical-vectors.json" \
+            --slurpfile decoder "$GITHUB_WORKSPACE/architecture/qualification/v1/decoder-vectors.json" \
+            --slurpfile resource "$GITHUB_WORKSPACE/architecture/qualification/v1/resource-boundary-vectors.json" \
+            -f "$fixture/cases.jq" > "$evidence/cases.json"
+          printf 'import { runCases, type ProbeCase } from "./probe.ts";\nconst cases: readonly ProbeCase[] = ' > entry.ts
+          jq -c 'map({name,declarations,profile})' "$evidence/cases.json" >> entry.ts
+          printf ';\nawait runCases(cases);\n' >> entry.ts
+          printf '%s\n' '{"compilerOptions":{"target":"ES2024","module":"NodeNext","moduleResolution":"NodeNext","lib":["ES2024","DOM"],"strict":true,"noUncheckedIndexedAccess":true,"exactOptionalPropertyTypes":true,"allowImportingTsExtensions":true,"noEmit":true,"skipLibCheck":false,"types":[]},"files":["entry.ts","probe.ts"]}' > tsconfig.json
+          node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" --version | tee "$evidence/reference-typescript.txt"
+          node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.json
+          node --version | tee "$evidence/node-version.txt"
+          node entry.ts > "$evidence/node.ndjson"
+          jq -e -s --slurpfile cases "$evidence/cases.json" -f "$fixture/verify.jq" "$evidence/node.ndjson"
+          echo "Reference passed: $(jq length "$evidence/cases.json") independent cases"
+      - name: Install exact standalone compiler and verify frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/gm-native"
+          evidence="$root/evidence"
+          mkdir -p "$root/compiler"
+          archive="$root/scriptc.tar.gz"
+          curl --fail --location --silent --show-error --max-time 180 \
+            https://github.com/vercel-labs/scriptc/releases/download/v0.4.16/scriptc-0.4.16-linux-x64-gnu.tar.gz \
+            --output "$archive"
+          printf '%s  %s\n' 63c9647478cb46783071ebe3ff5282fc10c8e4a110b5db464e06afb90f72e893 "$archive" \
+            | sha256sum --check | tee "$evidence/compiler-checksum.txt"
+          tar -xzf "$archive" -C "$root/compiler"
+          scriptc="$root/compiler/bin/scriptc"
+          "$scriptc" --version | tee "$evidence/scriptc-version.txt"
+          grep -Eq '(^|[[:space:]])0\.4\.16$' "$evidence/scriptc-version.txt"
+          checker="$(jq -er '.ts7' "$scriptc.json")"
+          "$root/compiler/bin/$checker" --version | tee "$evidence/scriptc-checker-version.txt"
+          # The 0.4.16 release pins TypeScript 7.1.0-beta. Never use TS5 fallback.
+          grep -F '7.1.0-beta' "$evidence/scriptc-checker-version.txt"
+          uname -a > "$evidence/platform.txt"
+          clang --version >> "$evidence/platform.txt"
+      - name: Observe coverage and build in static-only mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/gm-native"
+          evidence="$root/evidence"
+          scriptc="$root/compiler/bin/scriptc"
+          cd "$root/consumer"
+          coverage=0
+          "$scriptc" coverage entry.ts --tier=static-only --npm-static=@get-modular/core --print=diagnostics \
+            > "$evidence/coverage.json" 2> "$evidence/coverage.stderr" || coverage=$?
+          printf '%s\n' "$coverage" > "$evidence/coverage-exit.txt"
+          if ! "$scriptc" build entry.ts --tier=static-only --npm-static=@get-modular/core \
+            --print=diagnostics -o "$root/consumer/probe-native" > "$evidence/build.json" 2> "$evidence/build.stderr"; then
+            cat "$evidence/build.stderr" "$evidence/build.json"
+            exit 1
+          fi
+          test -x "$root/consumer/probe-native"
+      - name: Execute isolated artifact and compare full results
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/gm-native"
+          evidence="$root/evidence"
+          fixture="$GITHUB_WORKSPACE/tests/qualification/consumer-fixtures/native-readiness"
+          mkdir -p "$root/native"
+          cp "$root/consumer/probe-native" "$root/native/"
+          cd "$root/native"
+          file ./probe-native | tee "$evidence/artifact-type.txt"
+          readelf -d ./probe-native > "$evidence/artifact-dynamic.txt"
+          sha256sum ./probe-native > "$evidence/native.sha256"
+          stat -c %s ./probe-native > "$evidence/native-size.txt"
+          env -i PATH=/nonexistent HOME="$root/native" ./probe-native > "$evidence/native.ndjson"
+          jq -e -s --slurpfile cases "$evidence/cases.json" -f "$fixture/verify.jq" "$evidence/native.ndjson"
+          jq -s -S '.' "$evidence/node.ndjson" > "$evidence/node-normalized.json"
+          jq -s -S '.' "$evidence/native.ndjson" > "$evidence/native-normalized.json"
+          diff -u "$evidence/node-normalized.json" "$evidence/native-normalized.json"
+          echo "Experimental parity passed for $(jq length "$evidence/cases.json") cases"
+      - name: Preserve experiment evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: core-aot-probe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/gm-native/evidence
+          if-no-files-found: warn
