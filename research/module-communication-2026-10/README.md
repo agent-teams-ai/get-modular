@@ -8,7 +8,7 @@ The research prototypes remain separate from the implemented package; historical
 
 The [November 24 reconciliation](reconciliation-2026-11-24.md) preserves the
 remaining research from PRs #213 and #222 and maps the installation guidance from
-#210 to the current contract. Its [archive manifest](reconciliation-2026-11-24.json)
+PR #210 to the current contract. Its [archive manifest](reconciliation-2026-11-24.json)
 records the exact original files. The optional-adapter fixture qualifies
 independent Node test Hosts; Browser, Desktop, hostile-code containment and real
 third-party stream integrations retain separate qualification gates.

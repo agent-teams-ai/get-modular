@@ -98,8 +98,8 @@ existence is not a passing result. No production source, runtime dependency,
 package version, public API baseline, accepted ADR or enforcement scope changes.
 
 This fixture covers live synchronous occurrences in two Node integrations.
-It does not prove actual RxJS installation, tree shaking, noninstallation of an
-unused provider, replay, durable delivery, capacity or universal error handling.
+It does not prove actual RxJS installation, tree shaking, absence of an unused
+provider from the installation, replay, durable delivery, capacity or universal error handling.
 Each real integration must declare its own source semantics. The current
 [complete communication session](../../docs/guides/module-authoring.md#start-with-a-complete-session)
 and [Effect practices](../../packages/effect/docs/practices.md) retain ownership
