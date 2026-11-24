@@ -30,9 +30,10 @@ def hexbytes:
        else . end) | encoded),
      profile: ($profile | .bindings += [{consumerImplementationId:"example/database/default",slotId:"app",providerImplementationIds:["example/app/default"]}] | tojson),
      expectedCode: "graph.cycle"},
-    ($resource[0].cases[] | select(.limitName == "rawDocumentBytes") |
-      {name: "raw-document-over-limit", declarations: [],
-       profile: {zeroBytes: .over}, expectedCode: .overOutcome})
+    ($resource[0].profileV2.cases[] | select(.limitName == "profileRawDocumentBytes") |
+      {name: "raw-profile-over-limit", declarations: [],
+       profile: {zeroBytes: .over}, expectedCode: .overOutcome,
+       expectedLimit: .limitName, expectedMaximum: .at, expectedActual: .over})
   ]
 | if length >= 12 and (map(.name) | unique | length) == length
   then . else error("Missing or duplicate experiment inputs") end

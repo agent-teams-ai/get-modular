@@ -11,5 +11,11 @@
         and $result.plan == $case.expectedPlan
       else
         $result.ok == false
-        and any($result.diagnostics[]; .code == $case.expectedCode)
+        and any($result.diagnostics[];
+          .code == $case.expectedCode and
+          (if $case.expectedLimit then
+            .details.limitName == $case.expectedLimit and
+            .details.limit == $case.expectedMaximum and
+            .details.actual == $case.expectedActual
+          else true end))
       end)
