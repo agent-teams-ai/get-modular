@@ -8,6 +8,26 @@ summary: Canonical navigation for Get Modular architecture and evidence.
 
 # Documentation
 
+## Choose a task
+
+| Task | Start here | Owning contract or evidence |
+| --- | --- | --- |
+| Start a bounded application | [Consumer starting route](guides/consumer-quickstart.md#start-with-a-bounded-application) | [Consumer Module Standard](architecture/common-assembly.md#consumer-module-standard) and the consumer's accepted profile |
+| Write or extract a headless feature | [Module authoring](guides/module-authoring.md), then [portable boundaries](guides/consumer-quickstart.md#portable-headless-boundaries) | [Feature layout](architecture/common-assembly.md#feature-layout-and-implementation-form) and [package contracts](architecture/common-assembly.md#module-packages-and-contracts) |
+| Own cleanup or follow state | [Resources](../packages/resources/README.md) and [Observation](../packages/observation/README.md) | Their package contracts, trust limits and the Host's lifetime policy |
+| Choose native Effect construction | [Effect practices](../packages/effect/docs/practices.md) | The [released integration contract](../packages/effect/README.md), including its exact qualified peer |
+| Design plugin admission and distribution | [Extension Foundation research](https://github.com/agent-teams-ai/extension-foundation/blob/10deea1a11748df1fcbfc2766033c462fce3acd0/docs/research/plugin-system-research-reference.md) | Proposed research in [EF PR 55](https://github.com/agent-teams-ai/extension-foundation/pull/55); accepted EF and product contracts retain authority |
+| Plan continuous evolution or optional Headless UI | [Live Module Updates working docs](https://github.com/agent-teams-ai/live-module-updates/tree/docs/deep-critical-gaps-20261123/docs) | Proposed work in [LMU PR 1](https://github.com/agent-teams-ai/live-module-updates/pull/1), with source and qualification limits |
+| Work on the compiler | [Current contract](architecture/current-contract.md), then [phase reading map](architecture/mvp-implementation-roadmap.md#phase-reading-and-delivery-map) | Accepted decisions and exact qualification inputs |
+
+Current package usage and consumer rules live in the package READMEs and CMS.
+The evidence section below preserves why earlier choices were made and what
+their exact subjects proved. Research, TEST fixtures, package publication and
+production adoption are separate claims. The
+[SDK growth status](../architecture/sdk-growth/status.json) owns its pending
+activation; the [kernel contract](../packages/lifecycle-kernel/README.md) owns
+its candidate status. Neither is a prerequisite for ordinary static composition.
+
 ## Architecture
 
 - [Consumer quickstart](guides/consumer-quickstart.md) - install, compile,
@@ -49,6 +69,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Event and stream failure research](https://github.com/agent-teams-ai/get-modular/blob/85d3716bcc620c1f5fc053bd519b4f03d4625404/research/module-communication-2026-10/industry-evidence-and-negative-patterns-2026-11-01.md) and [adversarial scope review](https://github.com/agent-teams-ai/get-modular/blob/85d3716bcc620c1f5fc053bd519b4f03d4625404/research/module-communication-2026-10/adversarial-recheck-2026-11-01.md) - preserved proposed evidence from [PR 222](https://github.com/agent-teams-ai/get-modular/pull/222), not a shared event runtime or an adoption decision.
 - [Typed build custody and construction verification](qualification/typed-build-custody-2026-11.md) - bounded E2E refactor plan, independent review and verification record.
 - [Foundational runtime refactor](qualification/foundational-runtime-refactor-2026-11.md) - audit findings, bounded preparation and ownership fixes, verification plan and review record.
 - [Current TypeScript tooling qualification](qualification/native-typescript-tooling.md) - current native compiler scope, historical input custody and the separate release handoff.

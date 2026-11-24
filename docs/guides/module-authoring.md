@@ -22,8 +22,8 @@ modules. The [Consumer Module Standard](../architecture/common-assembly.md#consu
 only as a one-line summary with a link. Pin both at the same commit. Where they
 differ, the CMS wins and the guide has a bug.
 
-Every complete example below is compiled by `tests/assembly/consumer-standard-examples.test.mjs`
-on both supported compilers and both module resolutions, so the code is what you
+Every complete example below is compiled by `tests/assembly/consumer-standard-examples.test.ts`
+on each distinct supported compiler version and both module resolutions, so the code is what you
 should copy. The example project has the features `infra`, `orders` and `billing`;
 `orders` has the sub-feature `discounts`. `orders` `checkout` uses `Discounts`
 (downward), `discounts` uses `OrderLines` from `orders` (upward), and `billing`
@@ -877,8 +877,9 @@ features/orders/                         features/orders/
 ## 9. Resources
 
 Subscriptions use the receiving module's scope and bind to its signal. Prefer
-`watch` or `load` for observed state; wrap a returned disposer only for a
-provider that uses that older shape. See [module communication](#21-module-communication)
+`watch` or `load` for observed state. Acquire an external subscription inside
+`resources.setup`, including when `subscribe` returns synchronously: it can call
+user code before returning. See [module communication](#21-module-communication)
 and [CMS resource rule 5](../architecture/common-assembly.md#module-resource-scopes).
 
 A module owns something to release when it acquires it: a connection, a timer, a
@@ -894,14 +895,15 @@ it before closing, or make each operation a `child()`). The thirteen rules are t
 If `resources` is missing from the context, TypeScript reports TS2339 "Property
 'resources' does not exist on type 'FactoryContext'": the adapter is missing.
 
-A module that opens a client with `resources.setup` and registers a subscription
-disposer:
+A module that opens a client and acquires a subscription with `resources.setup`:
 
 <!-- module-authoring-example: resources -->
 
 ```ts
 // src/features/infra/contracts/events.ts
-export type EventsPort = { readonly subscribe: (listener: (orderId: string) => void) => () => void };
+// A live, synchronous notification source. No replay, async work or durable delivery.
+// If subscribe throws, the provider rolls back its own partial subscription.
+export type EventsPort = { readonly subscribe: (listener: (orderId: string) => undefined) => () => void };
 ```
 
 ```ts
@@ -964,13 +966,42 @@ export const orderStoreModule = implement<OrdersCapabilities>()(orderStoreDeclar
       setup: ({ signal }) => PgOrders.create("postgres://orders", signal),
       cleanup: (client) => client.close(),
     });
-    // The subscription lives in this module's scope: its disposer runs before the client closes.
-    resources.use({ [Symbol.dispose]: deps.events.subscribe(pg.forget) }, "events");
+    // Reserve acquisition custody before subscribe can call user code or start scope closure.
+    await resources.setup({
+      name: "events",
+      setup: ({ signal }) => {
+        signal.throwIfAborted();
+        return deps.events.subscribe((orderId) => {
+          if (!signal.aborted) pg.forget(orderId);
+        });
+      },
+      cleanup: (unsubscribe) => unsubscribe(),
+    });
     // Never pass the client as the port: expose only the port members so `close` stays with the owner.
     const port: OrderStorePort = { find: pg.find };
     return { instance: port, capabilities: { "acme/orders/order-store": port } };
   }, scoped);
 ```
+
+`setup` retains the returned disposer even if subscription acquisition starts
+closing the scope. An already-held disposable can still be transferred with
+`use`; if that registration throws, its caller still owns the value. Do not
+acquire inline inside `use`, where a reentrant close can leave the new resource
+unregistered.
+
+The signal check suppresses new listener effects as soon as cancellation is
+requested. It does not itself detach the source; registered cleanup does that.
+If unsubscribe fails while the subscription remains attached, the scope reports
+cleanup debt and the Host can retry. A provider that attaches and then throws
+before returning a disposer must undo its own partial acquisition: no scope can
+release a handle it never received.
+
+This listener is synchronous. Its `undefined` return type rejects an `async`
+function at the typed boundary, but cannot prevent code from starting detached
+work. The source owns its listener-error and reentrant-delivery policy; this
+example does not add error isolation or a queue. If a handler starts asynchronous
+work, its owner must separately stop admission and await physical completion
+before releasing dependencies. Unsubscribe and abort are not that completion.
 
 ## 10. A stateful adapter as a class
 

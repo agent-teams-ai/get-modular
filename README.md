@@ -7,6 +7,16 @@ turns inert module declarations and an explicit profile into a deterministic,
 immutable composition plan. Product hosts retain authorization, executable
 loading, lifecycle, readiness, publication, routing, and recovery authority.
 
+## Start an application
+
+Follow the [consumer starting route](docs/guides/consumer-quickstart.md#start-with-a-bounded-application)
+and [task map](docs/README.md#choose-a-task) for current module authoring,
+portable headless boundaries and separately owned plugin/update research.
+Keep feature behavior behind consumer-owned ports, with Get Modular in the
+outer composition adapter. Changing accepted consumer pins requires a reviewed migration.
+
+## Work on Get Modular
+
 Bun 1.4.3 is the default repository manager and development-tool runtime.
 Node.js 26.11.1 remains the explicit runtime for native compiler controls,
 `node:test`, packed qualification and release tooling. Node.js 24.21.0 is the
