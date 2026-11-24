@@ -260,6 +260,20 @@ qualification route, separate from the projected rollback profile.
 CI must prove all routes on the candidate
 head; configuration alone records no successful run.
 
+Dependency security maintenance uses the same owner PR route. As of 2026-11-23,
+[GitHub supports Bun version updates but not Bun security updates](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories).
+The retained pnpm lockfile does not make automatic security updates work for
+the Bun-managed root. For an alert or reported advisory, select a supported
+upstream fix, update the YAML catalog and its root projection together, and
+regenerate both locks with their pinned managers in separate manager roots.
+Validate actual frozen Bun and projected Node/pnpm installations, the affected
+consumer command and the unchanged required checks before the owner merge.
+Keep the organization security settings and update owner unchanged. This manual
+route does not certify automatic security PR generation or remote alert closure;
+those require their own observed outcome. The
+[bounded documentation-parser update](../qualification/dependency-security-2026-11.md)
+records the support limit and the independent installation checks.
+
 This is a fixed development-tooling relationship inside `repository.development`,
 not an independently assembled capability. It creates no Core/Assembly graph
 node and has no generation/resource lifetime needing the lifecycle kernel.
@@ -276,15 +290,21 @@ policy remain local. Copying Foundation's complete Host runtime would duplicate
 policy and lifecycle ownership. No broad reusable runtime SPI is claimed.
 
 The current Consumer Module Standard review pins exact source checkpoint
-`c25a498e4ac6d959072571e1b2e7cccc95258e23`, blob
-`3cd861ac20e6ee825c4f54c1ffb325b622f60d08`, with full-document SHA-256
-`8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b`.
-Its complete delta from reviewed `49f09f51` clarifies the existing preparation
-envelope in one hunk with six additions. Module entries and borrowed inputs share
-the selected-entry ceiling; module entries and group nodes separately share the
+`16d096d23d4a0232c4eab46520d42153baa4e338`, blob
+`12ccc2fa8a6f267d1008bc6fec64a055923d7f78`, with full-document SHA-256
+`ef5044eef1da7a01f3ca40323cd17d9f2597fc22b5abb905c7c77e5318b408d7`.
+Its two-hunk delta from reviewed `c25a498e` clarifies existing subscription
+acquisition custody and links the strict TypeScript example runner. Acquire
+subscriptions through `resources.setup` when provider callbacks can close the
+scope before returning a disposer; `use` transfers an already-held resource.
+This source checkpoint does not establish a release or product adoption.
+
+The preceding preparation-envelope review retains its one-hunk, six-addition
+delta from `49f09f51`. Module entries and borrowed inputs share the
+selected-entry ceiling; module entries and group nodes separately share the
 module-tree ceiling. The combined entry check precedes metadata collection and
 profile completion. Valid boundary cases and the composition contract remain
-unchanged. The source checkpoint does not establish a release or product adoption.
+unchanged.
 
 The preceding native Effect successor still records ADR-0043's optional native
 construction over shared inert Assembly preparation. Ordinary Promise authoring,
@@ -301,7 +321,7 @@ descriptor, and custom maps keep their complete interface until a separate
 compatibility proof. The Host continues to compose complete public parent maps.
 This uses existing TypeScript and Assembly types and adds no runtime mechanism.
 
-The prior P0, 300e, Bun, drain, descriptor-union, native Effect and selected-flat
+The prior P0, 300e, Bun, drain, descriptor-union, native Effect, preparation and selected-flat
 reviews and complete snapshots remain authenticated, including their accepted
 ADR and dated measurement bytes.
 The historical raw delta from upstream descriptor-union source `b70ba393` to

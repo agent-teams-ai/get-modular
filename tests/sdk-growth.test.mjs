@@ -197,7 +197,7 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("previous current pin is stale", () => rejectCms(model => {
     model.cmsReview.acceptedCurrent = { ...model.cmsReview.delta.fromAcceptedCurrent };
   }, /current CMS pin/u));
-  await t.test("preparation-envelope clarification cannot claim a new composition contract", () => rejectCms(model => {
+  await t.test("subscription custody guidance cannot claim a new composition contract", () => rejectCms(model => {
     model.cmsReview.delta.changesGetModularCompositionContract = true;
   }, /CMS delta review/u));
   for (const field of ["cmsBytes", "cmsPreviousBytes", "cmsP0Bytes", "cmsSourceBytes", "cmsDeltaBytes", "cmsPreviousReviewBytes",
@@ -208,7 +208,9 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
     "cmsDescriptorPreviousBytes", "cmsDescriptorDeltaBytes", "cmsDescriptorReviewBytes",
     "cmsDescriptorGrowthPreviousBytes", "cmsDescriptorGrowthDeltaBytes", "cmsDescriptorGrowthReviewBytes",
     "cmsNativeDecisionBytes", "cmsNativePreviousBytes", "cmsNativeDeltaBytes", "cmsNativeReviewBytes",
-    "cmsNativeGrowthPreviousBytes", "cmsNativeGrowthDeltaBytes", "cmsNativeGrowthReviewBytes"]) {
+    "cmsNativeGrowthPreviousBytes", "cmsNativeGrowthDeltaBytes", "cmsNativeGrowthReviewBytes",
+    "cmsPreparationPreviousBytes", "cmsPreparationDeltaBytes", "cmsPreparationReviewBytes",
+    "cmsPreparationGrowthPreviousBytes", "cmsPreparationGrowthDeltaBytes", "cmsPreparationGrowthReviewBytes"]) {
     await t.test(field, () => rejectCms(model => {
       model[field] = Buffer.from("substituted input");
     }, /CMS .*bytes/u));
@@ -252,10 +254,10 @@ test("CMS guidance authenticates migrated inputs without promoting pending adopt
   await t.test("guidance cannot activate adoption", () => rejectCms(model => {
     model.cmsReview.scopeReview.activation = "active";
   }, /CMS scope review/u));
-  await t.test("previous composition review cannot be rewritten", () => rejectCms(model => {
+  await t.test("previous preparation review cannot be rewritten", () => rejectCms(model => {
     const previous = JSON.parse(model.cmsPreviousReviewBytes.toString("utf8"));
-    previous.delta.changesGetModularCompositionContract = false;
-    model.cmsPreviousReviewBytes = Buffer.from(JSON.stringify(previous));
+    previous.delta.changesGetModularCompositionContract = true;
+    model.cmsPreviousReviewBytes = Buffer.from(`${JSON.stringify(previous, null, 2)}\n`);
   }, /CMS retained delta or previous review bytes/u));
   await t.test("current review cannot rewrite historical P0", () => rejectCms(model => {
     model.feasibility.sourceCommit = model.cmsReview.acceptedCurrent.commit;
@@ -296,6 +298,9 @@ test("CMS evidence loading rejects absent current and historical inputs", async 
     "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.diff",
     "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/previous-review.json",
     "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/growth-previous-source.ts.txt",
+    "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.diff",
+    "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/previous-review.json",
+    "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/growth-previous-source.ts.txt",
     "docs/decisions/0041-preserve-complete-feature-maps-with-descriptor-unions.md",
     "docs/decisions/0043-plan-optional-native-effect-composition.md"])) {
     await t.test(path, async () => {

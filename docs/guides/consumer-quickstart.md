@@ -17,11 +17,69 @@ Use Core to validate composition data and create a deterministic plan. Add
 Assembly when the Host also needs to construct already selected and authorized
 factories.
 
+## Start with a bounded application
+
+Choose the first useful feature and its owning application before selecting
+runtime mechanisms. Use the existing
+[Consumer Module Standard](../architecture/common-assembly.md#consumer-module-standard)
+and [consumer profile](../templates/consumer-module-profile.md) to record its
+composition root, reviewed package and standard pins, supported runtime, trust
+assumptions, resource owner and actual verification commands. An existing
+consumer follows its accepted scope until its own reviewed migration.
+
+Implement the feature behind consumer-owned typed ports, assemble its selected
+providers, and test that actual root through the
+[module authoring route](module-authoring.md#17-tests).
+Preparation rejection must occur before factory effects; lifetime tests cover
+what this feature actually acquires or borrows. This delivers a static module
+boundary without requiring plugin discovery or the private lifecycle kernel.
+
+The next boundary is explicit: executable plugin admission belongs to the
+product and Extension Foundation; live replacement needs its own preparation,
+authority, state, drain and recovery evidence. The
+[foundation research route](../README.md#choose-a-task) locates that work.
+It does not turn an ordinary application start into a whole-system update claim.
+
+## Portable headless boundaries
+
+Keep feature behavior, domain state rules and consumer-owned port types usable
+without an application UI, transport or Get Modular import. The
+[CMS layout rules](../architecture/common-assembly.md#feature-layout-and-implementation-form)
+put declarations, entries and selected implementations in outer composition.
+A reusable package can keep that GM adapter separate from its portable core;
+the [package rules](../architecture/common-assembly.md#module-packages-and-contracts)
+govern the peers of an adapter that imports GM. Each Host supplies its compatible
+runtime copies. A similar TypeScript interface alone proves neither compatible
+behavior nor physical runtime identity.
+
+For reuse across applications, identify two intended Hosts and run the same
+contract suite against their real adapters. Record error, cancellation, ordering,
+state and resource-ownership semantics in the owning contract. A second Host
+qualifies the portability claim; it is not a prerequisite for implementing the
+first application's ordinary feature. A UI renderer is an optional adapter to
+that feature's capabilities. The proposed declarative Headless UI surface is
+part of [Live Module Updates research](https://github.com/agent-teams-ai/live-module-updates/tree/docs/deep-critical-gaps-20261123/docs),
+not a Get Modular API or an accepted cross-application schema.
+
+Use [Resources](../../packages/resources/README.md) for owned cooperative cleanup
+and [Observation](../../packages/observation/README.md#mechanism-and-trust) only
+when a consumer needs to follow replaceable state. Neither is a plugin SPI,
+authorization boundary or proof of physical release. Observation does not own
+canonical product state, route fencing or durable delivery; its
+[platform limits](../../packages/observation/README.md#known-items-and-revisit-triggers)
+still apply. Node qualification does not establish browser or Electron renderer
+qualification. Add platform adapters and evidence for the actual runtime used.
+
+## Install the reviewed package pair
+
 ```sh
-npm install @get-modular/core@0.8.0 @get-modular/assembly@0.8.0
+npm install --save-exact @get-modular/core@0.8.0 @get-modular/assembly@0.8.0
 ```
 
-These versions are published on npm.
+These versions are published on npm. Commit the selected versions and lockfile,
+then use the consumer's frozen installation in CI. Review changelogs, matching
+Core/Assembly versions and package peers before changing a pre-1.0 minor. This
+recipe does not migrate an existing consumer's accepted pins.
 
 Add `@get-modular/resources@0.2.2` when modules own resources that need cleanup,
 and `@get-modular/conformance@0.5.2` as a development dependency for module and

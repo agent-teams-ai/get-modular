@@ -318,15 +318,16 @@ The earlier review observations above remain historical. SDK activation remains
 on HOLD. This tooling integration changes no production composition boundary.
 
 The current reviewed standard is now source checkpoint
-`c25a498e4ac6d959072571e1b2e7cccc95258e23`, Git blob
-`3cd861ac20e6ee825c4f54c1ffb325b622f60d08`, SHA-256
-`8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b`.
-Its one-hunk, six-addition delta clarifies the existing combined module/input
-entry ceiling and the separate module-tree budget. It changes no composition
-contract or release-tooling boundary. The preceding ADR-0043 native Effect review,
-its exact delta and all earlier reviews remain authenticated by the SDK guidance
-owner. Ordinary Promise ownership remains intact. This source-candidate pin
-does not claim registry publication, production adoption or SDK activation.
+`16d096d23d4a0232c4eab46520d42153baa4e338`, Git blob
+`12ccc2fa8a6f267d1008bc6fec64a055923d7f78`, SHA-256
+`ef5044eef1da7a01f3ca40323cd17d9f2597fc22b5abb905c7c77e5318b408d7`.
+Its two-hunk delta clarifies existing subscription acquisition custody and the
+strict TypeScript example runner. It changes no composition contract or
+release-tooling boundary. The preceding preparation-envelope and ADR-0043 native
+Effect reviews, their exact deltas and all earlier reviews remain authenticated
+by the SDK guidance owner. Ordinary Promise ownership remains intact. This
+source-candidate pin does not claim registry publication, production adoption
+or SDK activation.
 
 ## Coordinated metadata patch
 

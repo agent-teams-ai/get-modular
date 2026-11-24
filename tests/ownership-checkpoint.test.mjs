@@ -190,11 +190,11 @@ test("observations bind historical lock bytes, production importers and reviewed
   const historicalCms = execFileSync("git", ["show", `${checkpoint.evidence.base}:${cmsPath}`]);
   assert.equal(digest(historicalCms), checkpoint.evidence.cms.digest,
     "C0 retains the CMS bytes observed at its base");
-  // The reviewed preparation-envelope clarification preserves ADR-0043,
-  // complete-map authoring and every historical C0 observation.
+  // The reviewed subscription-custody clarification preserves the preparation
+  // envelope, ADR-0043, complete-map authoring and every historical C0 observation.
   const currentCms = readFileSync(cmsPath);
   assert.equal(digest(currentCms),
-    "sha256:8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b",
+    "sha256:ef5044eef1da7a01f3ca40323cd17d9f2597fc22b5abb905c7c77e5318b408d7",
     "the current CMS successor must match its separately reviewed bytes");
   // Package versions are observations at the evidence base; later releases move the working tree.
   for (const [name, version] of Object.entries(checkpoint.evidence.packages)) {

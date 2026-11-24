@@ -17,6 +17,11 @@ For admission, graph or diagnostic work, also read the [compiler engineer handbo
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
 For module authoring, read docs/guides/module-authoring.md.
+For a new application foundation or portable headless component, begin with the
+[consumer starting route](docs/guides/consumer-quickstart.md#start-with-a-bounded-application)
+and [task map](docs/README.md#choose-a-task). They route to the existing CMS,
+package contracts and separately owned plugin/update research; they do not
+replace implementation prerequisites, qualify a consumer or admit a new SPI.
 For Effect integration or Effect-native consumer work, read the
 [Effect integration practices](packages/effect/docs/practices.md)
 and their linked accepted decision and qualification evidence. Read the package
