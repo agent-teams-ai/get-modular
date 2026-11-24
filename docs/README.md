@@ -69,6 +69,7 @@ resource policy is the single profile described in the current contract.
 
 ## Evidence
 
+- [Documentation dependency security plan](qualification/dependency-security-2026-11.md) - bounded parser update plan, dual-manager checks and the Bun security-update support limit.
 - [Event and stream failure research](https://github.com/agent-teams-ai/get-modular/blob/85d3716bcc620c1f5fc053bd519b4f03d4625404/research/module-communication-2026-10/industry-evidence-and-negative-patterns-2026-11-01.md) and [adversarial scope review](https://github.com/agent-teams-ai/get-modular/blob/85d3716bcc620c1f5fc053bd519b4f03d4625404/research/module-communication-2026-10/adversarial-recheck-2026-11-01.md) - preserved proposed evidence from [PR 222](https://github.com/agent-teams-ai/get-modular/pull/222), not a shared event runtime or an adoption decision.
 - [Typed build custody and construction verification](qualification/typed-build-custody-2026-11.md) - bounded E2E refactor plan, independent review and verification record.
 - [Foundational runtime refactor](qualification/foundational-runtime-refactor-2026-11.md) - audit findings, bounded preparation and ownership fixes, verification plan and review record.

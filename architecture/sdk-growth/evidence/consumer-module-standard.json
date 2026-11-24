@@ -10,42 +10,44 @@
     "sha256": "e6cd8d26b4317bf5f94ddd22f6e36bf25e90548f72265d94808eaf20b947e553"
   },
   "acceptedCurrent": {
-    "commit": "c25a498e4ac6d959072571e1b2e7cccc95258e23",
-    "gitBlob": "3cd861ac20e6ee825c4f54c1ffb325b622f60d08",
-    "sha256": "8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b"
+    "commit": "16d096d23d4a0232c4eab46520d42153baa4e338",
+    "gitBlob": "12ccc2fa8a6f267d1008bc6fec64a055923d7f78",
+    "sha256": "ef5044eef1da7a01f3ca40323cd17d9f2597fc22b5abb905c7c77e5318b408d7"
   },
   "delta": {
-    "classification": "preparation-envelope-clarification",
+    "classification": "external-subscription-acquisition-guidance",
     "fromAcceptedCurrent": {
-      "commit": "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
-      "gitBlob": "465c3645a8108205a2026c965e5ff1269f32e75e",
-      "sha256": "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8"
+      "commit": "c25a498e4ac6d959072571e1b2e7cccc95258e23",
+      "gitBlob": "3cd861ac20e6ee825c4f54c1ffb325b622f60d08",
+      "sha256": "8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b"
     },
-    "changedHunks": 1,
-    "removedLines": 0,
-    "addedLines": 6,
+    "changedHunks": 2,
+    "removedLines": 3,
+    "addedLines": 7,
     "semanticChanges": [
-      "Clarify the existing 4096 selected-entry ceiling: module entries and borrowed input entries count together before metadata collection or profile completion.",
-      "The separate 4096 module-tree budget counts module entries and group nodes, not borrowed inputs. Grouping can preserve a valid mixed inventory at the selected-entry limit.",
-      "This corrects enforcement of the existing preparation envelope without changing valid composition semantics, public error vocabulary, Core compilation or distinct Promise and native resource ownership.",
-      "SDK growth remains fixed development tooling without native Effect adoption; complete descriptor-union authoring, HOLD, four authority blockers, historical evidence and fresh current-source qualification remain unchanged."
+      "Clarify existing Resources acquisition custody: resources.use transfers an already-held disposer, and refusal leaves its cleanup with the caller.",
+      "Acquire a subscription through resources.setup when subscribe can call user code before returning; check its signal before acquisition and each synchronous listener effect, with unsubscribe owned by cleanup.",
+      "The provider must roll back acquisition that throws before returning a disposer. The linked authoring recipe demonstrates these existing rules without adding transport or task execution.",
+      "Update the example qualification link from consumer-standard-examples.test.mjs to its maintained TypeScript filename consumer-standard-examples.test.ts.",
+      "Core and Assembly composition, Resources runtime and public APIs, ADR-0041 complete descriptor-union authoring, ADR-0043 native construction and the reviewed preparation envelope remain unchanged.",
+      "SDK growth remains fixed development tooling on HOLD with the same four authority blockers. The selected flat growth fixture adds no subscription, Resources, Observation or native Effect use; changed source pin bytes require fresh current-source qualification, not promotion of historical results."
     ],
     "changesGetModularCompositionContract": false,
     "pinAction": "advance-reviewed-current-pin-with-historical-pin-retained"
   },
   "retainedEvidence": {
-    "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.txt",
-    "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.txt",
+    "currentDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261124/common-assembly.txt",
+    "previousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.txt",
     "p0DocumentPath": "architecture/sdk-growth/evidence/cms-guidance-20261020/previous-common-assembly.txt",
-    "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.diff",
-    "deltaSha256": "51453afb49f2c2aab94e2b5d3c41e6f1bc6f5ecf244e79ac0b7aae111d25dd54",
-    "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/previous-review.json",
-    "previousReviewSha256": "70826c9ea77b66409abf83de4fef7843f3571c60037a66d420f9927db246cf81",
-    "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-native-effect-20261111/common-assembly.txt",
-    "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.diff",
-    "growthDeltaSha256": "51453afb49f2c2aab94e2b5d3c41e6f1bc6f5ecf244e79ac0b7aae111d25dd54",
-    "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/growth-previous-source.ts.txt",
-    "growthPreviousReviewSha256": "b850eca94356b196a83b6c6a6b9b3e2e33ed4b3bb4cf8bad345ff4a45500905c"
+    "deltaPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261124/common-assembly.diff",
+    "deltaSha256": "84da569e683d3317623df92e5eed52ab696305f5dd55a41482176adf11019def",
+    "previousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261124/previous-review.json",
+    "previousReviewSha256": "c6f90016dc28e08cd050794494fef8cb3c2e16aa0c7f8838b1d624c6829b32de",
+    "growthPreviousDocumentPath": "architecture/sdk-growth/evidence/cms-guidance-preparation-bounds-20261113/common-assembly.txt",
+    "growthDeltaPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261124/common-assembly.diff",
+    "growthDeltaSha256": "84da569e683d3317623df92e5eed52ab696305f5dd55a41482176adf11019def",
+    "growthPreviousReviewPath": "architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261124/growth-previous-source.ts.txt",
+    "growthPreviousReviewSha256": "e6d8e168f99340193c92e76e1fc524a8d2c0a970163862249d53364a41a3bed0"
   },
   "scopeReview": {
     "scope": "sdk-growth-development-tooling",
@@ -63,11 +65,11 @@
   },
   "growthScopeReview": {
     "previousCurrent": {
-      "commit": "49f09f5121ea6da544dd98f3c1cf7015e38c66cc",
-      "gitBlob": "465c3645a8108205a2026c965e5ff1269f32e75e",
-      "sha256": "465af8168f6bf18e1d651e902de778245a65a03e1cb48305db14b530a536d3a8"
+      "commit": "c25a498e4ac6d959072571e1b2e7cccc95258e23",
+      "gitBlob": "3cd861ac20e6ee825c4f54c1ffb325b622f60d08",
+      "sha256": "8d07cca2d78dbcf5422a0394425d84ee4833839ae180a5e2133791557e0b735b"
     },
-    "classification": "preparation-envelope-guidance",
+    "classification": "external-subscription-acquisition-guidance",
     "changesSelectedFlatCompositionContract": false,
     "authoringRepresentation": "complete-descriptor-union-separate-bases",
     "observation": "not-selected",
