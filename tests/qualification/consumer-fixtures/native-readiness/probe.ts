@@ -17,12 +17,17 @@ function profileBytes(value: ProbeCase["profile"], encoder: TextEncoder): Uint8A
 
 /** The same packed public API and raw inputs execute on both targets. */
 export async function runCases(cases: readonly ProbeCase[]): Promise<void> {
+  console.error("[core-aot] cases:start");
   const encoder = new TextEncoder();
   for (const item of cases) {
-    const result = await compileCompositionJson({
-      declarations: item.declarations.map((declaration) => encoder.encode(declaration)),
-      profile: profileBytes(item.profile, encoder),
-    });
+    console.error(`[core-aot] ${item.name}:encode`);
+    const declarations = item.declarations.map((declaration) => encoder.encode(declaration));
+    const profile = profileBytes(item.profile, encoder);
+    console.error(`[core-aot] ${item.name}:invoke`);
+    const result = await compileCompositionJson({ declarations, profile });
+    console.error(`[core-aot] ${item.name}:serialize`);
     console.log(JSON.stringify({ name: item.name, result }));
+    console.error(`[core-aot] ${item.name}:complete`);
   }
+  console.error("[core-aot] cases:complete");
 }

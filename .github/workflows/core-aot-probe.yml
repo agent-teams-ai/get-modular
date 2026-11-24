@@ -69,14 +69,16 @@ jobs:
             --slurpfile decoder "$GITHUB_WORKSPACE/architecture/qualification/v1/decoder-vectors.json" \
             --slurpfile resource "$GITHUB_WORKSPACE/architecture/qualification/v1/resource-boundary-vectors.json" \
             -f "$fixture/cases.jq" > "$evidence/cases.json"
-          printf 'import { runCases, type ProbeCase } from "./probe.ts";\nconst cases: readonly ProbeCase[] = ' > entry.ts
+          printf 'import { runCases, type ProbeCase } from "./probe.ts";\nconsole.error("[core-aot] entry:start");\nconst cases: readonly ProbeCase[] = ' > entry.ts
           jq -c 'map({name,declarations,profile})' "$evidence/cases.json" >> entry.ts
           printf ';\nawait runCases(cases);\n' >> entry.ts
           printf '%s\n' '{"compilerOptions":{"target":"ES2024","module":"NodeNext","moduleResolution":"NodeNext","lib":["ES2024","DOM"],"strict":true,"noUncheckedIndexedAccess":true,"exactOptionalPropertyTypes":true,"allowImportingTsExtensions":true,"noEmit":true,"skipLibCheck":false,"types":[]},"files":["entry.ts","probe.ts"]}' > tsconfig.json
           node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" --version | tee "$evidence/reference-typescript.txt"
           node "$GITHUB_WORKSPACE/node_modules/typescript/bin/tsc" -p tsconfig.json
           node --version | tee "$evidence/node-version.txt"
-          node entry.ts > "$evidence/node.ndjson"
+          node entry.ts > "$evidence/node.ndjson" 2> "$evidence/node.stderr"
+          grep -Fxq "[core-aot] entry:start" "$evidence/node.stderr"
+          grep -Fxq "[core-aot] cases:complete" "$evidence/node.stderr"
           jq -e -s --slurpfile cases "$evidence/cases.json" -f "$fixture/verify.jq" "$evidence/node.ndjson"
           echo "Reference passed: $(jq length "$evidence/cases.json") independent cases"
       - name: Install exact standalone compiler and verify frontend
@@ -134,7 +136,14 @@ jobs:
           readelf -d ./probe-native > "$evidence/artifact-dynamic.txt"
           sha256sum ./probe-native > "$evidence/native.sha256"
           stat -c %s ./probe-native > "$evidence/native-size.txt"
-          env -i PATH=/nonexistent HOME="$root/native" ./probe-native > "$evidence/native.ndjson"
+          native_exit=0
+          env -i PATH=/nonexistent HOME="$root/native" ./probe-native \
+            > "$evidence/native.ndjson" 2> "$evidence/native.stderr" || native_exit=$?
+          printf '%s\n' "$native_exit" > "$evidence/native-exit.txt"
+          cat "$evidence/native.stderr"
+          if [ "$native_exit" -ne 0 ]; then
+            exit "$native_exit"
+          fi
           jq -e -s --slurpfile cases "$evidence/cases.json" -f "$fixture/verify.jq" "$evidence/native.ndjson"
           jq -s -S '.' "$evidence/node.ndjson" > "$evidence/node-normalized.json"
           jq -s -S '.' "$evidence/native.ndjson" > "$evidence/native-normalized.json"
