@@ -253,16 +253,40 @@ test("Foundation rejects private deep imports even across an allowed edge", asyn
   assert.match(rules(report), /architecture\.source-dependencies\.cross-boundary-local-import-not-entrypoint/u);
 });
 
+// Mutate the actual owned source rather than replacing its implementation.
 for (const [name, statement, rule] of [
   ["Node builtin", 'import "node:fs";', "forbidden-builtin-dependency"],
+  ["bare Node builtin", 'import "fs";', "forbidden-builtin-dependency"],
+  ["builtin reexport", 'export { readFileSync as fixtureRead } from "node:fs";', "forbidden-builtin-dependency"],
+  ["builtin type import", 'import type { Stats as FixtureStats } from "node:fs"; export type FixtureLeak = FixtureStats;', "forbidden-builtin-dependency"],
+  ["builtin type query", 'export type FixtureLeak = import("node:fs").Stats;', "forbidden-builtin-dependency"],
+  ["literal dynamic builtin", 'void import("node:fs");', "forbidden-builtin-dependency"],
   ["development package", 'import "@agent-teams/engineering-foundation";', "forbidden-package-dependency"],
-  ["hidden dynamic import", 'const target = "somewhere"; void import(target);', "unresolved-runtime-reference"],
+  ["hidden dynamic import", 'const fixtureTarget = "node:fs"; void import(fixtureTarget);', "unresolved-runtime-reference"],
 ]) {
   test(`Foundation rejects ${name} in portable production`, async () => {
-    const report = await checkFixture(files => files.set(`${implementationRoot}/factory.ts`, statement + "\n"));
-    assert.ok(rules(report).includes(`architecture.source-dependencies.${rule}`), rules(report));
+    const path = `${implementationRoot}/factory.ts`;
+    const report = await checkFixture(files => {
+      assert.ok(files.has(path));
+      files.set(path, files.get(path) + "\n" + statement + "\n");
+    });
+    assert.equal(report.outcome, "violations", JSON.stringify(report));
+    assert.match(rules(report), /architecture\.source-dependencies\./u);
+    assert.ok(report.capabilities[0].diagnostics.some(item =>
+      item.ruleId === `architecture.source-dependencies.${rule}`
+      && item.location.path === path), JSON.stringify(report));
   });
 }
+
+test("Foundation accepts a local require name in portable production", async () => {
+  const path = `${implementationRoot}/factory.ts`;
+  const report = await checkFixture(files => {
+    assert.ok(files.has(path));
+    files.set(path, files.get(path) + '\nexport function fixtureValue(require: (value: string) => string) { return require("node:fs"); }\n');
+  });
+  assert.equal(report.outcome, "passed", JSON.stringify(report));
+  assert.equal(rules(report), "");
+});
 
 for (const typeOnly of [false, true]) {
   test(`Foundation rejects an allowed-edge ${typeOnly ? "type-only" : "runtime"} cycle`, async () => {
@@ -458,6 +482,15 @@ async function checkQualificationFixture(change = () => {}) {
 
 test("Foundation admits the finite qualification builtin allowances", async () => {
   const report = await checkQualificationFixture();
+  assert.equal(report.outcome, "passed", JSON.stringify(report));
+  assert.equal(rules(report), "");
+});
+
+test("Foundation allows bare and prefixed filesystem access at the declared development owner", async () => {
+  const report = await checkQualificationFixture(files => {
+    files.set(qualificationRunner, files.get(qualificationRunner)
+      + 'import "fs"; export type FixtureStats = import("node:fs").Stats;\n');
+  });
   assert.equal(report.outcome, "passed", JSON.stringify(report));
   assert.equal(rules(report), "");
 });
