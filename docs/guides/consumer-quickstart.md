@@ -17,28 +17,34 @@ Use Core to validate composition data and create a deterministic plan. Add
 Assembly when the Host also needs to construct already selected and authorized
 factories.
 
-## Start with a bounded application
+## Qualify the foundation before an application
 
-Choose the first useful feature and its owning application before selecting
-runtime mechanisms. Use the existing
+Start with representative library-owned fixtures, discriminating spikes and
+independently wired test Hosts. Exercise meaningful output, invalid composition,
+resource ownership, failure and reset before a real application depends on the
+foundation. The [existing consumer fixtures](../../tests/qualification/consumer-fixtures/README.md)
+provide concrete source, installed-package, lifetime and recovery subjects;
+their results remain separate. Use the existing
 [Consumer Module Standard](../architecture/common-assembly.md#consumer-module-standard)
-and [consumer profile](../templates/consumer-module-profile.md) to record its
-composition root, reviewed package and standard pins, supported runtime, trust
-assumptions, resource owner and actual verification commands. An existing
-consumer follows its accepted scope until its own reviewed migration.
+and [consumer profile](../templates/consumer-module-profile.md) to identify each
+test composition, reviewed package and standard pins, runtime, trust assumptions,
+resource owner, expected outcomes and actual commands. A first product feature
+or actual application migration is not the entry gate for this work.
 
-Implement the feature behind consumer-owned typed ports, assemble its selected
-providers, and test that actual root through the
+Keep the useful behavior behind consumer-owned typed ports, assemble selected
+providers, and test the actual root through the
 [module authoring route](module-authoring.md#17-tests).
 Preparation rejection must occur before factory effects; lifetime tests cover
-what this feature actually acquires or borrows. This delivers a static module
-boundary without requiring plugin discovery or the private lifecycle kernel.
+what the fixture actually acquires or borrows. Use independently specified
+outputs and rejecting controls, not expectations derived from the implementation.
+An existing consumer's accepted scope and promotion gates remain unchanged.
 
-The next boundary is explicit: executable plugin admission belongs to the
-product and Extension Foundation; live replacement needs its own preparation,
-authority, state, drain and recovery evidence. The
+Real applications later adopt the qualified profile through their own reviewed
+gate. Executable plugin admission belongs to the Host and Extension Foundation;
+live replacement needs its own preparation, authority, state, drain and recovery
+evidence. The
 [foundation research route](../README.md#choose-a-task) locates that work.
-It does not turn an ordinary application start into a whole-system update claim.
+Static qualification does not require the private lifecycle kernel.
 
 ## Portable headless boundaries
 
@@ -52,14 +58,29 @@ govern the peers of an adapter that imports GM. Each Host supplies its compatibl
 runtime copies. A similar TypeScript interface alone proves neither compatible
 behavior nor physical runtime identity.
 
-For reuse across applications, identify two intended Hosts and run the same
-contract suite against their real adapters. Record error, cancellation, ordering,
-state and resource-ownership semantics in the owning contract. A second Host
-qualifies the portability claim; it is not a prerequisite for implementing the
-first application's ordinary feature. A UI renderer is an optional adapter to
+For foundation reuse, run the same contract against independent test Host
+integrations before product adoption. Each needs its own outer driver, adapter
+and lifetime owner; two configurations or scopes of one Host do not establish
+that independence. Record error, cancellation, ordering, state and resource
+semantics. The [optional-adapter fixture](../../tests/assembly/optional-event-adapters.test.ts)
+connects one portable behavior to a bounded callback-request Host and a separately
+wired EventTarget-session Host. Both execute on Node and qualify only the
+behaviors their tests observe. A UI renderer is an optional adapter to
 that feature's capabilities. The proposed declarative Headless UI surface is
-part of [Live Module Updates research](https://github.com/agent-teams-ai/live-module-updates/tree/docs/deep-critical-gaps-20261123/docs),
+part of [Live Module Updates design](https://github.com/agent-teams-ai/live-module-updates/blob/main/docs/architecture/headless-plugins-and-ui.md),
 not a Get Modular API or an accepted cross-application schema.
+
+Browser, Desktop and untrusted extensions are known architecture targets now:
+
+| Target | Boundary to design now | Separate qualification |
+| --- | --- | --- |
+| Browser | Portable behavior, browser IO and UI adapters, cancellation and storage ownership | Actual selected browser runtime, module loading and interaction behavior |
+| Desktop | Renderer/main/native-resource separation and explicit IPC authority | Selected shell, OS resource custody, packaging and native stop behavior |
+| Untrusted extension | Admission, narrow effect capabilities and an enforceable isolation boundary | Denied ambient IO/IPC/authority, resource limits, revocation and observed stop |
+
+A process or Worker is a placement choice, not evidence of containment. No
+trusted in-process fixture establishes hostile-code isolation. These design
+targets need not wait for a first product; their execution claims remain scoped.
 
 Use [Resources](../../packages/resources/README.md) for owned cooperative cleanup
 and [Observation](../../packages/observation/README.md#mechanism-and-trust) only
@@ -83,8 +104,44 @@ recipe does not migrate an existing consumer's accepted pins.
 
 Add `@get-modular/resources@0.2.2` when modules own resources that need cleanup,
 and `@get-modular/conformance@0.5.2` as a development dependency for module and
-composition tests. To add a feature or a module to a consumer, read the
+composition tests. Observation `0.2.1` is optional for following replaceable
+latest state. To add a feature or a module to a consumer, read the
 [module authoring guide](module-authoring.md).
+
+### Discover, then pin a compatible cohort
+
+Discovery reads current registry metadata without choosing a moving dependency:
+
+```sh
+npm view @get-modular/core@latest version
+npm view @get-modular/assembly@latest version
+npm view @get-modular/conformance@0.5.2 peerDependencies
+npm view @get-modular/observation@0.2.1 peerDependencies
+```
+
+Use the selected versions' metadata and changelogs to review one compatible
+cohort before installation and qualification. Packages have independent versions;
+matching names or a `latest` tag alone proves no compatibility. The commands above
+do not authorize an accepted consumer-pin upgrade. For the cohort in this guide:
+
+```sh
+npm install --save-exact @get-modular/resources@0.2.2
+npm install --save-exact @get-modular/observation@0.2.1
+npm install --save-dev --save-exact @get-modular/conformance@0.5.2
+npm ls @get-modular/core @get-modular/assembly @get-modular/resources @get-modular/observation @get-modular/conformance
+```
+
+Install only packages the selected profile needs. Within one interacting
+Host/realm, keep one physical runtime copy of each identity-bearing package,
+and resolve peer conflicts before qualification;
+do not force an incompatible install. `npm ls` inspects the installed tree but
+is not a complete duplicate-identity rejection gate. A reusable GM adapter
+declares its GM imports as peers within a compatible `0.x` minor and exact
+development versions for its own tests; its Host supplies runtime copies.
+Its portable core needs no GM import. Follow the
+[package rules](../architecture/common-assembly.md#module-packages-and-contracts),
+commit the manifest and lockfile, then use `npm ci` or the consumer's equivalent
+frozen installation. The private lifecycle-kernel candidate is not an npm option.
 
 The complete [basic Host example](../../packages/assembly/examples/basic-host.mjs)
 defines a configuration provider, a greeting feature, and an application root.

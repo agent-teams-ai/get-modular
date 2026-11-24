@@ -478,9 +478,9 @@ an existing output directory is refused. Raw reports stay with their compact
 hash-bound index and supervisor receipt. This optional measurement is included
 in the existing strict fixture typecheck, not added to every repository check.
 
-### Current source guidance review after the Bun source union
+### Historical source guidance review after the Bun source union
 
-Current `source.ts` pins the reviewed guide at source checkpoint
+The earlier `source.ts` review pinned the guide at source checkpoint
 `0c2ea846f11532b216520e0e84e19ea1abf58342`, blob
 `4bd50920f9b81d9f41456ceb3df9500b497e0453`, SHA-256
 `d39806eef8e001bb1290e7d7787297ba446ae900dd1e9e217604a99ffa0350ec`.
@@ -494,3 +494,22 @@ adoption. Current-source qualification is pending; SDK activation remains HOLD.
 The full snapshot, both raw deltas and exact prior SDK/source reviews are retained
 as non-authoritative evidence in
 `architecture/sdk-growth/evidence/cms-guidance-drain-bun-20261022/`.
+
+### Current source guidance review for external subscriptions
+
+Current `source.ts` and the SDK review pin source checkpoint
+`16d096d23d4a0232c4eab46520d42153baa4e338`, CMS blob
+`12ccc2fa8a6f267d1008bc6fec64a055923d7f78`, SHA-256
+`ef5044eef1da7a01f3ca40323cd17d9f2597fc22b5abb905c7c77e5318b408d7`.
+The predecessor is the accepted preparation/native review at `c25a498e`, not
+the obsolete subscription pin proposed by PR213. Its exact predecessor review,
+growth source, current CMS and raw two-hunk delta are retained in
+`architecture/sdk-growth/evidence/cms-guidance-subscriptions-20261124/`.
+
+The delta clarifies the existing subscription-acquisition rule and identifies
+the strict TypeScript documentation runner. It changes no accepted ADR or
+descriptor-union recipe. The flat growth fixture selects no subscription,
+Resources or Observation lifecycle; historical measurements do not qualify the
+new source bytes. Current-source qualification remains pending and SDK
+activation remains HOLD with the same four external blockers. Preparation,
+native Effect, descriptor, drain, Bun and P0 custody stays intact.

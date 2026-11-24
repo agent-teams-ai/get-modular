@@ -17,11 +17,20 @@ For admission, graph or diagnostic work, also read the [compiler engineer handbo
 Task ownership and the milestone callable surface are explicit; the full roadmap does not authorize implementing every phase.
 For consumer composition work, read the [Consumer module standard](docs/architecture/common-assembly.md#consumer-module-standard).
 For module authoring, read docs/guides/module-authoring.md.
+For event or stream links between modules, read the
+[current communication reconciliation](research/module-communication-2026-10/reconciliation-2026-11-24.md)
+and its retained industry and adversarial evidence. The accepted CMS remains
+authoritative; these records do not add an event runtime.
 For a new application foundation or portable headless component, begin with the
-[consumer starting route](docs/guides/consumer-quickstart.md#start-with-a-bounded-application)
+[foundation starting route](docs/guides/consumer-quickstart.md#qualify-the-foundation-before-an-application)
 and [task map](docs/README.md#choose-a-task). They route to the existing CMS,
 package contracts and separately owned plugin/update research; they do not
 replace implementation prerequisites, qualify a consumer or admit a new SPI.
+Use representative fixtures and independently wired test Hosts to qualify the
+foundation before real applications. Browser, Desktop and untrusted extensions
+are required architecture targets; their execution and isolation claims need
+separate evidence. Discover releases, review peers and pin an exact cohort before
+qualification; a moving release tag never migrates an accepted consumer pin.
 For Effect integration or Effect-native consumer work, read the
 [Effect integration practices](packages/effect/docs/practices.md)
 and their linked accepted decision and qualification evidence. Read the package
