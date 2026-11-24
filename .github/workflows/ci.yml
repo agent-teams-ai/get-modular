@@ -9,8 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only an updated PR supersedes its previous CI; every main merge retains its run.
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   impact:
@@ -237,7 +238,8 @@ jobs:
 
   check-windows:
     name: check (windows-2025)
-    runs-on: windows-2025
+    # jq-only result gate; Windows E2E stays on native lanes.
+    runs-on: ubuntu-24.04
     needs: [impact, ci-impact-tests, docs-protocol, lanes-windows]
     if: always()
     steps: *check-aggregate-steps
@@ -296,7 +298,8 @@ jobs:
 
   check-node24-windows:
     name: check (windows-2025, Node 24)
-    runs-on: windows-2025
+    # jq-only result gate; Windows E2E stays on native lanes.
+    runs-on: ubuntu-24.04
     needs: [impact, ci-impact-tests, docs-protocol, lanes-node24-windows]
     if: always()
     steps: *check-aggregate-steps
@@ -359,7 +362,8 @@ jobs:
 
   check-node26-windows:
     name: check (windows-2025, Node 26 rollback)
-    runs-on: windows-2025
+    # jq-only result gate; Windows E2E stays on native lanes.
+    runs-on: ubuntu-24.04
     needs: [impact, ci-impact-tests, docs-protocol, lanes-node26-windows]
     if: always()
     steps: *check-aggregate-steps
