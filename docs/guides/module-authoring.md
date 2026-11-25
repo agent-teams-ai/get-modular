@@ -1790,13 +1790,47 @@ another owner's state, run work after its scope closes or decide Host readiness.
 | Should a module converge to the newest value when changes arrive? | `ReadonlyStore<Slice>` with `watch` | The subscriber's resource scope owns the subscription |
 | Must async work follow the newest value? | The same facet with `load` and a typed query port | The query promise owns physical completion and cleanup |
 | Is the request allowed to be rejected, or must its caller know the result? | A command port with a typed result | The owner validates the request and commits its state |
-| Must every occurrence be delivered, including two identical occurrences? | An explicit Host/domain delivery contract | The owner specifies acknowledgement, ordering and durability |
+| Must currently subscribed modules receive distinct live occurrences, including equal values? | A typed read-only source through a declared slot | The subscriber owns its listener; the source states ordering, reentrancy and error behavior |
+| Must asynchronous work be admitted under load? | A work-delivery port with explicit capacity | Its owner specifies accepted versus processed, buffering, concurrency and overload outcomes |
+| Must a delivery obligation survive restart? | An explicit durable Host/domain delivery contract | Its owner specifies storage, acknowledgement, retry and recovery |
 
-Use the last question as a concrete test: two payments must not become one
+Use distinct occurrences as a concrete test: two payments must not become one
 payment because delivery was coalesced. Such occurrences are not store state.
 Observation 0.1.0 adds no `emit`, event bus, durable log, replay or retry protocol.
 A payment's latest status can still be observed through a store. Its command
 result and its status projection have different jobs.
+
+#### In-process events and stream composition
+
+Ordinary in-process modules can exchange typed values through declared function
+ports. A module boundary alone needs no broker or serialization. Use the
+[subscription recipe](#9-resources) for live synchronous notifications and the
+[optional adapter fixture](../../tests/assembly/optional-event-adapters.test.ts)
+for explicit provider selection. Keep the portable behavior independent of GM;
+the outer composition adapter binds its source and owns subscription custody.
+
+Filtering or combining a sequence can be useful in a consuming adapter without
+creating a shared event runtime. Native streams and optional libraries differ
+in demand, buffering, errors, completion and cleanup. The dated
+[library comparison](../../research/module-communication-2026-10/delivery-review-2026-10-25.md#existing-libraries-and-the-stream-question)
+retains the inspected versions and alternatives; it is not a current library
+adoption or a claim that their guarantees are interchangeable. The newer
+[Effect practices](../../packages/effect/docs/practices.md) own that integration's
+accepted execution contract and exact qualified peer.
+
+Sequential processing of a push source can still accumulate pending input.
+Awaiting one direct caller does not bound all concurrent callers. If work needs
+admission, specify queued items, active physical work, waiting producers and
+payload sizes separately. The operation owner selects rejection, waiting or
+durable admission and retains work through settlement. An unsubscribe or abort
+does not supply that completion. Reuse the current latest-only `load` contract
+for replaceable state; do not turn indispensable occurrences into coalesced state.
+
+Representative foundation fixtures can establish these boundaries before a real
+application adopts them. Extract an optional integration only for a demonstrated
+repeated contract; it does not gain Host authority over readiness, routing,
+retry or shutdown. The [current reconciliation](../../research/module-communication-2026-10/reconciliation-2026-11-24.md)
+separates the retained research, current tests and still-unqualified profiles.
 
 #### Start with a complete session
 

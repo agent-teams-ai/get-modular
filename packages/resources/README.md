@@ -16,13 +16,17 @@ that runtime as one `setup`/`cleanup` entry in a Host scope.
 ## Install
 
 ```sh
-npm install @get-modular/resources
+npm install --save-exact @get-modular/resources@0.2.2
 ```
 
 Supported Node.js: `>=24.18.0 <25 || >=26.10.0 <27`. The package has no
 runtime dependencies. A Host loads exactly one copy of it; module packages list
 Get Modular packages only in `peerDependencies` with a range of one 0.x minor,
-such as `^0.1.0`.
+such as `^0.2.0`. This is the guide's selected version; discover releases and
+review a compatible exact cohort before changing it, as described in the
+[installation route](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/consumer-quickstart.md#discover-then-pin-a-compatible-cohort).
+Commit the Host's lockfile and use frozen installs. Discovery does not migrate
+an accepted consumer pin.
 
 TypeScript consumers need `AbortSignal`, `Disposable` and `AsyncDisposable`:
 either `lib` with `ES2024`, `ESNext.Disposable` and `DOM`, or `@types/node`.
@@ -70,6 +74,9 @@ paths that Hosts alert on.
   takes its release slot when the setup fulfils. `signal` stops acquisition: it
   aborts when the scope or an ancestor starts closing, or when the run that
   constructs the module is cancelled.
+  Use it for synchronous acquisition that can call user code too, such as an
+  external subscription. Check the signal before acquiring and before each
+  synchronous listener effect; cancellation can begin before registration ends.
 - `use(value, name)` registers a value already in hand that implements
   `Symbol.asyncDispose` or `Symbol.dispose`. Its `then` method is never read,
   and the result of a synchronous `Symbol.dispose` is not awaited.
@@ -82,6 +89,40 @@ paths that Hosts alert on.
   `child` throws. Acquire asynchronously only inside `setup`.
 - Close waits for started setups, then releases. A failed cleanup is recorded
   as a debt with its original cause and release continues.
+
+The [subscription recipe](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/module-authoring.md#9-resources)
+establishes custody before `subscribe` can reenter scope closure. Do not acquire
+inline inside `use`: if registration is refused, the caller still owns the value.
+A provider that attaches and throws before returning a handle must undo its own
+partial acquisition. Abort may suppress new synchronous listener effects;
+registered cleanup still owns unsubscribe. Neither proves earlier async work
+has physically finished.
+
+## Optional event source adapters
+
+A consuming module can declare a read-only event-source capability, with the
+Host selecting its provider. Keep publication authority with the source owner
+and optional operators in its consuming adapter. Subscribers own their listeners,
+not the shared publisher. No particular stream library is a GM dependency.
+
+The [executable adapter fixture](https://github.com/agent-teams-ai/get-modular/blob/main/tests/assembly/optional-event-adapters.test.ts)
+connects the same portable behavior through a bounded callback-request Host and
+a separately wired EventTarget-session Host. Their drivers and resource owners
+are independent; the common behavior and GM module are reused. Actual delivery,
+duplicate occurrences, invalid native payloads, ambiguous binding rejection and
+listener removal are observed. The explicit-binding case runs its selected graph,
+not only preparation. Both Hosts execute under Node.
+
+The structural callback source is test-owned; it does not qualify a real RxJS or
+other third-party installation. Each standalone Host includes only its chosen
+provider. The ambiguity scenario deliberately exposes both providers as roots;
+both construct after explicit binding, and only the bound source is subscribed.
+None of these observations proves that an unused library was never imported,
+installed or bundled. Browser, Desktop and untrusted-extension profiles need their own runtime
+and isolation evidence. The fixture has no replay, durable admission or universal
+listener-error guarantee. Adapt an actual source's error, completion, cancellation
+and buffering contract explicitly. Resources owns the returned unsubscribe;
+the owner of any async work must retain that work until it physically settles.
 
 ## Closing
 

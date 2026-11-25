@@ -7,11 +7,13 @@ turns inert module declarations and an explicit profile into a deterministic,
 immutable composition plan. Product hosts retain authorization, executable
 loading, lifecycle, readiness, publication, routing, and recovery authority.
 
-## Start an application
+## Qualify the foundation before applications
 
-Follow the [consumer starting route](docs/guides/consumer-quickstart.md#start-with-a-bounded-application)
+Follow the [foundation starting route](docs/guides/consumer-quickstart.md#qualify-the-foundation-before-an-application)
 and [task map](docs/README.md#choose-a-task) for current module authoring,
 portable headless boundaries and separately owned plugin/update research.
+Qualify representative fixtures and independent test Hosts before connecting
+the waiting applications; a first product is not the library's proving ground.
 Keep feature behavior behind consumer-owned ports, with Get Modular in the
 outer composition adapter. Changing accepted consumer pins requires a reviewed migration.
 
@@ -86,14 +88,18 @@ Core and Assembly are available from npm. Install both when the Host
 needs construction, or Core alone when it only needs a portable plan:
 
 ```sh
-npm install @get-modular/core@0.8.0 @get-modular/assembly@0.8.0
+npm install --save-exact @get-modular/core@0.8.0 @get-modular/assembly@0.8.0
 ```
 
 For native Effect construction, install the integration and its qualified peer:
 
 ```sh
-npm install @get-modular/effect effect@4.1.4
+npm install --save-exact @get-modular/effect@0.1.1 effect@4.1.4
 ```
+
+These are selected exact versions. Use the
+[discovery and peer checks](docs/guides/consumer-quickstart.md#discover-then-pin-a-compatible-cohort)
+before choosing a different cohort; commit its lockfile and use frozen installs.
 
 Start with the [consumer quickstart](docs/guides/consumer-quickstart.md) and its
 [executable Host example](packages/assembly/examples/basic-host.mjs).

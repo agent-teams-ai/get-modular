@@ -14,11 +14,33 @@ owns verification routes and the limits of each claim.
 | `semantic` | A useful session and runner, real resource ownership, and independent consumer expectations | P0–P2 and P6: C-01 through C-05, L-01 through L-10, W-01 through W-03 and one complete A construction smoke |
 | `record-only` / `restart-pending` | A bounded persistent fixture with one worker writer and a live supervisor retaining real effect processes | P3: R-01 through R-10 under both schedules |
 | `growth` | Actual generated TypeScript feature trees with inherited capability maps and independent arithmetic and wiring expectations | P5 G-01 at eight features in ordinary `assembly:test`; larger measurements remain optional and bounded |
+| `event-adapters` | One portable inbox with independent callback-request and EventTarget-session Host integrations | Public-package provider selection, occurrence delivery, input rejection and separate listener custody; Node fixture only |
 
 The profiles share driver materialization. This is test-owned composition:
 Get Modular does not gain a Host, readiness API, work scheduler or recovery policy.
 P6 adds the W-01 through W-03 bounded workload on these same semantic owners.
 Source facts and author exercises remain separate plan slices.
+
+The `event-adapters` slice is separate from the semantic/recovery materializer.
+Its plain behavior and port types import no GM, UI or platform; the shared
+`inbox.module.ts` is the optional outer GM adapter. `callback-host.ts` owns a
+bounded request and closes before returning copied observations, while
+`event-target-host.ts` prepares a live session and transfers its cleanup control
+to its caller. These are independent integration paths, not two options of one
+Host builder. The [existing Assembly runner](../../assembly/optional-event-adapters.test.ts)
+checks actual duplicate delivery, invalid event detail, preparation rejection
+before factory effects, executed explicit binding and actual listener removal.
+It also proves that a fresh request can reuse its borrowed source after close.
+The owning strict Assembly project includes the runner and its imported fixtures.
+The structural source is not an installed third-party stream library, and Node
+EventTarget is not Browser/Desktop or hostile-code qualification. This slice is
+source-workspace execution, with packed behavior owned by the existing separate
+packed routes. Its current verification is recorded in the
+[reconciliation note](../../../research/module-communication-2026-10/reconciliation-2026-11-24.md).
+
+Foundation qualification uses representative fixtures and independent test Hosts
+before real application adoption. Product migration, public SPI qualification
+and native runtime/trust profiles retain their own gates and evidence.
 
 P4's [installed source route](source/README.md) runs 26 selected flat observations
 through the exact registry development pins for Foundation and FMS and public

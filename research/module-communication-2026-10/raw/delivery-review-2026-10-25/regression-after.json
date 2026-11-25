@@ -1,0 +1,6 @@
+{
+  "guideRevision": "3c00edc5bd767b586344f729e06da9d314e9680c",
+  "exitCode": 0,
+  "outputSha256": "72c5d264aab71d7d54725dd0d5d6213723f5da4178720cdf775f94e2b6c8be64",
+  "output": "\u2714 the module authoring guide example resources compiles on supported compilers (6524.055589ms)\n\u2139 tests 1\n\u2139 suites 0\n\u2139 pass 1\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 6794.121896\n"
+}
