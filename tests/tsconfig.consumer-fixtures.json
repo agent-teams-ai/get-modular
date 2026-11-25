@@ -8,7 +8,8 @@
     "qualification/consumer-fixtures/growth/measure-source.ts",
     "qualification/consumer-fixtures/source/installed.ts",
     "qualification/consumer-fixtures/source/policy.ts",
-    "npm-release-consumer.ts"
+    "npm-release-consumer.ts",
+    "../packages/core/tests/qualification/runtime-primitives.test.ts"
   ],
   "include": []
 }
