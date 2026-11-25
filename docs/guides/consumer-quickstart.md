@@ -46,6 +46,27 @@ evidence. The
 [foundation research route](../README.md#choose-a-task) locates that work.
 Static qualification does not require the private lifecycle kernel.
 
+### Portable module authoring reference
+
+The [reviewed implementation plan](https://github.com/agent-teams-ai/live-module-updates/blob/e47f192c955fd196280ad226eab8faef9a3b858f/docs/plans/module-authoring-implementation-plan.md)
+extends the [private portable-document fixture](https://github.com/agent-teams-ai/live-module-updates/blob/work/module-authoring-foundation-20261126/tests/qualification/portable-document/README.md)
+into a maintained authoring reference. That branch is work in progress;
+implementation and qualification of the planned authoring path are pending.
+
+Its bounded scope is document, format and export features with consumer-owned
+ports, a dependency-free ordinary library and an optional outer GM adapter.
+The planned author exercise adds a formatting provider through composition
+without changing document or export behavior. Node and actual Chromium Hosts
+must execute the same installed artifacts and enforce their source boundaries.
+Each Host owns state, grants and resource lifetime; controlled restart waits for
+work settlement and complete cleanup before constructing a successor.
+
+The reference README will own its commands, exact artifact/profile pins and
+observed results. The published Get Modular packages below remain distinct from
+these private TEST artifacts. This reference does not provide a production EF
+or LMU runtime, live replacement or hostile-code isolation. The CMS remains the
+authoring authority; a product still adopts its own qualified scope.
+
 ## Portable headless boundaries
 
 Keep feature behavior, domain state rules and consumer-owned port types usable
