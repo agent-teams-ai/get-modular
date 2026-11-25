@@ -16,7 +16,7 @@ a test supplies the expected data, including the provider decisions that
 ## Install
 
 ```sh
-npm install --save-dev @get-modular/conformance
+npm install --save-dev --save-exact @get-modular/conformance@0.5.2
 ```
 
 Supported Node.js: `>=24.18.0 <25 || >=26.10.0 <27`. Core, Assembly and
@@ -26,6 +26,12 @@ else is a dependency. Exactly one copy of `@get-modular/assembly` must resolve:
 groups, and their private authentication must see the production objects. Your
 project also loads one copy of resources, so the `scoped()` brand matches. The
 package imports no test runner and no Node built-in module.
+
+Before choosing a different release, discover its declared peers, review the
+selected exact cohort and inspect the installed physical copies. The
+[installation route](https://github.com/agent-teams-ai/get-modular/blob/main/docs/guides/consumer-quickstart.md#discover-then-pin-a-compatible-cohort)
+shows discovery separately from installation. Commit the lockfile and use frozen
+installs; a current guide or moving tag does not migrate accepted consumer pins.
 
 TypeScript consumers need `AbortSignal`, `Disposable` and `AsyncDisposable`:
 either `lib` with `ES2024`, `ESNext.Disposable` and `DOM`, or `@types/node`.

@@ -6,6 +6,13 @@ The original contents are research and design evidence. The production follow-th
 [implementation-port.md](implementation-port.md), with current status in [HANDOFF.md](HANDOFF.md).
 The research prototypes remain separate from the implemented package; historical results are not refreshed.
 
+The [November 24 reconciliation](reconciliation-2026-11-24.md) preserves the
+remaining research from PRs #213 and #222 and maps the installation guidance from
+PR #210 to the current contract. Its [archive manifest](reconciliation-2026-11-24.json)
+records the exact original files. The optional-adapter fixture qualifies
+independent Node test Hosts; Browser, Desktop, hostile-code containment and real
+third-party stream integrations retain separate qualification gates.
+
 The [live instance custody E2E plan](live-instance-custody-plan-2026-11-01.md)
 qualifies 1024 independently scoped runs over two borrowed event sources;
 this is a targeted correctness gap, not a benchmark or a new events package.
@@ -65,6 +72,11 @@ and [handoff](HANDOFF.md) for the subsequent implementation and qualification wo
 
 | Path | What it is |
 | --- | --- |
+| [reconciliation-2026-11-24.md](reconciliation-2026-11-24.md) | Current disposition of PRs #210, #213 and #222; foundation fixtures, current contract and historical evidence remain separate |
+| [delivery-review-2026-10-25.md](delivery-review-2026-10-25.md) | Dated communication alternatives and six retained independent reports in `raw/delivery-review-2026-10-25/`; original source bytes preserved |
+| [decision-coverage-2026-11-01.md](decision-coverage-2026-11-01.md) | Dated audit of owner direction, optional adapters, scale and consumer-owned follow-ups |
+| [industry-evidence-and-negative-patterns-2026-11-01.md](industry-evidence-and-negative-patterns-2026-11-01.md) | Retained industry failure cases and 24 named patterns, with their original source and scope limits |
+| [adversarial-recheck-2026-11-01.md](adversarial-recheck-2026-11-01.md) | Ten explicitly non-independent analytical perspectives; no new independent reviewers are implied |
 | [findings.md](findings.md) | Everything the study concluded in one place: owner decisions in order, the module communication rules, why the API has its shape, what each review found, writer results per round, open items and process lessons |
 | [implementation-brief.md](implementation-brief.md) | The brief for implementing `@get-modular/observation` 0.1.0 under ADR-0034; it replaces the observation execution briefs of pull request #153 |
 | [raw/practices/practices-catalog-v2.md](raw/practices/practices-catalog-v2.md) | Practices catalog v2 (2026-10-16): best and worst practices for each direction, lessons from what projects dropped, disagreements between sources, verification notes. A draft for a future guide, not a standard |

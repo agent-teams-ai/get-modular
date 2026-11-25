@@ -1,0 +1,104 @@
+{
+  "base": "cc3b759e75076ee473461a5ad10de802f0d0b7e6",
+  "archives": [
+    {
+      "path": "research/module-communication-2026-10/delivery-review-2026-10-25.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "ce65d2d54f5e5cfe99a8d719ce1c4394033c6a9c",
+      "sha256": "0f0c155821f83c43ebcc1f97d28ec4d06ee46cab42c39c68d441611bea6d0765",
+      "bytes": 13369,
+      "lines": 183
+    },
+    {
+      "path": "research/module-communication-2026-10/decision-coverage-2026-11-01.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "a694b9b4d400fe680e9e8559bda13c5ae78b87a5",
+      "sha256": "c07bd71f0b590518ddb37a19bae025df61a841bc2658d2d22461dda1390c269c",
+      "bytes": 12364,
+      "lines": 96
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/c1-scope.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "6da4791bfd7b574b55f85aadb16b9dc27e715947",
+      "sha256": "ea84bd6b8e38112964224bb85247a4c9a7bb4c69e0948f59a0f2d9b4fbb46084",
+      "bytes": 20215,
+      "lines": 153
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/c2-correctness.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "0a3b75fe75ec61d7781bbe5f63d8404936b064d5",
+      "sha256": "c259ecf728185aae034931a8c1c93c07ed1ef86dc71eff5615bc374a90323572",
+      "bytes": 19691,
+      "lines": 147
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/c3-ergonomics.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "00f1b17eb912bcb52c6a3deafa712bdaf18f1fdf",
+      "sha256": "77d107e4e6f899fca11e08e4822c1338fcb9bebdda6f34c3c45ac1262bcee24d",
+      "bytes": 22739,
+      "lines": 133
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/r1-architecture.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "535f6b5330f58efcd2629d65b2b6ca2845be8a1b",
+      "sha256": "9870fee13c742ade7f186b950eb75559ffceb6e22e797c58533d92b81dad043b",
+      "bytes": 27110,
+      "lines": 181
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/r2-consumer.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "ca75f393a3de134496a316d6d31214ad6051fa6a",
+      "sha256": "ef3ef66eb6a329911503f61f7adb4bd60744f85f01106ae852051bd868f5ab53",
+      "bytes": 21237,
+      "lines": 119
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/r3-ecosystem.md",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "a2b7238d5f2e0ca6519175e2e0ed19551ebdcc6b",
+      "sha256": "4770c20b3d2ba0fad735e97fc2dbbf5c4d4e1f16034c5e5b8e37a469d19d755e",
+      "bytes": 25444,
+      "lines": 161
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/regression-after.json",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "eb046cec1b826860a3bec1d21e688c6eaaf755b6",
+      "sha256": "95188ed9538834a6342e4a977089cce0ef23b9b8d688140af58492acad9efc1d",
+      "bytes": 434,
+      "lines": 6
+    },
+    {
+      "path": "research/module-communication-2026-10/raw/delivery-review-2026-10-25/regression-before.json",
+      "sourceCommit": "24cf56ad4363168aaff3ab0bbfb648b2514c5f03",
+      "gitBlob": "ebed5a6073fc4d41c45dad1c94f804935a350f41",
+      "sha256": "0b3c0d595bc1cdf7c7a8b813b3b418a8d809d33e31e6a4c081f0ce026f53a230",
+      "bytes": 5539,
+      "lines": 6
+    },
+    {
+      "path": "research/module-communication-2026-10/adversarial-recheck-2026-11-01.md",
+      "sourceCommit": "85d3716bcc620c1f5fc053bd519b4f03d4625404",
+      "gitBlob": "e8d17d8ac3eecbf4aa01107401f69c1f0fd54f3f",
+      "sha256": "2efde0dbde86e415b13c6e3364097d158b4e7d27893fc075b2455c03571ee6a3",
+      "bytes": 17661,
+      "lines": 309
+    },
+    {
+      "path": "research/module-communication-2026-10/industry-evidence-and-negative-patterns-2026-11-01.md",
+      "sourceCommit": "85d3716bcc620c1f5fc053bd519b4f03d4625404",
+      "gitBlob": "0c8c0421f97828eb5fe3814b4d727341552a1e4a",
+      "sha256": "f148749f54f199ee450a14626311b8bc6bc5a32422bb925bf7ddf21996a823cf",
+      "bytes": 18301,
+      "lines": 126
+    }
+  ],
+  "count": 12,
+  "totalBytes": 204104,
+  "totalLines": 1620
+}
