@@ -1,0 +1,118 @@
+name: Windows Node 24 timeout validation
+
+on:
+  push:
+    branches: [test/windows-node24-timeout-validation-20261126]
+    paths: [.github/workflows/windows-node24-timeout-validation.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Exact-source changed and fast checks
+    runs-on: ubuntu-24.04
+    # The six current default Ubuntu lane payloads total about 19 minutes.
+    # This serial run retains both required owner commands and finite margins.
+    timeout-minutes: 100
+    env:
+      CANDIDATE_SHA: 0dfebdedbddc11a41bc329be757ec812e4e5256a
+      BASE_SHA: f78f2bee84a7407b2a8b499418dd401a398028f0
+    steps:
+      - id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0dfebdedbddc11a41bc329be757ec812e4e5256a
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bind the candidate, base and separate launcher event
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/gm-timeout-validation"
+          test "$GITHUB_REPOSITORY" = agent-teams-ai/get-modular
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/test/windows-node24-timeout-validation-20261126
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse refs/remotes/origin/main)" = "$BASE_SHA"
+          git merge-base --is-ancestor "$BASE_SHA" "$CANDIDATE_SHA"
+          git merge-base --is-ancestor "$BASE_SHA" "$GITHUB_SHA"
+          test "$(git diff --name-only "$BASE_SHA" "$CANDIDATE_SHA")" = "$(printf '%s\n' .github/workflows/ci.yml tests/ci-check-lanes.test.mjs)"
+          test "$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")" = .github/workflows/windows-node24-timeout-validation.yml
+          test -z "$(git status --porcelain)"
+          git diff --binary "$BASE_SHA" "$CANDIDATE_SHA" > "$RUNNER_TEMP/gm-timeout-validation/candidate.patch"
+          git show "$GITHUB_SHA:.github/workflows/windows-node24-timeout-validation.yml" > "$RUNNER_TEMP/gm-timeout-validation/launcher.yml"
+          jq -n --arg candidate "$CANDIDATE_SHA" --arg base "$BASE_SHA" --arg launcher "$GITHUB_SHA" --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" '{candidate:$candidate,base:$base,launcher:$launcher,run:$run,attempt:$attempt}' > "$RUNNER_TEMP/gm-timeout-validation/source-binding.json"
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
+        with:
+          version: 11.20.0
+          run_install: false
+      - id: node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.11.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version-file: .bun-version
+      - name: Verify physical runtimes and provision retained history
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v26.11.1
+          test "$(bun --version)" = 1.4.3
+          node architecture/tooling/runtime/retained-history.ts
+      - name: Install the actual default root with frozen policy
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          node architecture/tooling/runtime/dev.ts install 2>&1 | tee "$RUNNER_TEMP/gm-timeout-validation/install.log"
+      - name: Verify compiler metadata before loading any compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          node architecture/checks/compiler-floor.ts 2>&1 | tee "$RUNNER_TEMP/gm-timeout-validation/compiler-floor.log"
+      - name: Run the existing focused CI contract
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/ci-check-lanes.test.mjs 2>&1 | tee "$RUNNER_TEMP/gm-timeout-validation/ci-contract.log"
+      - name: Run the source-owned changed check
+        timeout-minutes: 45
+        env:
+          SDK_GROWTH_FAILURE_ARTIFACT: ${{ runner.temp }}/gm-timeout-validation/changed-sdk-growth-failure.json
+          SDK_GROWTH_CHECKOUT_SHA: ${{ env.CANDIDATE_SHA }}
+          WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT: ${{ runner.temp }}/gm-timeout-validation/changed-workflow-subprocess-failure.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse refs/remotes/origin/main)" = "$BASE_SHA"
+          test "$(git merge-base HEAD refs/remotes/origin/main)" = "$BASE_SHA"
+          bun run check:changed 2>&1 | tee "$RUNNER_TEMP/gm-timeout-validation/changed.log"
+      - name: Run the source-owned fast check
+        timeout-minutes: 40
+        env:
+          SDK_GROWTH_FAILURE_ARTIFACT: ${{ runner.temp }}/gm-timeout-validation/fast-sdk-growth-failure.json
+          SDK_GROWTH_CHECKOUT_SHA: ${{ env.CANDIDATE_SHA }}
+          WORKFLOW_SUBPROCESS_FAILURE_ARTIFACT: ${{ runner.temp }}/gm-timeout-validation/fast-workflow-subprocess-failure.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run check:fast 2>&1 | tee "$RUNNER_TEMP/gm-timeout-validation/fast.log"
+      - name: Verify exact tracked-source integrity
+        if: always() && steps.checkout.outcome == 'success' && steps.node.outcome == 'success'
+        env:
+          EXPECTED_HEAD_SHA: ${{ env.CANDIDATE_SHA }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node architecture/tooling/runtime/dev.ts verify 2>&1 | tee "$RUNNER_TEMP/gm-timeout-validation/integrity.log"
+      - name: Retain bounded validation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: gm-timeout-validation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/gm-timeout-validation/
+          if-no-files-found: error
+          retention-days: 30
