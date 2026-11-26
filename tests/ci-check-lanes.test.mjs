@@ -90,9 +90,9 @@ function validateLanes(value, manifest = packageJson) {
       : rollback ? { ROOT_CI_NODE_VERSION: "26.11.1", ROOT_CI_RUNTIME_PROFILE: "node" } : undefined,
       "default runtime or candidate selection drift");
     assert.equal(job["runs-on"], os);
-    assert.equal(job["timeout-minutes"], host === "node26-windows"
+    assert.equal(job["timeout-minutes"], host === "node26-windows" || host === "node24-windows"
       ? "${{ (matrix.lane == 'governance' || matrix.lane == 'static') && 20 || 15 }}"
-      : host === "windows" || host === "node24-windows"
+      : host === "windows"
         ? "${{ matrix.lane == 'governance' && 20 || 15 }}"
         : 15);
     assert.equal(job.strategy["fail-fast"], false);
