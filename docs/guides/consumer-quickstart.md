@@ -46,6 +46,28 @@ evidence. The
 [foundation research route](../README.md#choose-a-task) locates that work.
 Static qualification does not require the private lifecycle kernel.
 
+### Portable module authoring reference
+
+The [portable-document reference](https://github.com/agent-teams-ai/live-module-updates/blob/bf9da1dbdcd1795f2624de1aba55434014d2e7bc/tests/qualification/portable-document/README.md)
+provides a maintained, executed authoring path for Document, Format and Export.
+It keeps consumer-owned ports and ordinary behavior in a dependency-free core,
+with public GM composition in a separately packed optional adapter. The adapter
+declares compatible GM peers; each consuming Host supplies the exact runtime
+cohort and checks one physical package identity.
+
+Independent Node and actual Chromium Hosts execute the same installed artifacts.
+The author exercise adds and selects a third formatting provider without changing
+Document or Export implementations. Each Host owns canonical state, grants and
+native resources. Controlled restart seals ingress, waits for actual work
+settlement and requires complete cleanup before constructing a successor.
+
+Follow the reference README for commands, exact artifact/profile pins, source
+checks and passing execution evidence. Its [implementation plan](https://github.com/agent-teams-ai/live-module-updates/blob/bf9da1dbdcd1795f2624de1aba55434014d2e7bc/docs/plans/module-authoring-implementation-plan.md)
+records the reviewed scope and corrections. The published Get Modular packages
+below remain distinct from these private TEST artifacts. The CMS remains the
+authoring authority; production EF/LMU runtimes, live overlap, Desktop and
+hostile-code isolation retain their separate qualification and adoption gates.
+
 ## Portable headless boundaries
 
 Keep feature behavior, domain state rules and consumer-owned port types usable

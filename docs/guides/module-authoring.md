@@ -48,6 +48,7 @@ uses `Discounts` through the republication in `orders.contracts.ts`. Identities 
 | read an error | 15 |
 | change a contract or upgrade Get Modular | 16 |
 | test a module, a feature or a root | 17 |
+| follow the packed Node/browser authoring reference | [executed reference](consumer-quickstart.md#portable-module-authoring-reference) |
 | check what I must not do | 19 |
 | communicate changes, request a command or follow asynchronous data | [21](#21-module-communication) |
 
