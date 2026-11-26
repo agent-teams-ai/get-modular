@@ -48,24 +48,25 @@ Static qualification does not require the private lifecycle kernel.
 
 ### Portable module authoring reference
 
-The [reviewed implementation plan](https://github.com/agent-teams-ai/live-module-updates/blob/e47f192c955fd196280ad226eab8faef9a3b858f/docs/plans/module-authoring-implementation-plan.md)
-extends the [private portable-document fixture](https://github.com/agent-teams-ai/live-module-updates/blob/work/module-authoring-foundation-20261126/tests/qualification/portable-document/README.md)
-into a maintained authoring reference. That branch is work in progress;
-implementation and qualification of the planned authoring path are pending.
+The [portable-document reference](https://github.com/agent-teams-ai/live-module-updates/blob/bf9da1dbdcd1795f2624de1aba55434014d2e7bc/tests/qualification/portable-document/README.md)
+provides a maintained, executed authoring path for Document, Format and Export.
+It keeps consumer-owned ports and ordinary behavior in a dependency-free core,
+with public GM composition in a separately packed optional adapter. The adapter
+declares compatible GM peers; each consuming Host supplies the exact runtime
+cohort and checks one physical package identity.
 
-Its bounded scope is document, format and export features with consumer-owned
-ports, a dependency-free ordinary library and an optional outer GM adapter.
-The planned author exercise adds a formatting provider through composition
-without changing document or export behavior. Node and actual Chromium Hosts
-must execute the same installed artifacts and enforce their source boundaries.
-Each Host owns state, grants and resource lifetime; controlled restart waits for
-work settlement and complete cleanup before constructing a successor.
+Independent Node and actual Chromium Hosts execute the same installed artifacts.
+The author exercise adds and selects a third formatting provider without changing
+Document or Export implementations. Each Host owns canonical state, grants and
+native resources. Controlled restart seals ingress, waits for actual work
+settlement and requires complete cleanup before constructing a successor.
 
-The reference README will own its commands, exact artifact/profile pins and
-observed results. The published Get Modular packages below remain distinct from
-these private TEST artifacts. This reference does not provide a production EF
-or LMU runtime, live replacement or hostile-code isolation. The CMS remains the
-authoring authority; a product still adopts its own qualified scope.
+Follow the reference README for commands, exact artifact/profile pins, source
+checks and passing execution evidence. Its [implementation plan](https://github.com/agent-teams-ai/live-module-updates/blob/bf9da1dbdcd1795f2624de1aba55434014d2e7bc/docs/plans/module-authoring-implementation-plan.md)
+records the reviewed scope and corrections. The published Get Modular packages
+below remain distinct from these private TEST artifacts. The CMS remains the
+authoring authority; production EF/LMU runtimes, live overlap, Desktop and
+hostile-code isolation retain their separate qualification and adoption gates.
 
 ## Portable headless boundaries
 
