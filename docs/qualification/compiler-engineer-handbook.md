@@ -154,6 +154,38 @@ a partial Kahn traversal count, or condensed-SCC depth. Preserve cycle
 diagnostics, and independently emit the depth-limit diagnostic when the
 residual DAG exceeds 2048 nodes; its reported actual is capped at 2049.
 
+## Root closure and replacement planning
+
+Get Modular supplies deterministic composition facts; selected-root provider
+closure is not the set affected by a live replacement. With provider-to-consumer
+edges `A -> B -> C` and `A -> D`, a Host plan containing roots `C` and `D`
+has provider closure `{A, B, C}` for `C`, while changing `A` can also affect
+`D`. The whole selected plan and the closure of one root are different inputs.
+
+The consumer's LMU/Host planner owns replacement decisions. It compares old and
+new plan facts, exact bindings including ordered `many`, compatible retained
+state and concrete resource ownership. A removed provider, changed binding or
+borrowed/shared dependency cannot disappear from consideration just because one
+root did not reach it. Preserve an unchanged shared owner while another retained
+consumer still uses it; a borrowed capability does not transfer disposal authority.
+See the [system boundary](../architecture/system-boundary.md) and existing
+[module resource scopes](../architecture/common-assembly.md#module-resource-scopes).
+
+For a claimed selective-replacement profile, use the existing consumer gate:
+replacing or removing `A` must not leave `D` using disposed resources or dependencies
+outside its retained generation and current effect authority. Admitted old work
+may retain its exact cohort until actual settlement. Unrelated owners must not be
+disposed merely to update `C`. Finite whole-composition replacement remains a valid
+narrower profile. This clarification adds no compiler API, replacement implementation
+or qualification gate.
+
+Reuse the public plan and bounded full recomputation before considering an
+incremental planner. Graph limits apply per admitted composition, not to the
+number of agents in a fleet. That count does not require a compiler, graph or
+process per agent.
+The [source-backed research](https://github.com/agent-teams-ai/engineering-research/blob/e2a5f6c47e008f93094dc88ed39ea9618722f28d/docs/studies/composition-and-scale-evidence.md#a4--get-modular-inspect-the-graph-kernel-and-the-already-available-lifetime-mechanisms)
+provides the discriminator, not a new defect finding or fleet-capacity result.
+
 ## Independent examples and what they prove
 
 The [example corpus](../../tests/qualification/compiler-engineer/examples.json)
